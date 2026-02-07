@@ -69,11 +69,10 @@ jobs:
           TIMERANGE="${{ github.event.inputs.timerange || '20240601-20250201' }}"
           freqtrade download-data \
             --config config.json \
-            --pairs BTC/USDT:USDT ETH/USDT:USDT SOL/USDT:USDT \
+            --pairs BTC/USDT ETH/USDT SOL/USDT \
             --timeframes 15m 1h \
             --timerange $TIMERANGE \
-            --exchange binance \
-            --trading-mode futures
+            --exchange kraken
 
       - name: Run Backtest
         id: backtest
