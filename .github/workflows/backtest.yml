@@ -1,0 +1,147 @@
+name: Backtest Strategy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'strategies/**'
+      - 'config.json'
+      - '.github/workflows/**'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      timerange:
+        description: 'Backtest timerange (e.g., 20240101-20250201)'
+        required: false
+        default: '20240601-20250201'
+      pairs:
+        description: 'Trading pairs (comma-separated)'
+        required: false
+        default: 'BTC/USDT:USDT,ETH/USDT:USDT'
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install TA-Lib dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential wget
+          wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz
+          tar -xzf ta-lib-0.4.0-src.tar.gz
+          cd ta-lib/
+          ./configure --prefix=/usr
+          make
+          sudo make install
+          cd ..
+          rm -rf ta-lib ta-lib-0.4.0-src.tar.gz
+
+      - name: Install Freqtrade
+        run: |
+          pip install --upgrade pip
+          pip install freqtrade
+          pip install TA-Lib
+
+      - name: Verify installation
+        run: |
+          freqtrade --version
+          python -c "import talib; print('TA-Lib OK')"
+
+      - name: Create user_data structure
+        run: |
+          mkdir -p user_data/data/binance
+          mkdir -p user_data/strategies
+          cp strategies/*.py user_data/strategies/
+
+      - name: Download historical data
+        run: |
+          TIMERANGE="${{ github.event.inputs.timerange || '20240601-20250201' }}"
+          freqtrade download-data \
+            --config config.json \
+            --pairs BTC/USDT:USDT ETH/USDT:USDT SOL/USDT:USDT \
+            --timeframes 15m 1h \
+            --timerange $TIMERANGE \
+            --exchange binance \
+            --trading-mode futures
+
+      - name: Run Backtest
+        id: backtest
+        run: |
+          TIMERANGE="${{ github.event.inputs.timerange || '20240601-20250201' }}"
+          
+          freqtrade backtesting \
+            --config config.json \
+            --strategy LiquiditySweep \
+            --timeframe 15m \
+            --timerange $TIMERANGE \
+            --export trades \
+            --export-filename backtest_results.json \
+            2>&1 | tee backtest_output.txt
+          
+          # Extract key metrics for summary
+          echo "## Backtest Results" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          tail -50 backtest_output.txt >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload backtest results
+        uses: actions/upload-artifact@v4
+        with:
+          name: backtest-results
+          path: |
+            backtest_results.json
+            backtest_output.txt
+          retention-days: 30
+
+      - name: Comment on PR (if applicable)
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const output = fs.readFileSync('backtest_output.txt', 'utf8');
+            const lastLines = output.split('\n').slice(-30).join('\n');
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 📊 Backtest Results\n\n\`\`\`\n${lastLines}\n\`\`\``
+            });
+
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install flake8 mypy
+
+      - name: Syntax check
+        run: |
+          python -m py_compile strategies/LiquiditySweep.py
+          echo "✅ Syntax OK"
+
+      - name: Lint with flake8
+        run: |
+          flake8 strategies/ --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 strategies/ --count --exit-zero --max-complexity=10 --max-line-length=120 --statistics
