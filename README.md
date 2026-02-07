@@ -96,7 +96,7 @@ freqtrade hyperopt \
 |-----------|---------|-------|-------------|
 | `ote_lower` | 0.62 | 0.55-0.65 | Lower OTE boundary (Fib level) |
 | `ote_upper` | 0.79 | 0.75-0.85 | Upper OTE boundary (Fib level) |
-| `swing_lookback` | 20 | 10-30 | Candles to look back for swings |
+| `pivot_lookback` | 3 | 2-10 | Candles on each side to define a swing |
 | `buffer_pips` | 0.0005 | 0.0002-0.001 | SL buffer beyond sweep |
 | `min_rr` | 2.0 | 1.5-3.0 | Minimum reward-to-risk ratio |
 
