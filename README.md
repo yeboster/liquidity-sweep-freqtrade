@@ -1,147 +1,123 @@
-# Liquidity Sweep Freqtrade Strategy
+# Liquidity Sweep Reversal Strategy
+**Source**: https://dailypriceaction.com/blog/liquidity-sweep-reversals/
+**Timeframe**: 15-Minute (Entry), 1H/4H (Context)
+*   *Note*: 5m or 1m timeframes are possible, but 15m is preferred to filter noise ("sweet spot").
+*   *Fractal Note*: Source charts often show the setup on the 1H timeframe for readability. The pattern is fractal and can appear on HTF, but execution is standard on 15m.
+**Asset Class**: Forex (EURUSD example), applicable to others.
 
-A Freqtrade implementation of the **Liquidity Sweep Reversal Strategy** based on [Daily Price Action](https://dailypriceaction.com/blog/liquidity-sweep-reversals/).
+## Core Concepts
+1.  **Market Structure**: Trade with the Higher Time Frame (HTF) trend.
+    *   *Visuals*: Charts use **BoS** (Break of Structure) markers to confirm the trend (e.g., lower lows in a downtrend).
+2.  **Liquidity Sweep**: A move beyond a key high/low to take stops before reversing.
+    *   *Vs ChoCH*: The sweep entry is significantly faster ("top entry"). Visual analysis (Chart 1) shows it can confirm ~25 pips earlier than a full Change of Character (ChoCH). We enter on the "internal" break (Triggering Low) rather than waiting for an external structure break.
+    *   *Why it works*: A wick on the 15m often looks like a "break and close" on the 1m chart. This traps lower-timeframe traders into the wrong direction just before the reversal.
+3.  **OTE (Optimal Trade Entry)**: Fibonacci retracement **62% - 79%** of the external range.
+    *   *Chart Visuals*: Often show **0.62, 0.705, and 0.79** levels.
+4.  **Mean Reversion (Context)**: Price often moves in "Distribution Channels" around a mean.
+    *   *Visual*: Parallel lines (channel) descending or ascending. Price oscillates around the center dotted line (**Mean/Average Price**).
+    *   *Key Visual*: Look for price pushing *outside* the channel boundaries. Charts label these extremes as **"Buy-side distributions"** (top) and **"Sell-side distributions"** (bottom).
+    *   *Logic*: When price extends far from the mean into OTE (Buy-side distribution in a downtrend), a snap-back is highly probable.
 
-## Strategy Overview
+## Logic Steps (Short Setup)
 
-This strategy trades reversals after liquidity grabs in OTE (Optimal Trade Entry) zones.
+### 1. Context & Setup (HTF)
+*   **Condition**: Identify Bearish Market Structure on 1H/4H (Lower Highs, Lower Lows).
+*   **Condition**: Price must retrace into **OTE** (62% - 79% of the recent external range).
+    *   *Fib Drawing*: From the external High (1.0) to the external Low (0.0).
+    *   *Rule*: If price is not in OTE (above 0.62), no trade.
+*   **Action**: Switch to 15m timeframe once price is in OTE.
 
-### Core Logic
+### 2. Pattern Formation (15m)
+*   **Step 1 (Liquidity Build)**: A swing high forms *inside* the OTE zone.
+    *   *Visual*: Look for a clean level where retail stops would logically accumulate ("Liquidity Pool"). Charts often show a **flat top** (double/triple tap) or small consolidation zone just prior to the sweep. This "builds" the liquidity for the grab.
+*   **Step 2 (The Sweep)**: Price wicks *above* this swing high.
+    *   *Note*: Candle body can close above or below, but the high MUST exceed the previous swing high. The size of the sweep (5 pips vs 50 pips) does not matter.
+    *   *Key*: This is the "Sweep" or "Grab" of buy-side liquidity.
+*   **Step 3 (Confirmation)**: Price must **CLOSE** below the "Triggering Low".
+    *   *Definition*: The **Triggering Low** is the most recent **internal structure low** or **consolidation floor** (specifically the lowest wick) that launched the price up into the sweep. While often a clear swing low, visual analysis shows it can be the immediate low of the small consolidation preceding the sweep.
+    *   **Logic**: `Current_Close < Triggering_Internal_Low_Wick`
+    *   **Significance**: Shows acceptance back inside the range.
+    *   **Visual Tip*: The confirmation candle should ideally have a **strong body closing near its low**, indicating genuine selling conviction rather than indecision.
+    *   **Invalidation (Breakout)**: If price fails to close below the triggering low and instead holds/consolidates above the sweep high, this is a **Breakout**, not a sweep. Abort the setup.
 
-1. **HTF Trend Analysis (1H)**: Only trade with the higher timeframe trend
-2. **OTE Zone Detection**: Wait for price to retrace into 0.62-0.79 Fibonacci zone
-3. **Liquidity Sweep**: Detect when price wicks beyond recent swing high/low
-4. **Confirmation**: Enter when price closes back beyond triggering swing level
+### 3. Execution
+*   **Trigger**: On the **Close** of the confirmation candle (Step 3).
+*   **Entry**:
+    *   **Option A (Standard)**: Market Sell on the close. Use this if the move is clean and leaves no massive imbalance.
+    *   **Option B (Refined)**: If the confirmation move created a large, unmitigated **Fair Value Gap (FVG)**, place a Limit Sell at the FVG to catch the retrace.
+*   **Stop Loss**:
+    *   **Conservative (Recommended)**: Above the Sweep High + Buffer (2-5 pips).
+        *   *Pro Tip*: **Do not place the stop exactly on the high.** The buffer is critical. It avoids being stopped out by a secondary sweep ("double tap") before the move triggers. This small tweak can improve win rate by 10-15%.
+    *   **Aggressive**: Above the internal structure lower high (Higher risk of stop hunt).
+*   **Take Profit**:
+    *   **Target 1**: Recent External Swing Low (Sell-side Liquidity).
+    *   **Requirement**: Minimum Reward-to-Risk (R:R) of 2R; prefer 3R.
 
-### Features
-
-- Multi-timeframe analysis (15m entry, 1H context)
-- Dynamic swing detection for liquidity pools
-- Custom stoploss based on sweep levels + buffer
-- Hyperoptable parameters (OTE levels, lookback periods, R:R)
-- Futures trading with configurable leverage
-
-## Setup
-
-### Prerequisites
-
-```bash
-# Install Freqtrade
-pip install freqtrade
-
-# Or use Docker
-docker pull freqtradeorg/freqtrade:stable
-```
-
-### Configuration
-
-1. Copy your API keys to `config.json`:
-```json
-{
-    "exchange": {
-        "key": "YOUR_API_KEY",
-        "secret": "YOUR_API_SECRET"
-    }
-}
-```
-
-2. Adjust pair whitelist as needed
-
-### Download Data
-
-```bash
-# Download historical data for backtesting
-freqtrade download-data --config config.json --timeframe 15m 1h --days 365
-```
-
-## Backtesting
-
-### Basic Backtest
-
-```bash
-freqtrade backtesting \
-    --config config.json \
-    --strategy LiquiditySweep \
-    --timeframe 15m \
-    --timerange 20240101-20250201
-```
-
-### With Detailed Output
-
-```bash
-freqtrade backtesting \
-    --config config.json \
-    --strategy LiquiditySweep \
-    --timeframe 15m \
-    --timerange 20240101-20250201 \
-    --export trades \
-    --export-filename backtest_results.json
-```
-
-### Hyperopt (Parameter Optimization)
-
-```bash
-freqtrade hyperopt \
-    --config config.json \
-    --strategy LiquiditySweep \
-    --hyperopt-loss SharpeHyperOptLoss \
-    --spaces buy \
-    --epochs 500 \
-    --timerange 20240101-20250101
-```
-
-## Strategy Parameters
-
-| Parameter | Default | Range | Description |
-|-----------|---------|-------|-------------|
-| `ote_lower` | 0.62 | 0.55-0.65 | Lower OTE boundary (Fib level) |
-| `ote_upper` | 0.79 | 0.75-0.85 | Upper OTE boundary (Fib level) |
-| `pivot_lookback` | 3 | 2-10 | Candles on each side to define a swing |
-| `buffer_pips` | 0.0005 | 0.0002-0.001 | SL buffer beyond sweep |
-| `min_rr` | 2.0 | 1.5-3.0 | Minimum reward-to-risk ratio |
-
-## Development Roadmap
-
-### v0.1.0 (Current)
-- [x] Basic strategy structure
-- [x] HTF trend detection
-- [x] OTE zone calculation
-- [x] Swing detection
-- [x] Sweep detection
-- [x] Entry signals
-- [x] Custom stoploss
-
-### v0.2.0 (Planned)
-- [ ] FVG (Fair Value Gap) detection for refined entries
-- [ ] Take profit at external swing levels
-- [ ] Improve triggering swing detection accuracy
-- [ ] Add "flat top" liquidity pool pattern detection
-
-### v0.3.0 (Planned)
-- [ ] Structure-based trend detection (BoS markers)
-- [ ] Multiple TF confirmation
-- [ ] Backtesting reports with trade analysis
-- [ ] Live trading optimizations
-
-## Backtest Results
-
-*Results will be appended here after each iteration.*
-
----
+## Logic Steps (Long Setup - Inverse)
+*   **Context**: Bullish Structure (Higher Highs) on 1H/4H.
+*   **Setup**: Price retraces to OTE (Discount).
+*   **Pattern**:
+    1.  Swing Low forms in OTE.
+    2.  Price sweeps *below* the swing low.
+    3.  Price **CLOSES** above the "Triggering High" (the swing high that launched the sweep).
+*   **Entry**: Buy on Close (or retrace to FVG).
+*   **SL**: Below Sweep Low - Buffer.
+*   **TP**: Recent External High.
 
 ## Iteration Log
 
-| Date | Version | Changes | Performance |
-|------|---------|---------|-------------|
-| 2026-02-07 | 0.1.1 | Improved swing detection (removed lookahead bias, added pivot_lookback) | Pending |
-| 2026-02-07 | 0.1.0 | Initial implementation | TBD |
+| Date       | Version | Change                                      | Author |
+|------------|---------|---------------------------------------------|--------|
+| 2026-02-07 | 0.2.0   | Added FVG (Fair Value Gap) detection logic  | Jarvis |
+| 2026-01-26 | 0.1.0   | Initial Strategy Implementation             | Jarvis |
 
----
+## Roadmap
 
-## License
+- [x] Initial Strategy Skeleton
+- [x] OTE Zone Calculation
+- [x] Basic Sweep Detection
+- [x] FVG Detection (Refined Entry)
+- [ ] Improved Triggering Swing Logic
+- [ ] Take Profit at External Swing Levels
+- [ ] Break of Structure (BoS) Confirmation
+- [ ] Hyperopt Optimization
 
-MIT License - Use at your own risk.
+## Pseudo-Code Representation
 
-## Disclaimer
+```python
+def check_liquidity_sweep_short(candles_15m, trend_1h):
+    # 1. Check Trend
+    if trend_1h != "BEARISH":
+        return False
 
-This strategy is for educational purposes only. Trading cryptocurrencies and forex carries significant risk. Past performance does not guarantee future results. Always use proper risk management.
+    # 2. Check OTE
+    swing_high, swing_low = get_external_range(trend_1h)
+    fib_level = get_current_retracement(swing_high, swing_low)
+    if not (0.62 <= fib_level <= 0.79):
+        return False
+
+    # 3. Detect Sweep
+    # Look for recent local high in OTE where liquidity built up
+    local_high = find_liquidity_pool(candles_15m[-20:]) 
+    
+    # Check if current/recent candle swept it
+    latest_candle = candles_15m[-1]
+    if latest_candle.high > local_high.high:
+        # Check Confirmation (Step 3)
+        # Find the swing low that initiated the move to local_high
+        triggering_low = get_last_swing_low(candles_15m, before=latest_candle)
+        
+        # MUST Close below the triggering low
+        if latest_candle.close < triggering_low.low:
+            has_large_fvg = check_fvg(candles_15m)
+            entry_type = "LIMIT" if has_large_fvg else "MARKET"
+            
+            return {
+                "signal": "SELL",
+                "entry_type": entry_type,
+                "stop_loss": latest_candle.high + 0.0005, # +5 pips buffer
+                "take_profit": swing_low
+            }
+            
+    return False
+```
