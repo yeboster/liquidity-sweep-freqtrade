@@ -133,6 +133,7 @@ freqtrade hyperopt \
 
 | Date | Version | Changes | Performance |
 |------|---------|---------|-------------|
+| 2026-02-07 | 0.1.1 | Improved swing detection (removed lookahead bias, added pivot_lookback) | Pending |
 | 2026-02-07 | 0.1.0 | Initial implementation | TBD |
 
 ---

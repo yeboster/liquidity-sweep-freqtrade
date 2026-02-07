@@ -57,7 +57,7 @@ class LiquiditySweep(IStrategy):
     # Strategy parameters (hyperoptable)
     ote_lower = DecimalParameter(0.55, 0.65, default=0.62, space="buy", optimize=True)
     ote_upper = DecimalParameter(0.75, 0.85, default=0.79, space="buy", optimize=True)
-    swing_lookback = IntParameter(10, 30, default=20, space="buy", optimize=True)
+    pivot_lookback = IntParameter(2, 10, default=3, space="buy", optimize=True)  # New: Pivot definition (bars on each side)
     buffer_pips = DecimalParameter(0.0002, 0.001, default=0.0005, space="buy", optimize=True)
     min_rr = DecimalParameter(1.5, 3.0, default=2.0, space="buy", optimize=True)
     
@@ -101,7 +101,7 @@ class LiquiditySweep(IStrategy):
             )
         
         # Add swing detection on 15m
-        dataframe = self._detect_swings(dataframe, self.swing_lookback.value)
+        dataframe = self._detect_swings(dataframe, self.pivot_lookback.value)
         
         # Add OTE zone calculations
         dataframe = self._calculate_ote(dataframe)
@@ -136,21 +136,37 @@ class LiquiditySweep(IStrategy):
         
         return dataframe
 
-    def _detect_swings(self, dataframe: DataFrame, lookback: int) -> DataFrame:
-        """Detect swing highs and lows for liquidity pools."""
-        # Rolling max/min for swing detection
-        dataframe['swing_high'] = dataframe['high'].rolling(lookback, center=True).max()
-        dataframe['swing_low'] = dataframe['low'].rolling(lookback, center=True).min()
+    def _detect_swings(self, dataframe: DataFrame, pivot_len: int) -> DataFrame:
+        """
+        Detect swing highs and lows using a rolling window (Fractal/Pivot method).
+        Avoids lookahead bias by confirming swings `pivot_len` bars after they occur.
+        """
+        # Window size = pivot_len (left) + 1 (center) + pivot_len (right)
+        window_size = (pivot_len * 2) + 1
         
-        # Mark actual swing points
-        dataframe['is_swing_high'] = (dataframe['high'] == dataframe['swing_high'])
-        dataframe['is_swing_low'] = (dataframe['low'] == dataframe['swing_low'])
+        # Calculate rolling max/min over the full window
+        # The result at index `i` considers bars from `i - window_size + 1` to `i`
+        dataframe['max_rolling'] = dataframe['high'].rolling(window=window_size).max()
+        dataframe['min_rolling'] = dataframe['low'].rolling(window=window_size).min()
         
-        # Get recent swing levels (last confirmed swing)
-        dataframe['recent_swing_high'] = dataframe['high'].where(
+        # Check if the center of the window (at i - pivot_len) is the extreme
+        # We compare the rolling max at `i` with the high at `i - pivot_len`
+        # If they match, it means the bar at `i - pivot_len` was the highest in the window
+        dataframe['is_swing_high'] = (
+            dataframe['max_rolling'] == dataframe['high'].shift(pivot_len)
+        )
+        dataframe['is_swing_low'] = (
+            dataframe['min_rolling'] == dataframe['low'].shift(pivot_len)
+        )
+        
+        # Record the swing level. 
+        # Since `is_swing_high` is True at `i`, the actual high was at `i - pivot_len`.
+        # We want to propagate this level forward until a new swing is found.
+        dataframe['recent_swing_high'] = dataframe['high'].shift(pivot_len).where(
             dataframe['is_swing_high']
         ).ffill()
-        dataframe['recent_swing_low'] = dataframe['low'].where(
+        
+        dataframe['recent_swing_low'] = dataframe['low'].shift(pivot_len).where(
             dataframe['is_swing_low']
         ).ffill()
         
