@@ -72,7 +72,7 @@ jobs:
             --pairs BTC/USDT ETH/USDT SOL/USDT \
             --timeframes 15m 1h \
             --timerange $TIMERANGE \
-            --exchange kraken
+            --exchange okx
 
       - name: Run Backtest
         id: backtest
