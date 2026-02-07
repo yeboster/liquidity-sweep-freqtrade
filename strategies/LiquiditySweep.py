@@ -20,7 +20,7 @@ from datetime import datetime
 from typing import Optional, Tuple, Dict, Any
 import talib.abstract as ta
 from freqtrade.strategy import IStrategy, merge_informative_pair
-from freqtrade.strategy.parameters import IntParameter, DecimalParameter
+from freqtrade.strategy.parameters import IntParameter, DecimalParameter, CategoricalParameter
 from freqtrade.persistence import Trade
 
 
@@ -58,9 +58,12 @@ class LiquiditySweep(IStrategy):
     # Strategy parameters (hyperoptable)
     ote_lower = DecimalParameter(0.55, 0.65, default=0.62, space="buy", optimize=True)
     ote_upper = DecimalParameter(0.75, 0.85, default=0.79, space="buy", optimize=True)
-    pivot_lookback = IntParameter(2, 10, default=3, space="buy", optimize=True)  # New: Pivot definition (bars on each side)
+    pivot_lookback = IntParameter(2, 10, default=3, space="buy", optimize=True)
     buffer_pips = DecimalParameter(0.0002, 0.001, default=0.0005, space="buy", optimize=True)
     min_rr = DecimalParameter(1.5, 3.0, default=2.0, space="buy", optimize=True)
+    
+    # New: FVG Requirement
+    require_fvg = CategoricalParameter([True, False], default=True, space="buy", optimize=True)  # Filter by FVG presence
     
     # Plotting
     plot_config = {
@@ -106,6 +109,9 @@ class LiquiditySweep(IStrategy):
         
         # Add OTE zone calculations
         dataframe = self._calculate_ote(dataframe)
+
+        # Add FVG Detection
+        dataframe = self._detect_fvgs(dataframe)
         
         # Add liquidity sweep detection
         dataframe = self._detect_sweeps(dataframe)
@@ -198,6 +204,30 @@ class LiquiditySweep(IStrategy):
         
         return dataframe
 
+    def _detect_fvgs(self, dataframe: DataFrame) -> DataFrame:
+        """
+        Detect Fair Value Gaps (FVG) / Imbalances.
+        A Bearish FVG exists if Low[i-2] > High[i] (Gap created by strong down move at i-1).
+        A Bullish FVG exists if High[i-2] < Low[i] (Gap created by strong up move at i-1).
+        """
+        # Shift 1 = Previous candle (the big move)
+        # Shift 2 = Pre-previous (the origin)
+        # Current = The candle closing the gap formation
+        
+        # __ Bearish FVG (Short Signal) __
+        # Gap between Low of Candle i-2 and High of Candle i
+        dataframe['fvg_bearish'] = (
+            dataframe['low'].shift(2) > dataframe['high']
+        )
+        
+        # __ Bullish FVG (Long Signal) __
+        # Gap between High of Candle i-2 and Low of Candle i
+        dataframe['fvg_bullish'] = (
+            dataframe['high'].shift(2) < dataframe['low']
+        )
+        
+        return dataframe
+
     def _detect_sweeps(self, dataframe: DataFrame) -> DataFrame:
         """Detect liquidity sweeps and confirmation."""
         # Sweep detection: wick beyond recent swing
@@ -213,13 +243,24 @@ class LiquiditySweep(IStrategy):
         dataframe['triggering_high'] = dataframe['recent_swing_high'].shift(1)
         
         # Confirmation: close beyond triggering level
+        # Added: Optional FVG requirement
+        
+        fvg_check_short = True
+        fvg_check_long = True
+        
+        if self.require_fvg.value:
+            fvg_check_short = dataframe['fvg_bearish']
+            fvg_check_long = dataframe['fvg_bullish']
+
         dataframe['short_confirmation'] = (
             dataframe['sweep_high'] &
-            (dataframe['close'] < dataframe['triggering_low'])
+            (dataframe['close'] < dataframe['triggering_low']) &
+            fvg_check_short
         )
         dataframe['long_confirmation'] = (
             dataframe['sweep_low'] &
-            (dataframe['close'] > dataframe['triggering_high'])
+            (dataframe['close'] > dataframe['triggering_high']) &
+            fvg_check_long
         )
         
         return dataframe
