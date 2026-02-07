@@ -10,7 +10,7 @@ Core Logic:
 4. Enter on confirmation (close beyond triggering swing)
 
 Author: Jarvis (OpenClaw)
-Version: 0.1.0
+Version: 0.3.0
 """
 
 import numpy as np
@@ -35,14 +35,13 @@ class LiquiditySweep(IStrategy):
     # Strategy version
     INTERFACE_VERSION = 3
     
-    # ROI table - we use fixed TP based on swing levels, but need defaults
+    # ROI table - we use custom_exit for TP (liquidity target)
+    # Set high ROI to avoid premature exit, or keep as safety net
     minimal_roi = {
-        "0": 0.10,   # 10% - fallback, we use custom TP
-        "60": 0.05,
-        "120": 0.02,
+        "0": 100.0,
     }
     
-    # Stoploss - conservative, we override with sweep high
+    # Stoploss - conservative, we override with custom_stoploss (sweep high)
     stoploss = -0.03  # 3% fallback
     
     # Trailing stop disabled - we use fixed SL at sweep high
@@ -314,6 +313,42 @@ class LiquiditySweep(IStrategy):
             ] = 1
         
         return dataframe
+
+    use_custom_stoploss = True
+
+    def custom_exit(self, pair: str, trade: 'Trade', current_time: datetime, current_rate: float,
+                    current_profit: float, **kwargs):
+        """
+        Custom exit logic:
+        1. Exit at External Swing High/Low (Liquidity Target)
+        """
+        # Get dataframe
+        dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
+        if len(dataframe) == 0:
+            return None
+            
+        last_candle = dataframe.iloc[-1]
+        
+        # Target Liquidity: The external swing that defined the OTE range
+        # Notes:
+        # - Short: Target is external_low (0.0 Fib)
+        # - Long: Target is external_high (1.0 Fib)
+        
+        if trade.is_short:
+            if 'external_low' in last_candle and not pd.isna(last_candle['external_low']):
+                target_price = last_candle['external_low']
+                # If current price is below or at target, take profit
+                if current_rate <= target_price:
+                    return "target_liquidity_reached"
+                    
+        else:
+            if 'external_high' in last_candle and not pd.isna(last_candle['external_high']):
+                target_price = last_candle['external_high']
+                # If current price is above or at target, take profit
+                if current_rate >= target_price:
+                    return "target_liquidity_reached"
+                    
+        return None
 
     def custom_stoploss(self, pair: str, trade: 'Trade', current_time: datetime,
                         current_rate: float, current_profit: float,
