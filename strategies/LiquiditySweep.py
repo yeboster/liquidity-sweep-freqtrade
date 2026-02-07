@@ -21,6 +21,7 @@ from typing import Optional, Tuple, Dict, Any
 import talib.abstract as ta
 from freqtrade.strategy import IStrategy, merge_informative_pair
 from freqtrade.strategy.parameters import IntParameter, DecimalParameter
+from freqtrade.persistence import Trade
 
 
 class LiquiditySweep(IStrategy):
