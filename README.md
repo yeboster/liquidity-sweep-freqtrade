@@ -68,6 +68,7 @@
 
 | Date       | Version | Change                                      | Author |
 |------------|---------|---------------------------------------------|--------|
+| 2026-02-08 | 0.5.0   | Implemented HTF Market Structure (BoS)      | Jarvis |
 | 2026-02-08 | 0.4.0   | Improved triggering swing logic (rolling win) | Jarvis |
 | 2026-02-07 | 0.3.0   | Added take profit at external swing levels  | Jarvis |
 | 2026-02-07 | 0.2.0   | Added FVG (Fair Value Gap) detection logic  | Jarvis |
@@ -82,6 +83,7 @@
 - [x] Improved Triggering Swing Logic
 - [x] Take Profit at External Swing Levels
 - [ ] Break of Structure (BoS) Confirmation
+- [x] Market Structure Trend (HTF BoS)
 - [ ] Hyperopt Optimization
 
 ## Pseudo-Code Representation
