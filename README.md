@@ -68,6 +68,8 @@
 
 | Date       | Version | Change                                      | Author |
 |------------|---------|---------------------------------------------|--------|
+| 2026-02-08 | 0.4.0   | Improved triggering swing logic (rolling win) | Jarvis |
+| 2026-02-07 | 0.3.0   | Added take profit at external swing levels  | Jarvis |
 | 2026-02-07 | 0.2.0   | Added FVG (Fair Value Gap) detection logic  | Jarvis |
 | 2026-01-26 | 0.1.0   | Initial Strategy Implementation             | Jarvis |
 
@@ -77,8 +79,8 @@
 - [x] OTE Zone Calculation
 - [x] Basic Sweep Detection
 - [x] FVG Detection (Refined Entry)
-- [ ] Improved Triggering Swing Logic
-- [ ] Take Profit at External Swing Levels
+- [x] Improved Triggering Swing Logic
+- [x] Take Profit at External Swing Levels
 - [ ] Break of Structure (BoS) Confirmation
 - [ ] Hyperopt Optimization
 

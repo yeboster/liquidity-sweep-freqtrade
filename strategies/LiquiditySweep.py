@@ -10,7 +10,7 @@ Core Logic:
 4. Enter on confirmation (close beyond triggering swing)
 
 Author: Jarvis (OpenClaw)
-Version: 0.3.0
+Version: 0.4.0
 """
 
 import numpy as np
@@ -60,6 +60,9 @@ class LiquiditySweep(IStrategy):
     pivot_lookback = IntParameter(2, 10, default=3, space="buy", optimize=True)
     buffer_pips = DecimalParameter(0.0002, 0.001, default=0.0005, space="buy", optimize=True)
     min_rr = DecimalParameter(1.5, 3.0, default=2.0, space="buy", optimize=True)
+    
+    # New: Trigger detection window
+    trigger_lookback = IntParameter(2, 10, default=4, space="buy", optimize=True)
     
     # New: FVG Requirement
     require_fvg = CategoricalParameter([True, False], default=True, space="buy", optimize=True)  # Filter by FVG presence
@@ -234,12 +237,16 @@ class LiquiditySweep(IStrategy):
         dataframe['sweep_low'] = dataframe['low'] < dataframe['recent_swing_low'].shift(1)
         
         # Find triggering swing (the swing that launched the move)
-        # For shorts: the swing low before the sweep high
-        # For longs: the swing high before the sweep low
+        # Use a rolling lookback to find the immediate internal structure/consolidation low
+        # previous `trigger_lookback` candles (excluding current).
         
-        # Simplified: use recent swing as triggering level
-        dataframe['triggering_low'] = dataframe['recent_swing_low'].shift(1)
-        dataframe['triggering_high'] = dataframe['recent_swing_high'].shift(1)
+        trigger_lb = self.trigger_lookback.value
+        
+        # For Short: Lowest Low in the immediate past (launch point)
+        dataframe['triggering_low'] = dataframe['low'].shift(1).rolling(window=trigger_lb).min()
+        
+        # For Long: Highest High in the immediate past (launch point)
+        dataframe['triggering_high'] = dataframe['high'].shift(1).rolling(window=trigger_lb).max()
         
         # Confirmation: close beyond triggering level
         # Added: Optional FVG requirement
