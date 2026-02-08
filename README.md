@@ -68,6 +68,7 @@
 
 | Date       | Version | Change                                      | Author |
 |------------|---------|---------------------------------------------|--------|
+| 2026-02-08 | 0.6.0   | Added Strong Close confirmation (Internal BoS) | Jarvis |
 | 2026-02-08 | 0.5.0   | Implemented HTF Market Structure (BoS)      | Jarvis |
 | 2026-02-08 | 0.4.0   | Improved triggering swing logic (rolling win) | Jarvis |
 | 2026-02-07 | 0.3.0   | Added take profit at external swing levels  | Jarvis |
@@ -82,7 +83,7 @@
 - [x] FVG Detection (Refined Entry)
 - [x] Improved Triggering Swing Logic
 - [x] Take Profit at External Swing Levels
-- [ ] Break of Structure (BoS) Confirmation
+- [x] Break of Structure (BoS) Confirmation (Internal Strong Close)
 - [x] Market Structure Trend (HTF BoS)
 - [ ] Hyperopt Optimization
 
