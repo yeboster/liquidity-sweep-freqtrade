@@ -68,6 +68,7 @@
 
 | Date       | Version | Change                                      | Author |
 |------------|---------|---------------------------------------------|--------|
+| 2026-02-08 | 0.9.2   | Relaxed OTE/Pivot/RR for Volume (Pivot=2, OTE=0.55, RR=1.5) | Jarvis |
 | 2026-02-08 | 0.9.1   | Implemented Minimum R:R Filter & Backtest   | Jarvis |
 | 2026-02-08 | 0.9.0   | Optimized Hyperopt Parameter Spaces         | Jarvis |
 | 2026-02-08 | 0.8.0   | Implemented Custom Entry Pricing (Limit at FVG 50%) | Jarvis |
@@ -131,7 +132,17 @@ def check_liquidity_sweep_short(candles_15m, trend_1h):
     return False
 ```
 
-## Backtest Results (2026-02-08)
+## Backtest Results (2026-02-08) - v0.9.2 (Pending)
+
+**Period**: 2026-01-10 to 2026-02-08 (30 Days)
+**Market Context**: Bearish (-30.51% Market Change)
+**Pairs**: BTC/USDT, ETH/USDT, SOL/USDT
+**Strategy Version**: 0.9.2 (Relaxed Volume)
+**CI Run ID**: 21804264026
+
+*Status*: Backtest in progress. Expected to show increased trade count (>5) compared to v0.9.1.
+
+## Backtest Results (2026-02-08) - v0.9.1
 
 **Period**: 2026-01-10 to 2026-02-08 (30 Days)
 **Market Context**: Bearish (-30.51% Market Change)
