@@ -20,7 +20,7 @@ jobs:
       # Freqtrade docker image working directory is /freqtrade
       # So we need to ensure the data lands in user_data/data/okx
       run: |
-        docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable download-data --exchange okx --days 365 -t 1h 15m --pairs BTC/USDT ETH/USDT SOL/USDT
+        docker run --rm -v $(pwd):/freqtrade/user_data -u $(id -u):$(id -g) freqtradeorg/freqtrade:stable download-data --exchange okx --days 365 -t 1h 15m --pairs BTC/USDT ETH/USDT SOL/USDT
 
     - name: Run Hyperopt
       # Mount current directory to /freqtrade/user_data
@@ -28,7 +28,7 @@ jobs:
       # Strategy is at user_data/strategies/LiquiditySweep.py
       # Output to user_data/strategies/LiquiditySweep.json
       run: |
-        docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable hyperopt --config user_data/config.json --hyperopt-loss SharpeHyperOptLoss --spaces buy roi trailing stoploss -e 100 --timerange 20250101-20260101 --print-json > strategies/LiquiditySweep.json
+        docker run --rm -v $(pwd):/freqtrade/user_data -u $(id -u):$(id -g) freqtradeorg/freqtrade:stable hyperopt --config user_data/config.json --hyperopt-loss SharpeHyperOptLoss --spaces buy roi trailing stoploss -e 100 --timerange 20250101-20260101 --print-json > strategies/LiquiditySweep.json
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
