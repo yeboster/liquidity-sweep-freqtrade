@@ -137,10 +137,11 @@ def check_liquidity_sweep_short(candles_15m, trend_1h):
 **Market Context**: Bearish (-30.51% Market Change)
 **Pairs**: BTC/USDT, ETH/USDT, SOL/USDT
 **Strategy Version**: 0.9.1 (R:R Filter Active)
+**CI Run ID**: 21804170956
 
 - **Total Trades**: 1
 - **Win Rate**: 0%
-- **Profit**: -0.34% (-3.355 USDT)
-- **Max Drawdown**: 0.34%
+- **Profit**: -0.12% (-1.153 USDT)
+- **Max Drawdown**: 0.12%
 
 *Note*: The low trade count indicates the R:R filter is effectively filtering out low-quality setups in a strong trending market, or the strategy parameters (OTE/Pivot) are too strict for the current volatility.
