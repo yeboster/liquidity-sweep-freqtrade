@@ -1,128 +1,37 @@
-name: Hyperopt Strategy
+name: Freqtrade Hyperopt
 
 on:
   workflow_dispatch:
-    inputs:
-      epochs:
-        description: 'Number of epochs'
-        required: false
-        default: '100'
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'strategies/**'
+      - 'config.json'
+      - '.github/workflows/hyperopt.yml'
 
 jobs:
   hyperopt:
     runs-on: ubuntu-latest
-    
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
+    - name: Download Data
+      # We mount the current directory to /freqtrade/user_data
+      # Freqtrade docker image working directory is /freqtrade
+      # So we need to ensure the data lands in user_data/data/okx
+      run: |
+        docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable download-data --exchange okx --days 365 -t 1h 15m --pairs BTC/USDT ETH/USDT SOL/USDT
 
-      - name: Install TA-Lib dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential wget
-          wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz
-          tar -xzf ta-lib-0.4.0-src.tar.gz
-          cd ta-lib/
-          ./configure --prefix=/usr
-          make
-          sudo make install
-          cd ..
-          rm -rf ta-lib ta-lib-0.4.0-src.tar.gz
+    - name: Run Hyperopt
+      # Mount current directory to /freqtrade/user_data
+      # Config is at user_data/config.json
+      # Strategy is at user_data/strategies/LiquiditySweep.py
+      # Output to user_data/strategies/LiquiditySweep.json
+      run: |
+        docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable hyperopt --config user_data/config.json --hyperopt-loss SharpeHyperOptLoss --spaces buy roi trailing stoploss -e 100 --timerange 20250101-20260101 --print-json > strategies/LiquiditySweep.json
 
-      - name: Install Freqtrade
-        run: |
-          pip install --upgrade pip
-          pip install freqtrade
-          pip install TA-Lib
-
-      - name: Create user_data structure
-        run: |
-          mkdir -p user_data/data/binance
-          mkdir -p user_data/strategies
-          cp strategies/*.py user_data/strategies/
-
-      - name: Download historical data
-        run: |
-          freqtrade download-data \
-            --config config.json \
-            --pairs BTC/USDT ETH/USDT SOL/USDT \
-            --timeframes 15m 1h \
-            --timerange 20240601-20250201 \
-            --exchange okx
-
-      - name: Run Hyperopt
-        run: |
-          echo "Running Hyperopt..."
-          freqtrade hyperopt \
-            --config config.json \
-            --strategy LiquiditySweep \
-            --hyperopt-loss SharpeHyperOptLoss \
-            --spaces buy roi trailing stoploss \
-            --epochs ${{ github.event.inputs.epochs || 100 }} \
-            --timerange 20240601-20250201 \
-            --no-color \
-            --print-json > hyperopt_output.txt 2>&1
-          
-          # Print the last 50 lines to see if it worked
-          tail -n 50 hyperopt_output.txt
-
-      - name: Extract Best Params
-        run: |
-          python3 -c "
-          import json
-          import re
-          import sys
-          
-          try:
-              with open('hyperopt_output.txt', 'r') as f:
-                  content = f.read()
-              
-              # Find the JSON block. It usually starts with { and contains 'strategy_name': 'LiquiditySweep'
-              # We scan from the end of the file backwards or just regex for the block.
-              # A robust way: find the index of the last '{' that is followed by 'strategy_name'
-              
-              # Let's try finding the last occurrence of '{' and verify if it parses.
-              # If not, try the one before.
-              
-              lines = content.splitlines()
-              json_start = -1
-              for i, line in enumerate(lines):
-                  if line.strip().startswith('{') and 'strategy_name' in content[content.find(line):]:
-                      # Potential start
-                      json_start = i
-              
-              if json_start != -1:
-                   # Try to parse from here to end
-                   candidate = '\n'.join(lines[json_start:])
-                   try:
-                       # It might have trailing text, so we might need to find the matching brace.
-                       # But freqtrade usually outputs it as the final block.
-                       # Let's assume it's clean or use a regex to extract balanced braces if needed.
-                       # Simple regex for json object:
-                       match = re.search(r'(\{.*\})', candidate, re.DOTALL)
-                       if match:
-                           json_obj = json.loads(match.group(1))
-                           with open('user_data/strategies/LiquiditySweep.json', 'w') as f:
-                               json.dump(json_obj, f, indent=4)
-                           print('Successfully extracted JSON.')
-                       else:
-                           print('No JSON block matched in candidate section.')
-                   except json.JSONDecodeError:
-                       print('Found candidate start but failed to decode JSON.')
-              else:
-                   print('Could not find JSON start.')
-          except Exception as e:
-              print(f'Error: {e}')
-          "
-
-      - name: Upload Hyperopt Results
-        uses: actions/upload-artifact@v4
-        with:
-          name: hyperopt-params
-          path: user_data/strategies/LiquiditySweep.json
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: hyperopt-results
+        path: strategies/LiquiditySweep.json
