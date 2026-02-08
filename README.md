@@ -68,6 +68,7 @@
 
 | Date       | Version | Change                                      | Author |
 |------------|---------|---------------------------------------------|--------|
+| 2026-02-08 | 0.9.0   | Optimized Hyperopt Parameter Spaces         | Jarvis |
 | 2026-02-08 | 0.8.0   | Implemented Custom Entry Pricing (Limit at FVG 50%) | Jarvis |
 | 2026-02-08 | 0.7.0   | Refactored trigger logic to use Fractal Swings (Pivot) | Jarvis |
 | 2026-02-08 | 0.6.0   | Added Strong Close confirmation (Internal BoS) | Jarvis |
@@ -87,7 +88,7 @@
 - [x] Take Profit at External Swing Levels
 - [x] Break of Structure (BoS) Confirmation (Internal Strong Close)
 - [x] Market Structure Trend (HTF BoS)
-- [ ] Hyperopt Optimization
+- [x] Hyperopt Optimization (Parameter Spaces Refined v0.9)
 
 ## Pseudo-Code Representation
 

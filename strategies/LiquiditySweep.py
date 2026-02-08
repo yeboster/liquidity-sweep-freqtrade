@@ -36,7 +36,7 @@ class LiquiditySweep(IStrategy):
     INTERFACE_VERSION = 3
     
     # Strategy version tag (Iteration Tracker)
-    STRATEGY_VERSION = "0.8.0" # FVG entry refinement (Limit Orders)
+    STRATEGY_VERSION = "0.9.0" # Hyperopt Spaces Refined
     
     # ROI table - we use custom_exit for TP (liquidity target)
     # Set high ROI to avoid premature exit, or keep as safety net
@@ -45,7 +45,7 @@ class LiquiditySweep(IStrategy):
     }
     
     # Stoploss - conservative, we override with custom_stoploss (sweep high)
-    stoploss = -0.03  # 3% fallback
+    stoploss = -0.05  # Widen default stoploss to allow custom_stoploss to function without pre-emptive hits in high vol
     
     # Trailing stop disabled - we use fixed SL at sweep high
     trailing_stop = False
@@ -58,11 +58,12 @@ class LiquiditySweep(IStrategy):
     startup_candle_count = 100
     
     # Strategy parameters (hyperoptable)
-    ote_lower = DecimalParameter(0.55, 0.65, default=0.62, space="buy", optimize=True)
-    ote_upper = DecimalParameter(0.75, 0.85, default=0.79, space="buy", optimize=True)
-    pivot_lookback = IntParameter(2, 10, default=3, space="buy", optimize=True)
-    buffer_pips = DecimalParameter(0.0002, 0.001, default=0.0005, space="buy", optimize=True)
-    min_rr = DecimalParameter(1.5, 3.0, default=2.0, space="buy", optimize=True)
+    # Refined ranges based on typical crypto/forex volatility for 15m timeframe
+    ote_lower = DecimalParameter(0.50, 0.68, default=0.62, space="buy", optimize=True) # Widened lower bound to catch slightly shallower retracements
+    ote_upper = DecimalParameter(0.70, 0.88, default=0.79, space="buy", optimize=True) # Widened upper bound to catch deep wicks
+    pivot_lookback = IntParameter(2, 6, default=3, space="buy", optimize=True) # Reduced max lookback; 10 is too slow for 15m
+    buffer_pips = DecimalParameter(0.0001, 0.0020, default=0.0005, space="buy", optimize=True) # Increased range for volatile assets
+    min_rr = DecimalParameter(1.5, 5.0, default=2.0, space="buy", optimize=True) # Higher R:R potential allowed
     
     # New: Trigger detection window
     # trigger_lookback = IntParameter(2, 10, default=4, space="buy", optimize=True) # Deprecated in 0.7.0
