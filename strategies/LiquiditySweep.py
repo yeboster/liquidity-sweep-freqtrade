@@ -10,7 +10,7 @@ Core Logic:
 4. Enter on confirmation (close beyond triggering swing)
 
 Author: Jarvis (OpenClaw)
-Version: 0.4.0
+Version: 0.5.0
 """
 
 import numpy as np
@@ -34,6 +34,9 @@ class LiquiditySweep(IStrategy):
     
     # Strategy version
     INTERFACE_VERSION = 3
+    
+    # Strategy version tag (Iteration Tracker)
+    STRATEGY_VERSION = "0.5.0" # Added Market Structure Trend
     
     # ROI table - we use custom_exit for TP (liquidity target)
     # Set high ROI to avoid premature exit, or keep as safety net
@@ -121,27 +124,48 @@ class LiquiditySweep(IStrategy):
         return dataframe
 
     def _add_trend_indicators(self, dataframe: DataFrame) -> DataFrame:
-        """Add trend detection indicators on HTF."""
-        # Simple trend: compare current close to SMA
+        """Add trend detection indicators on HTF (Market Structure)."""
+        
+        # 1. Detect Swings on HTF (Reuse swing detection logic)
+        # We use a slightly larger pivot for 1H structure to catch major moves
+        structure_pivot = 3
+        dataframe = self._detect_swings(dataframe, structure_pivot)
+        
+        # 2. Market Structure (BoS)
+        # Initialize trend column
+        dataframe['structure_trend'] = 0
+        
+        # A break of structure happens when we close beyond the previous confirmed swing
+        # Bullish BoS: Close > Previous confirmed Swing High
+        # Bearish BoS: Close < Previous confirmed Swing Low
+        
+        # We iterate to maintain state (Forward fill the trend)
+        # Vectorized approach: 
+        # Identify break points
+        dataframe['bos_bullish'] = np.where(dataframe['close'] > dataframe['recent_swing_high'].shift(1), 1, 0)
+        dataframe['bos_bearish'] = np.where(dataframe['close'] < dataframe['recent_swing_low'].shift(1), -1, 0)
+        
+        # specific_trend tracks the moment of the break
+        # We combine them: 1 if bullish break, -1 if bearish break, 0 otherwise
+        dataframe['signal_trend'] = np.where(dataframe['bos_bullish'] == 1, 1, 
+                                   np.where(dataframe['bos_bearish'] == 1, -1, np.nan))
+        
+        # Forward fill the trend to hold the state between breaks
+        dataframe['structure_trend'] = dataframe['signal_trend'].ffill().fillna(0).astype(int)
+
+        # 3. SMA Trend (Backup / Confluence)
         dataframe['sma_50'] = ta.SMA(dataframe, timeperiod=50)
         dataframe['sma_200'] = ta.SMA(dataframe, timeperiod=200)
         
-        # Trend: 1 = bullish, -1 = bearish, 0 = neutral
-        dataframe['trend'] = 0
-        dataframe.loc[
-            (dataframe['close'] > dataframe['sma_50']) & 
-            (dataframe['sma_50'] > dataframe['sma_200']),
-            'trend'
-        ] = 1  # Bullish
-        dataframe.loc[
-            (dataframe['close'] < dataframe['sma_50']) & 
-            (dataframe['sma_50'] < dataframe['sma_200']),
-            'trend'
-        ] = -1  # Bearish
+        # Combine Structure + SMA for high probability
+        # Primary is Structure. Use SMA only if Structure is neutral (0)
+        dataframe['trend'] = dataframe['structure_trend']
         
-        # Structure-based trend (swing highs/lows)
-        dataframe['swing_high_htf'] = dataframe['high'].rolling(20).max()
-        dataframe['swing_low_htf'] = dataframe['low'].rolling(20).min()
+        # Fallback if structure undefined (start of data)
+        mask_neutral = (dataframe['trend'] == 0)
+        dataframe.loc[mask_neutral, 'trend'] = np.where(
+            dataframe.loc[mask_neutral, 'close'] > dataframe.loc[mask_neutral, 'sma_200'], 1, -1
+        )
         
         return dataframe
 
