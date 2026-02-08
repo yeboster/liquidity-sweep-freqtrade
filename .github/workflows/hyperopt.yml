@@ -20,7 +20,7 @@ jobs:
       # Freqtrade docker image working directory is /freqtrade
       # So we need to ensure the data lands in user_data/data/okx
       run: |
-        docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable download-data --exchange okx --days 365 -t 1h 15m --pairs BTC/USDT ETH/USDT SOL/USDT
+        docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable download-data --erase --exchange okx --days 365 -t 1h 15m --pairs BTC/USDT ETH/USDT SOL/USDT
         sudo chown -R $USER:$USER .
 
     - name: Run Hyperopt
