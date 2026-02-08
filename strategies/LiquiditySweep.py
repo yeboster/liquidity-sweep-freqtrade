@@ -36,7 +36,7 @@ class LiquiditySweep(IStrategy):
     INTERFACE_VERSION = 3
     
     # Strategy version tag (Iteration Tracker)
-    STRATEGY_VERSION = "0.6.0" # Added Internal BoS Confirmation
+    STRATEGY_VERSION = "0.7.0" # Fractal Trigger & Refactoring
     
     # ROI table - we use custom_exit for TP (liquidity target)
     # Set high ROI to avoid premature exit, or keep as safety net
@@ -65,7 +65,7 @@ class LiquiditySweep(IStrategy):
     min_rr = DecimalParameter(1.5, 3.0, default=2.0, space="buy", optimize=True)
     
     # New: Trigger detection window
-    trigger_lookback = IntParameter(2, 10, default=4, space="buy", optimize=True)
+    # trigger_lookback = IntParameter(2, 10, default=4, space="buy", optimize=True) # Deprecated in 0.7.0
     
     # New: FVG Requirement
     require_fvg = CategoricalParameter([True, False], default=True, space="buy", optimize=True)  # Filter by FVG presence
@@ -75,6 +75,11 @@ class LiquiditySweep(IStrategy):
     # In this iteration, we refine the 'triggering_low' to be a valid Fractal/Pivot if possible, 
     # rather than just a rolling min, to confirm a true Change of Character (ChoCH) on the lower timeframe.
     use_structure_break = CategoricalParameter([True, False], default=True, space="buy", optimize=True)
+    
+    # New: Trigger Pivot Length (Fractal size for internal structure)
+    # 1 = One candle on each side (very sensitive)
+    # 2 = Two candles on each side (more robust internal structure)
+    trigger_pivot = IntParameter(1, 3, default=1, space="buy", optimize=True)
 
     # Plotting
     plot_config = {
@@ -116,7 +121,10 @@ class LiquiditySweep(IStrategy):
             )
         
         # Add swing detection on 15m
-        dataframe = self._detect_swings(dataframe, self.pivot_lookback.value)
+        dataframe['recent_swing_high'], dataframe['recent_swing_low'] = self._compute_swings(dataframe, self.pivot_lookback.value)
+        
+        # Add Minor Structure detection (Triggering Swings) using smaller pivot
+        dataframe['minor_swing_high'], dataframe['minor_swing_low'] = self._compute_swings(dataframe, self.trigger_pivot.value)
         
         # Add OTE zone calculations
         dataframe = self._calculate_ote(dataframe)
@@ -135,7 +143,7 @@ class LiquiditySweep(IStrategy):
         # 1. Detect Swings on HTF (Reuse swing detection logic)
         # We use a slightly larger pivot for 1H structure to catch major moves
         structure_pivot = 3
-        dataframe = self._detect_swings(dataframe, structure_pivot)
+        dataframe['recent_swing_high'], dataframe['recent_swing_low'] = self._compute_swings(dataframe, structure_pivot)
         
         # 2. Market Structure (BoS)
         # Initialize trend column
@@ -175,40 +183,48 @@ class LiquiditySweep(IStrategy):
         
         return dataframe
 
-    def _detect_swings(self, dataframe: DataFrame, pivot_len: int) -> DataFrame:
+    def _compute_swings(self, dataframe: DataFrame, pivot_len: int) -> Tuple[pd.Series, pd.Series]:
         """
-        Detect swing highs and lows using a rolling window (Fractal/Pivot method).
-        Avoids lookahead bias by confirming swings `pivot_len` bars after they occur.
+        Compute swing levels using a rolling window (Fractal/Pivot method).
+        Returns tuple of Series: (recent_swing_high, recent_swing_low)
         """
         # Window size = pivot_len (left) + 1 (center) + pivot_len (right)
         window_size = (pivot_len * 2) + 1
         
-        # Calculate rolling max/min over the full window
-        # The result at index `i` considers bars from `i - window_size + 1` to `i`
-        dataframe['max_rolling'] = dataframe['high'].rolling(window=window_size).max()
-        dataframe['min_rolling'] = dataframe['low'].rolling(window=window_size).min()
+        # Calculate rolling max/min
+        max_rolling = dataframe['high'].rolling(window=window_size).max()
+        min_rolling = dataframe['low'].rolling(window=window_size).min()
         
         # Check if the center of the window (at i - pivot_len) is the extreme
-        # We compare the rolling max at `i` with the high at `i - pivot_len`
-        # If they match, it means the bar at `i - pivot_len` was the highest in the window
-        dataframe['is_swing_high'] = (
-            dataframe['max_rolling'] == dataframe['high'].shift(pivot_len)
+        # Shift back because rolling result is at the end of the window
+        # swing_point_check refers to the bar pivot_len bars ago
+        is_swing_high = (
+            max_rolling == dataframe['high'].shift(pivot_len)
         )
-        dataframe['is_swing_low'] = (
-            dataframe['min_rolling'] == dataframe['low'].shift(pivot_len)
+        is_swing_low = (
+            min_rolling == dataframe['low'].shift(pivot_len)
         )
         
-        # Record the swing level. 
-        # Since `is_swing_high` is True at `i`, the actual high was at `i - pivot_len`.
-        # We want to propagate this level forward until a new swing is found.
-        dataframe['recent_swing_high'] = dataframe['high'].shift(pivot_len).where(
-            dataframe['is_swing_high']
+        # Propagate forward: Use the Value of the High/Low at determining candle
+        # Note: We must shift result forward because at index `i`, we detected a swing at `i - pivot_len`.
+        # The price level is valid from `i` onwards (confirmation time).
+        
+        swing_high_series = dataframe['high'].shift(pivot_len).where(
+            is_swing_high
         ).ffill()
         
-        dataframe['recent_swing_low'] = dataframe['low'].shift(pivot_len).where(
-            dataframe['is_swing_low']
+        swing_low_series = dataframe['low'].shift(pivot_len).where(
+            is_swing_low
         ).ffill()
         
+        return swing_high_series, swing_low_series
+
+    def _detect_swings(self, dataframe: DataFrame, pivot_len: int) -> DataFrame:
+        """ Legacy wrapper for backward compatibility if needed """
+        start_candle = self.startup_candle_count
+        h, l = self._compute_swings(dataframe, pivot_len)
+        dataframe['recent_swing_high'] = h
+        dataframe['recent_swing_low'] = l
         return dataframe
 
     def _calculate_ote(self, dataframe: DataFrame) -> DataFrame:
@@ -267,17 +283,14 @@ class LiquiditySweep(IStrategy):
         dataframe['sweep_low'] = dataframe['low'] < dataframe['recent_swing_low'].shift(1)
         
         # Internal Structure Break (ChoCH) Logic
-        # Instead of just a rolling window, let's look for a valid minor swing point.
-        # We can reuse the `recent_swing_low` but on a smaller pivot lookback if needed.
-        # For now, we utilize the specific_trigger logic which is finding the lowest low of the last N candles.
+        # Update 0.7.0: Use fractal-based Minor Structure for trigger
+        # We use 'minor_swing_low' which tracks the last valid internal low (pivot=1 or 2)
         
-        trigger_lb = self.trigger_lookback.value
+        # For Short: Trigger is the most recent Minor Swing Low
+        dataframe['triggering_low'] = dataframe['minor_swing_low'].shift(1)
         
-        # For Short: Lowest Low in the immediate past (launch point of the sweep)
-        dataframe['triggering_low'] = dataframe['low'].shift(1).rolling(window=trigger_lb).min()
-        
-        # For Long: Highest High in the immediate past (launch point of the sweep)
-        dataframe['triggering_high'] = dataframe['high'].shift(1).rolling(window=trigger_lb).max()
+        # For Long: Trigger is the most recent Minor Swing High
+        dataframe['triggering_high'] = dataframe['minor_swing_high'].shift(1)
         
         # --- NEW: Structural Break Confirmation (Optional via Parameter) ---
         # If use_structure_break is True, we enforce that the close is ALSO beyond the 
