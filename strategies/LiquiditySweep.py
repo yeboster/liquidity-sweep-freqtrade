@@ -36,7 +36,7 @@ class LiquiditySweep(IStrategy):
     INTERFACE_VERSION = 3
     
     # Strategy version tag (Iteration Tracker)
-    STRATEGY_VERSION = "0.7.0" # Fractal Trigger & Refactoring
+    STRATEGY_VERSION = "0.8.0" # FVG entry refinement (Limit Orders)
     
     # ROI table - we use custom_exit for TP (liquidity target)
     # Set high ROI to avoid premature exit, or keep as safety net
@@ -80,6 +80,11 @@ class LiquiditySweep(IStrategy):
     # 1 = One candle on each side (very sensitive)
     # 2 = Two candles on each side (more robust internal structure)
     trigger_pivot = IntParameter(1, 3, default=1, space="buy", optimize=True)
+
+    # New: Entry Refinement (Market or Limit at FVG Midpoint)
+    # 'market': Enter immediately on confirmation close.
+    # 'limit_fvg_50': Place limit order at 50% of the FVG candle body (Retrace Entry).
+    entry_refinement = CategoricalParameter(['market', 'limit_fvg_50'], default='market', space="buy", optimize=True)
 
     # Plotting
     plot_config = {
@@ -465,6 +470,49 @@ class LiquiditySweep(IStrategy):
                 return -sl_percent
         
         return None
+
+    def custom_entry_price(self, pair: str, trade: Optional['Trade'], current_time: datetime, proposed_rate: float,
+                           entry_tag: Optional[str], side: str, **kwargs) -> float:
+        """
+        Custom Entry Pricing (Limit Orders).
+        If 'limit_fvg_50' is selected and an FVG is present, places order at 50% of the gap.
+        """
+        if self.entry_refinement.value == 'market':
+            return proposed_rate
+            
+        dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
+        if len(dataframe) < 3:
+            return proposed_rate
+            
+        # We look at the last closed candle (iloc[-1]) which confirmed the signal
+        last_candle = dataframe.iloc[-1]
+        
+        # Bearish FVG Logic (Short)
+        if side == "short" and last_candle.get('fvg_bearish', False):
+            # FVG is between Low[i-2] and High[i]
+            # i = -1 (current confirmed)
+            # i-2 = -3
+            
+            fvg_top_limit = dataframe['low'].iloc[-3]   # Low of the candle before the drop
+            fvg_bottom_limit = dataframe['high'].iloc[-1] # High of the current candle
+            
+            # Gap exists if Top > Bottom (which is checked by fvg_bearish)
+            # Entry at 50% of the gap
+            midpoint = (fvg_top_limit + fvg_bottom_limit) / 2
+            return midpoint
+            
+        # Bullish FVG Logic (Long)
+        if side == "long" and last_candle.get('fvg_bullish', False):
+            # FVG is between High[i-2] and Low[i]
+            fvg_bottom_limit = dataframe['high'].iloc[-3] # High of candle before rise
+            fvg_top_limit = dataframe['low'].iloc[-1]     # Low of current candle
+            
+            # Gap exists if Bottom < Top
+            midpoint = (fvg_top_limit + fvg_bottom_limit) / 2
+            return midpoint
+
+        # Fallback to market if no FVG detected or method is market
+        return proposed_rate
 
     def leverage(self, pair: str, current_time: datetime, current_rate: float,
                  proposed_leverage: float, max_leverage: float, entry_tag: Optional[str],

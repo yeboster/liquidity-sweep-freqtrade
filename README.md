@@ -68,6 +68,7 @@
 
 | Date       | Version | Change                                      | Author |
 |------------|---------|---------------------------------------------|--------|
+| 2026-02-08 | 0.8.0   | Implemented Custom Entry Pricing (Limit at FVG 50%) | Jarvis |
 | 2026-02-08 | 0.7.0   | Refactored trigger logic to use Fractal Swings (Pivot) | Jarvis |
 | 2026-02-08 | 0.6.0   | Added Strong Close confirmation (Internal BoS) | Jarvis |
 | 2026-02-08 | 0.5.0   | Implemented HTF Market Structure (BoS)      | Jarvis |
