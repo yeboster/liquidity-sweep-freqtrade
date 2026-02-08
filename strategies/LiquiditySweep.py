@@ -36,7 +36,7 @@ class LiquiditySweep(IStrategy):
     INTERFACE_VERSION = 3
     
     # Strategy version tag (Iteration Tracker)
-    STRATEGY_VERSION = "0.9.0" # Hyperopt Spaces Refined
+    STRATEGY_VERSION = "0.9.1" # R:R Filter Implemented
     
     # ROI table - we use custom_exit for TP (liquidity target)
     # Set high ROI to avoid premature exit, or keep as safety net
@@ -365,13 +365,31 @@ class LiquiditySweep(IStrategy):
         
         # Get HTF trend from informative
         htf_trend_col = f'trend_{self.informative_timeframe}'
+
+        # Calculate Risk and Reward for R:R filtering
+        # Include buffer_pips in risk calculation to match custom_stoploss logic
+        buffer = self.buffer_pips.value
+        
+        # Long: Reward = External High - Close; Risk = Close - (Recent Swing Low - Buffer)
+        dataframe['reward_long'] = dataframe['external_high'] - dataframe['close']
+        dataframe['risk_long'] = dataframe['close'] - (dataframe['recent_swing_low'] - buffer)
+        
+        # Short: Reward = Close - External Low; Risk = (Recent Swing High + Buffer) - Close
+        dataframe['reward_short'] = dataframe['close'] - dataframe['external_low']
+        dataframe['risk_short'] = (dataframe['recent_swing_high'] + buffer) - dataframe['close']
+
+        # Avoid division by zero or negative risk (invalid setup or zero risk)
+        # We replace 0 or negative risk with a small number to avoid errors, or just NaN to filter out
+        dataframe['rr_long'] = np.where(dataframe['risk_long'] > 0, dataframe['reward_long'] / dataframe['risk_long'], 0)
+        dataframe['rr_short'] = np.where(dataframe['risk_short'] > 0, dataframe['reward_short'] / dataframe['risk_short'], 0)
         
         # Long Entry Conditions
         if htf_trend_col in dataframe.columns:
             dataframe.loc[
                 (dataframe[htf_trend_col] == 1) &  # Bullish HTF trend
                 (dataframe['in_ote']) &             # Price in OTE zone
-                (dataframe['long_confirmation']),    # Sweep + confirmation
+                (dataframe['long_confirmation']) &   # Sweep + confirmation
+                (dataframe['rr_long'] >= self.min_rr.value), # Min R:R
                 'enter_long'
             ] = 1
             
@@ -379,7 +397,8 @@ class LiquiditySweep(IStrategy):
             dataframe.loc[
                 (dataframe[htf_trend_col] == -1) &  # Bearish HTF trend
                 (dataframe['in_ote']) &              # Price in OTE zone
-                (dataframe['short_confirmation']),    # Sweep + confirmation
+                (dataframe['short_confirmation']) &    # Sweep + confirmation
+                (dataframe['rr_short'] >= self.min_rr.value), # Min R:R
                 'enter_short'
             ] = 1
         

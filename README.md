@@ -68,6 +68,7 @@
 
 | Date       | Version | Change                                      | Author |
 |------------|---------|---------------------------------------------|--------|
+| 2026-02-08 | 0.9.1   | Implemented Minimum R:R Filter & Backtest   | Jarvis |
 | 2026-02-08 | 0.9.0   | Optimized Hyperopt Parameter Spaces         | Jarvis |
 | 2026-02-08 | 0.8.0   | Implemented Custom Entry Pricing (Limit at FVG 50%) | Jarvis |
 | 2026-02-08 | 0.7.0   | Refactored trigger logic to use Fractal Swings (Pivot) | Jarvis |
@@ -129,3 +130,17 @@ def check_liquidity_sweep_short(candles_15m, trend_1h):
             
     return False
 ```
+
+## Backtest Results (2026-02-08)
+
+**Period**: 2026-01-10 to 2026-02-08 (30 Days)
+**Market Context**: Bearish (-30.51% Market Change)
+**Pairs**: BTC/USDT, ETH/USDT, SOL/USDT
+**Strategy Version**: 0.9.1 (R:R Filter Active)
+
+- **Total Trades**: 1
+- **Win Rate**: 0%
+- **Profit**: -0.34% (-3.355 USDT)
+- **Max Drawdown**: 0.34%
+
+*Note*: The low trade count indicates the R:R filter is effectively filtering out low-quality setups in a strong trending market, or the strategy parameters (OTE/Pivot) are too strict for the current volatility.
