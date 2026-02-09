@@ -1,41 +1,33 @@
-name: Freqtrade Hyperopt
+name: Hyperopt Strategy
 
 on:
   workflow_dispatch:
   push:
     paths:
       - 'strategies/**'
+      - 'config.json'
       - '.github/workflows/hyperopt.yml'
 
 jobs:
   hyperopt:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
-
-      - name: Install dependencies
+      - name: Run Freqtrade Hyperopt
+        # Mount current directory to /freqtrade/user_data
         run: |
-          python -m pip install --upgrade pip
-          pip install freqtrade
-
-      - name: Run Hyperopt
-        run: |
-          freqtrade hyperopt \
+          docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable hyperopt \
+            --config /freqtrade/user_data/config.json \
             --strategy LiquiditySweep \
-            --config config.json \
-            --spaces buy roi trailing stoploss \
             --hyperopt-loss SharpeHyperOptLoss \
+            --spaces buy roi trailing stoploss \
             -e 100 \
-            --user-data-dir .
+            --data-format-ohlcv feather
 
       - name: Upload Hyperopt Results
         uses: actions/upload-artifact@v4
         with:
-          name: optimized-params
+          name: hyperopt-results
           path: strategies/LiquiditySweep.json
