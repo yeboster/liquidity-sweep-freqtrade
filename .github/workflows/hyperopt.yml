@@ -3,7 +3,6 @@ name: Hyperopt Strategy
 on:
   workflow_dispatch:
   push:
-    branches: [ main, master ]
     paths:
       - 'strategies/**'
       - 'config.json'
@@ -12,54 +11,40 @@ on:
 jobs:
   hyperopt:
     runs-on: ubuntu-latest
-    
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Create user_data directory
-      run: |
-        mkdir -p user_data
-        # Link strategies and config so freqtrade can find them in the expected structure
-        # Freqtrade expects: user_data/config.json, user_data/strategies/
-        # In this repo, config.json is at root, strategies/ is at root.
-        # We need to map them or move them.
-        # Actually, if we map $(pwd):/freqtrade/user_data
-        # Then inside container:
-        # /freqtrade/user_data/config.json (exists)
-        # /freqtrade/user_data/strategies/ (exists)
-        # So we don't need to move anything if the repo structure is flat.
-        ls -R
+      - name: Set up Docker
+        run: docker pull freqtradeorg/freqtrade:stable
 
-    - name: Run Freqtrade Hyperopt
-      run: |
-        # Pull the image first to ensure we have it (optional but good for logging)
-        docker pull freqtradeorg/freqtrade:develop
-        
-        # Run hyperopt
-        # We pipe output to a file to capture the JSON
-        # We use --print-json to get the best params in JSON format
-        # We also redirect stderr to stdout to see logs, but that might corrupt the JSON.
-        # Better: Run it, let it save to hyperopt_results, then show it.
-        # But for simplicity, we'll capture stdout.
-        # To avoid log mixup, we can try to suppress logs or accept that we might need to clean the JSON.
-        # Freqtrade's --print-json usually prints *just* the JSON if log level is set high?
-        # Actually, let's just run it and save the results.
-        
-        docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:develop hyperopt \
-          --config user_data/config.json \
-          --strategy LiquiditySweep \
-          --hyperopt-loss SharpeHyperOptLoss \
-          --spaces buy roi trailing stoploss \
-          -e 100 \
-          --data-format-ohlcv feather \
-          --print-json > strategies/LiquiditySweep.json || true
+      - name: Download Data
+        run: |
+          docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable \
+          download-data --config config.json --days 30 --exchange okx -t 15m 1h --pairs BTC/USDT ETH/USDT SOL/USDT
+
+      - name: Run Hyperopt
+        run: |
+          # Run hyperopt and ensure we have enough epochs
+          docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable \
+          hyperopt --config config.json --hyperopt-loss SharpeHyperOptLoss \
+          --spaces buy roi trailing stoploss -e 100 --timerange 20240101- \
+          --strategy LiquiditySweep
+
+      - name: Export Best Params
+        run: |
+          # Find the latest hyperopt result file (pickle)
+          LATEST_HYPEROPT=$(ls -t hyperopt_results/*.pickle | head -n 1)
+          echo "Latest hyperopt result: $LATEST_HYPEROPT"
           
-        # Check if the file has content
-        cat strategies/LiquiditySweep.json
+          # Extract the filename only
+          HYPEROPT_FILE=$(basename "$LATEST_HYPEROPT")
+          
+          # Run hyperopt-show to get the JSON params
+          docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable \
+          hyperopt-show --hyperopt-filename "$HYPEROPT_FILE" --print-json > strategies/LiquiditySweep.json
 
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: hyperopt-results
-        path: strategies/LiquiditySweep.json
+      - name: Upload Params Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: optimized-params
+          path: strategies/LiquiditySweep.json
