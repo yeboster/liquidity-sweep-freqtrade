@@ -1,23 +1,18 @@
-name: Hyperopt Strategy
+name: Freqtrade Hyperopt
 
 on:
   workflow_dispatch:
-    inputs:
-      epochs:
-        description: 'Number of epochs'
-        required: true
-        default: '100'
   push:
     paths:
       - 'strategies/**'
-      - 'config.json'
       - '.github/workflows/hyperopt.yml'
 
 jobs:
   hyperopt:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -29,17 +24,17 @@ jobs:
           python -m pip install --upgrade pip
           pip install freqtrade
 
-      - name: Download Data
-        run: |
-          # Download 30 days of data for optimization
-          freqtrade download-data --config config.json --days 30 -t 15m 1h --exchange okx
-
       - name: Run Hyperopt
         run: |
-          # Ensure strategy dir exists in python path or config
-          freqtrade hyperopt --config config.json --strategy LiquiditySweep --hyperopt-loss SharpeHyperOptLoss --spaces buy roi trailing stoploss -e ${{ inputs.epochs || 100 }} --job-workers 4
+          freqtrade hyperopt \
+            --strategy LiquiditySweep \
+            --config config.json \
+            --spaces buy roi trailing stoploss \
+            --hyperopt-loss SharpeHyperOptLoss \
+            -e 100 \
+            --user-data-dir .
 
-      - name: Archive production artifacts
+      - name: Upload Hyperopt Results
         uses: actions/upload-artifact@v4
         with:
           name: optimized-params
