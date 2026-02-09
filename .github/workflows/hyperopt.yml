@@ -15,13 +15,13 @@ jobs:
 
     - name: Prepare Directories
       run: |
-        mkdir -p user_data/data/binance
+        mkdir -p user_data/data/binanceus
         mkdir -p user_data/strategies
         mkdir -p user_data/hyperopt_results
         cp strategies/LiquiditySweep.py user_data/strategies/
         cp config.json user_data/config.json
-        # Switch exchange to binance for reliable data download without API keys
-        sed -i 's/"name": "okx"/"name": "binance"/g' user_data/config.json
+        # Switch exchange to binanceus for US-based CI runners
+        sed -i 's/"name": "okx"/"name": "binanceus"/g' user_data/config.json
 
     - name: Download Data
       run: |
