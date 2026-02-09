@@ -22,12 +22,13 @@ jobs:
         cp config.json user_data/config.json
         # Switch exchange to binanceus for US-based CI runners
         sed -i 's/"name": "okx"/"name": "binanceus"/g' user_data/config.json
+        # Ensure docker user (ftuser) can write to user_data
+        chmod -R 777 user_data
 
     - name: Download Data
       run: |
         # Download 30 days of data for BTC/ETH/SOL on 15m and 1h timeframes
         docker run --rm \
-          --user $(id -u):$(id -g) \
           -v $(pwd)/user_data:/freqtrade/user_data \
           freqtradeorg/freqtrade:stable \
           download-data \
@@ -39,7 +40,6 @@ jobs:
       run: |
         # Run hyperopt with 100 epochs
         docker run --rm \
-          --user $(id -u):$(id -g) \
           -v $(pwd)/user_data:/freqtrade/user_data \
           freqtradeorg/freqtrade:stable \
           hyperopt \
