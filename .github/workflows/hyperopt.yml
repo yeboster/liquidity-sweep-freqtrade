@@ -14,35 +14,26 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-
-      - name: Install Freqtrade
+      - name: Prepare User Data Directory
         run: |
-          pip install freqtrade
-          pip install -r requirements.txt || true
-
-      - name: Run Hyperopt
-        run: |
-          # Ensure user_data directories exist if needed
           mkdir -p user_data/strategies
+          # Ensure permissions are correct for Docker mount
+          chmod -R 777 .
 
-          # Run hyperopt
-          # -e 100: 100 epochs
-          # --spaces: search spaces
-          # --hyperopt-loss: loss function
-          # --user-data-dir .: use current directory for data/results
-          freqtrade hyperopt --config config.json \
+      - name: Run Hyperopt (Docker)
+        run: |
+          docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable hyperopt \
+            --config config.json \
             --strategy LiquiditySweep \
             --hyperopt-loss SharpeHyperOptLoss \
             --spaces buy roi trailing stoploss \
             -e 100 \
-            --user-data-dir . \
             --data-format-ohlcv feather \
             --no-color \
             --jobs 4
+          
+          # Fix permissions after Docker run
+          sudo chown -R $USER:$USER .
 
       - name: Export Best Parameters
         run: |
@@ -51,16 +42,17 @@ jobs:
           echo "Processing result file: $LATEST_FILE"
           
           # Export to JSON
-          freqtrade hyperopt-show \
+          # Note: file path is relative to the container's workdir (/freqtrade/user_data)
+          docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable hyperopt-show \
             --config config.json \
             --hyperopt-file "$LATEST_FILE" \
             --strategy LiquiditySweep \
-            --print-json \
-            --user-data-dir . > user_data/strategies/LiquiditySweep.json
+            --print-json > user_data/strategies/LiquiditySweep.json
+            
+          # Fix permissions again
+          sudo chown -R $USER:$USER .
           
-          # Clean up the JSON (it might have logs at the top if stdout is mixed)
-          # freqtrade hyperopt-show usually outputs only JSON if --print-json is used, but let's be safe.
-          # We can use a simple python script to parse it if needed, but let's assume it's clean for now or inspect it later.
+          # Verify content
           cat user_data/strategies/LiquiditySweep.json
 
       - name: Upload Artifact
