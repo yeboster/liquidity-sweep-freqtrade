@@ -52,6 +52,7 @@ jobs:
           --hyperopt-loss SharpeHyperOptLoss \
           --spaces buy roi trailing stoploss \
           -e 100 \
+          --data-format-ohlcv feather \
           --print-json > strategies/LiquiditySweep.json || true
           
         # Check if the file has content
