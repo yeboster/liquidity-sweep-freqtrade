@@ -1,83 +1,64 @@
-name: Freqtrade Hyperopt
+name: Hyperopt Strategy
 
 on:
   workflow_dispatch:
   push:
+    branches: [ main, master ]
     paths:
-      - 'strategies/LiquiditySweep.py'
+      - 'strategies/**'
+      - 'config.json'
       - '.github/workflows/hyperopt.yml'
 
 jobs:
   hyperopt:
     runs-on: ubuntu-latest
+    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-      - name: Prepare User Data Directory
-        run: |
-          mkdir -p user_data/strategies
-          # Ensure permissions are correct for Docker mount
-          chmod -R 777 .
+    - name: Create user_data directory
+      run: |
+        mkdir -p user_data
+        # Link strategies and config so freqtrade can find them in the expected structure
+        # Freqtrade expects: user_data/config.json, user_data/strategies/
+        # In this repo, config.json is at root, strategies/ is at root.
+        # We need to map them or move them.
+        # Actually, if we map $(pwd):/freqtrade/user_data
+        # Then inside container:
+        # /freqtrade/user_data/config.json (exists)
+        # /freqtrade/user_data/strategies/ (exists)
+        # So we don't need to move anything if the repo structure is flat.
+        ls -R
 
-      - name: Run Hyperopt (Docker)
-        run: |
-          docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable hyperopt \
-            --config user_data/config.json \
-            --strategy LiquiditySweep \
-            --hyperopt-loss SharpeHyperOptLoss \
-            --spaces buy roi trailing stoploss \
-            -e 100 \
-            --data-format-ohlcv feather \
-            --no-color
-
-          # Fix permissions after Docker run
-          sudo chown -R $USER:$USER .
-
-      - name: Export Best Parameters
-        run: |
-          # Debug file location
-          echo "Listing all pickle files:"
-          find . -name "*.pickle" || echo "No pickles found with find"
-          ls -R hyperopt_results || echo "hyperopt_results not found"
-
-          # Find the latest hyperopt result file (looking for .fthypt or .pickle or .json)
-          LATEST_FILE=$(find . -name "*_LiquiditySweep_*.fthypt" -o -name "*_LiquiditySweep_*.pickle" -o -name "*_LiquiditySweep_*.json" | sort | tail -1)
+    - name: Run Freqtrade Hyperopt
+      run: |
+        # Pull the image first to ensure we have it (optional but good for logging)
+        docker pull freqtradeorg/freqtrade:develop
+        
+        # Run hyperopt
+        # We pipe output to a file to capture the JSON
+        # We use --print-json to get the best params in JSON format
+        # We also redirect stderr to stdout to see logs, but that might corrupt the JSON.
+        # Better: Run it, let it save to hyperopt_results, then show it.
+        # But for simplicity, we'll capture stdout.
+        # To avoid log mixup, we can try to suppress logs or accept that we might need to clean the JSON.
+        # Freqtrade's --print-json usually prints *just* the JSON if log level is set high?
+        # Actually, let's just run it and save the results.
+        
+        docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:develop hyperopt \
+          --config user_data/config.json \
+          --strategy LiquiditySweep \
+          --hyperopt-loss SharpeHyperOptLoss \
+          --spaces buy roi trailing stoploss \
+          -e 100 \
+          --print-json > strategies/LiquiditySweep.json || true
           
-          if [ -z "$LATEST_FILE" ]; then
-             # Fallback to any file in hyperopt_results that looks like a result
-             LATEST_FILE=$(find hyperopt_results -type f -not -name "*tickerdata*" | sort | tail -1)
-          fi
-          
-          if [ -z "$LATEST_FILE" ]; then
-            echo "Error: No hyperopt result file found!"
-            ls -R
-            exit 1
-          fi
-          
-          # Clean path (remove leading ./)
-          LATEST_FILE=${LATEST_FILE#./}
-          echo "Processing result file: $LATEST_FILE"
-          
-          # Export to JSON
-          # Note: file path is relative to the container's workdir (/freqtrade)
-          # But freqtrade seems to resolve it relative to user_data IF it's in a subdirectory?
-          # Let's try passing the path as relative to user_data root (which is where we are in the host)
-          # LATEST_FILE is like "hyperopt_results/strategy_....fthypt"
-          
-          docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable hyperopt-show \
-            --config user_data/config.json \
-            --hyperopt-file "$LATEST_FILE" \
-            --print-json > user_data/strategies/LiquiditySweep.json
+        # Check if the file has content
+        cat strategies/LiquiditySweep.json
 
-          # Fix permissions again
-          sudo chown -R $USER:$USER .
-
-          # Verify content
-          cat user_data/strategies/LiquiditySweep.json
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: strategy-params
-          path: user_data/strategies/LiquiditySweep.json
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: hyperopt-results
+        path: strategies/LiquiditySweep.json
