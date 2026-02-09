@@ -1,12 +1,10 @@
-name: Freqtrade Hyperopt
+name: Hyperopt Strategy
 
 on:
   workflow_dispatch:
   push:
-    branches: [ main, master ]
     paths:
       - 'strategies/**'
-      - 'config.json'
       - '.github/workflows/hyperopt.yml'
 
 jobs:
@@ -15,25 +13,52 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Download Data
-      # We mount the current directory to /freqtrade/user_data
-      # Freqtrade docker image working directory is /freqtrade
-      # So we need to ensure the data lands in user_data/data/okx
+    - name: Prepare Directories
       run: |
-        docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable download-data --erase --exchange okx --days 365 -t 1h 15m --pairs BTC/USDT ETH/USDT SOL/USDT
-        sudo chown -R $USER:$USER .
+        mkdir -p user_data/data/binance
+        mkdir -p user_data/strategies
+        mkdir -p user_data/hyperopt_results
+        cp strategies/LiquiditySweep.py user_data/strategies/
+        cp config.json user_data/config.json
+        # Switch exchange to binance for reliable data download without API keys
+        sed -i 's/"name": "okx"/"name": "binance"/g' user_data/config.json
+
+    - name: Download Data
+      run: |
+        # Download 30 days of data for BTC/ETH/SOL on 15m and 1h timeframes
+        docker run --rm \
+          -v $(pwd)/user_data:/freqtrade/user_data \
+          freqtradeorg/freqtrade:stable \
+          download-data \
+          --config /freqtrade/user_data/config.json \
+          --days 30 \
+          --timeframes 15m 1h
 
     - name: Run Hyperopt
-      # Mount current directory to /freqtrade/user_data
-      # Config is at user_data/config.json
-      # Strategy is at user_data/strategies/LiquiditySweep.py
-      # Output to user_data/strategies/LiquiditySweep.json
       run: |
-        docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable hyperopt --config user_data/config.json --hyperopt-loss SharpeHyperOptLoss --spaces buy roi trailing stoploss -e 100 --timerange 20250101-20260101 --print-json > strategies/LiquiditySweep.json
-        sudo chown -R $USER:$USER .
+        # Run hyperopt with 100 epochs
+        docker run --rm \
+          -v $(pwd)/user_data:/freqtrade/user_data \
+          freqtradeorg/freqtrade:stable \
+          hyperopt \
+          --config /freqtrade/user_data/config.json \
+          --strategy LiquiditySweep \
+          --hyperopt-loss SharpeHyperOptLoss \
+          --spaces buy roi trailing stoploss \
+          -e 100 \
+          --print-json > user_data/strategies/LiquiditySweep.json
 
-    - name: Upload Artifact
+    - name: Show Results (Debug)
+      run: cat user_data/strategies/LiquiditySweep.json
+
+    - name: Upload Parameters
+      uses: actions/upload-artifact@v4
+      with:
+        name: optimized-params
+        path: user_data/strategies/LiquiditySweep.json
+
+    - name: Upload Full Results
       uses: actions/upload-artifact@v4
       with:
         name: hyperopt-results
-        path: strategies/LiquiditySweep.json
+        path: user_data/hyperopt_results/
