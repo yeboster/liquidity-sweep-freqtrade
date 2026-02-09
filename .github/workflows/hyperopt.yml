@@ -62,10 +62,10 @@ jobs:
           # Export to JSON
           # Note: file path is relative to the container's workdir (/freqtrade)
           # So we prepend user_data/
+          # Also, removed --strategy as it's implied by config or redundant and caused parser errors
           docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable hyperopt-show \
             --config user_data/config.json \
             --hyperopt-file "user_data/$LATEST_FILE" \
-            --strategy LiquiditySweep \
             --print-json > user_data/strategies/LiquiditySweep.json
 
           # Fix permissions again
