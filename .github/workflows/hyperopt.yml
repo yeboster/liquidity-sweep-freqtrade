@@ -1,55 +1,52 @@
-name: Hyperopt Strategy
+name: Hyperopt
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - 'strategies/**'
-      - 'config.json'
-      - '.github/workflows/hyperopt.yml'
+    inputs:
+      epochs:
+        description: 'Number of epochs'
+        required: false
+        default: '100'
 
 jobs:
   hyperopt:
     runs-on: ubuntu-latest
+    container:
+      image: freqtradeorg/freqtrade:stable
+      options: --user root  # Run as root to avoid permission issues with GHA volume mounts
+
     steps:
-      - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-      - name: Set up Docker
-        run: docker pull freqtradeorg/freqtrade:stable
+    # Freqtrade expects a user_data directory structure. Let's create it or symlink.
+    # Our repo has strategies/* and config.json at root.
+    - name: Prepare directory structure
+      run: |
+        mkdir -p user_data
+        cp -r strategies user_data/
+        # Check if hyperopts exists
+        if [ -d hyperopts ]; then cp -r hyperopts user_data/; fi
+        
+        # Ensure config points to correct directories if needed, or just rely on default structure
+        # We will download data fresh
 
-      - name: Fix Permissions & Debug
-        run: |
-          ls -la
-          chmod -R 777 .
+    - name: Download data
+      run: |
+        freqtrade download-data --exchange okx --pairs BTC/USDT ETH/USDT SOL/USDT --timeframes 15m 1h --days 30 -c config.json --datadir user_data/data/okx
 
-      - name: Download Data
-        run: |
-          docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable \
-          download-data --config config.json --days 30 --exchange okx -t 15m 1h --pairs BTC/USDT ETH/USDT SOL/USDT
+    - name: Run Hyperopt
+      run: |
+        freqtrade hyperopt \
+          --hyperopt-loss SharpeHyperOptLoss \
+          --spaces buy roi trailing stoploss \
+          -e ${{ github.event.inputs.epochs }} \
+          --strategy LiquiditySweep \
+          -c config.json \
+          --user-data-dir user_data
 
-      - name: Run Hyperopt
-        run: |
-          # Run hyperopt and ensure we have enough epochs
-          docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable \
-          hyperopt --config config.json --hyperopt-loss SharpeHyperOptLoss \
-          --spaces buy roi trailing stoploss -e 100 --timerange 20240101- \
-          --strategy LiquiditySweep
-
-      - name: Export Best Params
-        run: |
-          # Find the latest hyperopt result file (pickle)
-          LATEST_HYPEROPT=$(ls -t hyperopt_results/*.pickle | head -n 1)
-          echo "Latest hyperopt result: $LATEST_HYPEROPT"
-          
-          # Extract the filename only
-          HYPEROPT_FILE=$(basename "$LATEST_HYPEROPT")
-          
-          # Run hyperopt-show to get the JSON params
-          docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable \
-          hyperopt-show --hyperopt-filename "$HYPEROPT_FILE" --print-json > strategies/LiquiditySweep.json
-
-      - name: Upload Params Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: optimized-params
-          path: strategies/LiquiditySweep.json
+    - name: Upload strategy params
+      uses: actions/upload-artifact@v3
+      with:
+        name: strategy-params
+        path: user_data/strategies/LiquiditySweep.json
