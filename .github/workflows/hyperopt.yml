@@ -17,6 +17,11 @@ jobs:
       - name: Set up Docker
         run: docker pull freqtradeorg/freqtrade:stable
 
+      - name: Fix Permissions & Debug
+        run: |
+          ls -la
+          chmod -R 777 .
+
       - name: Download Data
         run: |
           docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable \
