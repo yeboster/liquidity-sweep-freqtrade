@@ -27,6 +27,7 @@ jobs:
       run: |
         # Download 30 days of data for BTC/ETH/SOL on 15m and 1h timeframes
         docker run --rm \
+          --user $(id -u):$(id -g) \
           -v $(pwd)/user_data:/freqtrade/user_data \
           freqtradeorg/freqtrade:stable \
           download-data \
@@ -38,6 +39,7 @@ jobs:
       run: |
         # Run hyperopt with 100 epochs
         docker run --rm \
+          --user $(id -u):$(id -g) \
           -v $(pwd)/user_data:/freqtrade/user_data \
           freqtradeorg/freqtrade:stable \
           hyperopt \
