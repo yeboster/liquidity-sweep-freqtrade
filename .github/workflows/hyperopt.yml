@@ -11,25 +11,26 @@ on:
 jobs:
   hyperopt:
     runs-on: ubuntu-latest
-    container:
-      image: freqtradeorg/freqtrade:stable
-      options: --user root  # Run as root to avoid permission issues with GHA volume mounts
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    # Freqtrade expects a user_data directory structure. Let's create it or symlink.
-    # Our repo has strategies/* and config.json at root.
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install Freqtrade
+      run: |
+        pip install freqtrade
+        freqtrade --version
+
     - name: Prepare directory structure
       run: |
         mkdir -p user_data
         cp -r strategies user_data/
-        # Check if hyperopts exists
         if [ -d hyperopts ]; then cp -r hyperopts user_data/; fi
-        
-        # Ensure config points to correct directories if needed, or just rely on default structure
-        # We will download data fresh
 
     - name: Download data
       run: |
