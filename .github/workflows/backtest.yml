@@ -1,4 +1,4 @@
-name: Backtest
+name: Backtest Strategy
 
 on:
   workflow_dispatch:
@@ -6,34 +6,19 @@ on:
     paths:
       - 'strategies/**'
       - 'config.json'
+      - '.github/workflows/backtest.yml'
 
 jobs:
   backtest:
     runs-on: ubuntu-latest
-    container:
-      image: freqtradeorg/freqtrade:stable
-      options: --user root
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Prepare directory structure
-      run: |
-        mkdir -p user_data
-        cp -r strategies user_data/
-        if [ -d hyperopts ]; then cp -r hyperopts user_data/; fi
-
-    - name: Download data
-      run: |
-        freqtrade download-data --exchange okx --pairs BTC/USDT ETH/USDT SOL/USDT --timeframes 15m 1h --days 30 -c config.json --datadir user_data/data/okx
-
-    - name: Run Backtest
-      run: |
-        freqtrade backtesting --strategy LiquiditySweep -c config.json --user-data-dir user_data --timerange 20260101-
-
-    - name: Upload backtest results
-      uses: actions/upload-artifact@v4
-      with:
-        name: backtest-results
-        path: user_data/backtest_results
+      - name: Run Freqtrade Backtest
+        run: |
+          docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable backtesting \
+            --config /freqtrade/user_data/config.json \
+            --strategy LiquiditySweep \
+            --timerange 20260101- \
+            --data-format-ohlcv feather
