@@ -1,76 +1,46 @@
-name: Hyperopt
+name: Hyperopt Strategy
 
 on:
   workflow_dispatch:
     inputs:
       epochs:
         description: 'Number of epochs'
-        required: false
+        required: true
         default: '100'
+  push:
+    paths:
+      - 'strategies/**'
+      - 'config.json'
+      - '.github/workflows/hyperopt.yml'
 
 jobs:
   hyperopt:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
 
-    - name: Install TA-Lib
-      run: |
-        wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz
-        tar -xzf ta-lib-0.4.0-src.tar.gz
-        cd ta-lib
-        ./configure --prefix=/usr
-        make
-        sudo make install
-        cd ..
-        rm -rf ta-lib ta-lib-0.4.0-src.tar.gz
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install freqtrade
 
-    - name: Install Freqtrade
-      run: |
-        pip install --upgrade pip
-        pip install freqtrade
+      - name: Download Data
+        run: |
+          # Download 30 days of data for optimization
+          freqtrade download-data --config config.json --days 30 -t 15m 1h --exchange okx
 
-    - name: Prepare directory structure
-      run: |
-        mkdir -p user_data
-        cp -r strategies user_data/
-        if [ -d hyperopts ]; then cp -r hyperopts user_data/; fi
+      - name: Run Hyperopt
+        run: |
+          # Ensure strategy dir exists in python path or config
+          freqtrade hyperopt --config config.json --strategy LiquiditySweep --hyperopt-loss SharpeHyperOptLoss --spaces buy roi trailing stoploss -e ${{ inputs.epochs || 100 }} --job-workers 4
 
-    - name: Download data
-      run: |
-        freqtrade download-data --exchange okx --pairs BTC/USDT ETH/USDT SOL/USDT --timeframes 15m 1h --days 30 -c config.json --datadir user_data/data/okx
-
-    - name: Run Hyperopt
-      run: |
-        # Create hyperopt results dir explicitly
-        mkdir -p user_data/hyperopt_results
-        
-        freqtrade hyperopt \
-          --hyperopt-loss SharpeHyperOptLoss \
-          --spaces buy roi trailing stoploss \
-          -e ${{ github.event.inputs.epochs }} \
-          --strategy LiquiditySweep \
-          -c config.json \
-          --user-data-dir user_data
-
-    - name: Export Results
-      run: |
-         freqtrade hyperopt-show \
-          --hyperopt-loss SharpeHyperOptLoss \
-          --strategy LiquiditySweep \
-          -c config.json \
-          --user-data-dir user_data \
-          --print-json > user_data/strategies/LiquiditySweep.json
-
-    - name: Upload strategy params
-      uses: actions/upload-artifact@v4
-      with:
-        name: strategy-params
-        path: user_data/strategies/LiquiditySweep.json
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: optimized-params
+          path: strategies/LiquiditySweep.json
