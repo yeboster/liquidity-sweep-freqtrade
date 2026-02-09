@@ -27,15 +27,15 @@ jobs:
             --data-format-ohlcv feather
 
       - name: Export Best Params
-        # Export the best result from the latest hyperopt run to JSON
+        # Export to root directory to avoid permission issues in strategies/
         run: |
           docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable hyperopt-show \
             --config /freqtrade/user_data/config.json \
             --hyperopt-filename last \
-            --print-json > strategies/LiquiditySweep.json
+            --print-json > LiquiditySweep.json
 
       - name: Upload Hyperopt Results
         uses: actions/upload-artifact@v4
         with:
           name: hyperopt-results
-          path: strategies/LiquiditySweep.json
+          path: LiquiditySweep.json
