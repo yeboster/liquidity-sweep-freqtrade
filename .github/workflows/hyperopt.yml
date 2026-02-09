@@ -36,8 +36,21 @@ jobs:
 
       - name: Export Best Parameters
         run: |
+          # Debug file location
+          echo "Listing all pickle files:"
+          find . -name "*.pickle" || echo "No pickles found with find"
+          ls -R hyperopt_results || echo "hyperopt_results not found"
+
           # Find the latest hyperopt result file
-          LATEST_FILE=$(ls -t hyperopt_results/*.pickle | head -n1)
+          LATEST_FILE=$(find . -name "*.pickle" -printf "%T@ %p\n" | sort -n | tail -1 | cut -d' ' -f2)
+          
+          if [ -z "$LATEST_FILE" ]; then
+            echo "Error: No hyperopt result file found!"
+            exit 1
+          fi
+          
+          # Clean path (remove leading ./)
+          LATEST_FILE=${LATEST_FILE#./}
           echo "Processing result file: $LATEST_FILE"
           
           # Export to JSON
