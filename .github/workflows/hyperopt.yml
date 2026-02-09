@@ -41,11 +41,17 @@ jobs:
           find . -name "*.pickle" || echo "No pickles found with find"
           ls -R hyperopt_results || echo "hyperopt_results not found"
 
-          # Find the latest hyperopt result file
-          LATEST_FILE=$(find . -name "*.pickle" -printf "%T@ %p\n" | sort -n | tail -1 | cut -d' ' -f2)
+          # Find the latest hyperopt result file (looking for .fthypt or .pickle or .json)
+          LATEST_FILE=$(find . -name "*_LiquiditySweep_*.fthypt" -o -name "*_LiquiditySweep_*.pickle" -o -name "*_LiquiditySweep_*.json" | sort | tail -1)
+          
+          if [ -z "$LATEST_FILE" ]; then
+             # Fallback to any file in hyperopt_results that looks like a result
+             LATEST_FILE=$(find hyperopt_results -type f -not -name "*tickerdata*" | sort | tail -1)
+          fi
           
           if [ -z "$LATEST_FILE" ]; then
             echo "Error: No hyperopt result file found!"
+            ls -R
             exit 1
           fi
           
