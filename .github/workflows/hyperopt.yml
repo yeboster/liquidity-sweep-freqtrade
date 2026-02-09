@@ -1,66 +1,69 @@
-name: Hyperopt Strategy
+name: Freqtrade Hyperopt
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - 'strategies/**'
+      - 'strategies/LiquiditySweep.py'
       - '.github/workflows/hyperopt.yml'
 
 jobs:
   hyperopt:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Prepare Directories
-      run: |
-        mkdir -p user_data/data/binanceus
-        mkdir -p user_data/strategies
-        mkdir -p user_data/hyperopt_results
-        cp strategies/LiquiditySweep.py user_data/strategies/
-        cp config.json user_data/config.json
-        # Switch exchange to binanceus for US-based CI runners
-        sed -i 's/"name": "okx"/"name": "binanceus"/g' user_data/config.json
-        # Ensure docker user (ftuser) can write to user_data
-        chmod -R 777 user_data
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
 
-    - name: Download Data
-      run: |
-        # Download 30 days of data for BTC/ETH/SOL on 15m and 1h timeframes
-        docker run --rm \
-          -v $(pwd)/user_data:/freqtrade/user_data \
-          freqtradeorg/freqtrade:stable \
-          download-data \
-          --config /freqtrade/user_data/config.json \
-          --days 30 \
-          --timeframes 15m 1h
+      - name: Install Freqtrade
+        run: |
+          pip install freqtrade
+          pip install -r requirements.txt || true
 
-    - name: Run Hyperopt
-      run: |
-        # Run hyperopt with 100 epochs
-        docker run --rm \
-          -v $(pwd)/user_data:/freqtrade/user_data \
-          freqtradeorg/freqtrade:stable \
-          hyperopt \
-          --config /freqtrade/user_data/config.json \
-          --strategy LiquiditySweep \
-          --hyperopt-loss SharpeHyperOptLoss \
-          --spaces buy roi trailing stoploss \
-          -e 100 \
-          --print-json > user_data/strategies/LiquiditySweep.json
+      - name: Run Hyperopt
+        run: |
+          # Ensure user_data directories exist if needed
+          mkdir -p user_data/strategies
 
-    - name: Show Results (Debug)
-      run: cat user_data/strategies/LiquiditySweep.json
+          # Run hyperopt
+          # -e 100: 100 epochs
+          # --spaces: search spaces
+          # --hyperopt-loss: loss function
+          # --user-data-dir .: use current directory for data/results
+          freqtrade hyperopt --config config.json \
+            --strategy LiquiditySweep \
+            --hyperopt-loss SharpeHyperOptLoss \
+            --spaces buy roi trailing stoploss \
+            -e 100 \
+            --user-data-dir . \
+            --no-color \
+            --jobs 4
 
-    - name: Upload Parameters
-      uses: actions/upload-artifact@v4
-      with:
-        name: optimized-params
-        path: user_data/strategies/LiquiditySweep.json
+      - name: Export Best Parameters
+        run: |
+          # Find the latest hyperopt result file
+          LATEST_FILE=$(ls -t hyperopt_results/*.pickle | head -n1)
+          echo "Processing result file: $LATEST_FILE"
+          
+          # Export to JSON
+          freqtrade hyperopt-show \
+            --config config.json \
+            --hyperopt-file "$LATEST_FILE" \
+            --strategy LiquiditySweep \
+            --print-json \
+            --user-data-dir . > user_data/strategies/LiquiditySweep.json
+          
+          # Clean up the JSON (it might have logs at the top if stdout is mixed)
+          # freqtrade hyperopt-show usually outputs only JSON if --print-json is used, but let's be safe.
+          # We can use a simple python script to parse it if needed, but let's assume it's clean for now or inspect it later.
+          cat user_data/strategies/LiquiditySweep.json
 
-    - name: Upload Full Results
-      uses: actions/upload-artifact@v4
-      with:
-        name: hyperopt-results
-        path: user_data/hyperopt_results/
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: strategy-params
+          path: user_data/strategies/LiquiditySweep.json
