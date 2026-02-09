@@ -29,8 +29,7 @@ jobs:
             --spaces buy roi trailing stoploss \
             -e 100 \
             --data-format-ohlcv feather \
-            --no-color \
-            --jobs 4
+            --no-color
           
           # Fix permissions after Docker run
           sudo chown -R $USER:$USER .
