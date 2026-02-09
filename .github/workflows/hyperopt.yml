@@ -11,43 +11,82 @@ on:
 jobs:
   hyperopt:
     runs-on: ubuntu-latest
+    container:
+      image: freqtradeorg/freqtrade:stable
+      # Do not use --user root because it breaks python path
+      # We will fix permissions explicitly
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
-
-    - name: Install Freqtrade
+    - name: Fix permissions
+      # We need to give ftuser (uid 1000) access to the workspace
+      # Since we are in a container as ftuser, we might not have sudo.
+      # But wait, usually GitHub Actions containers allow sudo/root if needed?
+      # Actually, freqtrade container prevents sudo.
+      #
+      # Alternative: Run a step as root to fix permissions?
+      # "USER root"
       run: |
-        pip install freqtrade
-        freqtrade --version
+        echo "Current user: $(whoami)"
+        ls -la
+        # Try to write
+        touch test_write || echo "Cannot write"
 
     - name: Prepare directory structure
       run: |
-        mkdir -p user_data
-        cp -r strategies user_data/
-        if [ -d hyperopts ]; then cp -r hyperopts user_data/; fi
+        # Create user_data structure in /freqtrade (owned by ftuser)
+        # We are currently in GITHUB_WORKSPACE
+        
+        echo "Source: $(pwd)"
+        ls -la
+        
+        # Ensure destination exists
+        mkdir -p /freqtrade/user_data/strategies
+        
+        # Copy files
+        cp -r strategies/* /freqtrade/user_data/strategies/
+        cp config.json /freqtrade/user_data/
+        # Check if hyperopts exists
+        if [ -d hyperopts ]; then cp -r hyperopts /freqtrade/user_data/; fi
+        
+        ls -la /freqtrade/user_data/strategies/
 
     - name: Download data
       run: |
-        freqtrade download-data --exchange okx --pairs BTC/USDT ETH/USDT SOL/USDT --timeframes 15m 1h --days 30 -c config.json --datadir user_data/data/okx
+        cd /freqtrade
+        # We need to make sure we use the correct path for config and datadir
+        freqtrade download-data --exchange okx --pairs BTC/USDT ETH/USDT SOL/USDT --timeframes 15m 1h --days 30 -c user_data/config.json --datadir user_data/data/okx
 
     - name: Run Hyperopt
       run: |
+        cd /freqtrade
+        mkdir -p user_data/hyperopt_results
+        
         freqtrade hyperopt \
           --hyperopt-loss SharpeHyperOptLoss \
           --spaces buy roi trailing stoploss \
           -e ${{ github.event.inputs.epochs }} \
           --strategy LiquiditySweep \
-          -c config.json \
+          -c user_data/config.json \
           --user-data-dir user_data
+          
+        # Extract best params to JSON
+        # We need the last run ID? freqtrade picks the latest by default.
+        freqtrade hyperopt-show \
+          --hyperopt-loss SharpeHyperOptLoss \
+          --strategy LiquiditySweep \
+          -c user_data/config.json \
+          --user-data-dir user_data \
+          --print-json > user_data/strategies/LiquiditySweep.json
+          
+    - name: List results
+      run: |
+        ls -R /freqtrade/user_data/strategies/
 
     - name: Upload strategy params
       uses: actions/upload-artifact@v4
       with:
         name: strategy-params
-        path: user_data/strategies/LiquiditySweep.json
+        path: /freqtrade/user_data/strategies/LiquiditySweep.json
