@@ -18,42 +18,31 @@ jobs:
       - name: Prepare permissions
         run: |
           sudo chmod -R 777 .
-          ls -la  # Debug: list host files
 
       - name: Pull Freqtrade Image
         run: docker pull freqtradeorg/freqtrade:stable
 
-      - name: Debug Container Mount
-        run: |
-          docker run --rm -v ${{ github.workspace }}:/freqtrade/user_data freqtradeorg/freqtrade:stable ls -la /freqtrade/user_data
-
       - name: Download Data
         run: |
-          # Use absolute path inside container for config just in case
           docker run --rm -v ${{ github.workspace }}:/freqtrade/user_data freqtradeorg/freqtrade:stable \
-            download-data --config /freqtrade/user_data/config.json --days 30 -t 15m 1h
+            download-data --config /freqtrade/user_data/config.json --days 30 -t 15m 1h --exchange okx
 
       - name: Run Hyperopt
         run: |
           docker run --rm -v ${{ github.workspace }}:/freqtrade/user_data freqtradeorg/freqtrade:stable \
             hyperopt --config /freqtrade/user_data/config.json --hyperopt-loss SharpeHyperOptLoss \
             --strategy LiquiditySweep --epochs 100 --spaces buy roi trailing stoploss \
-            --job-workers 4
+            --job-workers 4 --print-json > hyperopt_output.json
           
-          # Find the latest result file
-          LATEST_RESULT=$(ls -t hyperopt_results/*.json | head -n 1)
-          echo "Latest result: $LATEST_RESULT"
-          
-          if [ -z "$LATEST_RESULT" ]; then
-            echo "No hyperopt result found!"
-            exit 1
+          # Extract JSON if printed
+          if grep -q "{" hyperopt_output.json; then
+             sed -n '/{/,/}/p' hyperopt_output.json > strategies/LiquiditySweep.json
           fi
-          
-          # Copy it to strategies/LiquiditySweep.json
-          cp "$LATEST_RESULT" strategies/LiquiditySweep.json
 
       - name: Upload Results
         uses: actions/upload-artifact@v4
         with:
           name: hyperopt-params
-          path: strategies/LiquiditySweep.json
+          path: |
+            strategies/LiquiditySweep.json
+            hyperopt_output.json
