@@ -34,6 +34,23 @@ jobs:
             freqtradeorg/freqtrade:stable \
             -c "chown -R 1000:1000 /freqtrade/user_data"
 
+      - name: Debug Data
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/freqtrade/user_data \
+            freqtradeorg/freqtrade:stable \
+            list-data \
+            --config /freqtrade/user_data/config.json \
+            --datadir /freqtrade/user_data/data \
+            --data-format-ohlcv feather
+
+          echo "Listing files inside container:"
+          docker run --rm \
+            -v ${{ github.workspace }}:/freqtrade/user_data \
+            --entrypoint /bin/sh \
+            freqtradeorg/freqtrade:stable \
+            -c "ls -R /freqtrade/user_data/data"
+
       - name: Run Hyperopt
         run: |
           docker run --rm \
