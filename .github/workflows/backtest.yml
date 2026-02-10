@@ -14,16 +14,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Prepare directories
+        run: |
+          mkdir -p backtest_results
+          chmod -R 777 backtest_results
+
       - name: Run Freqtrade Backtest
         run: |
           docker run --rm \
             -v ${{ github.workspace }}:/freqtrade/user_data \
             freqtradeorg/freqtrade:stable \
             backtesting \
-            --config user_data/config.json \
+            --config /freqtrade/user_data/config.json \
             --strategy LiquiditySweep \
-            --strategy-path user_data/strategies \
-            --datadir user_data/data \
+            --strategy-path /freqtrade/user_data/strategies \
+            --datadir /freqtrade/user_data/data \
             --data-format-ohlcv feather \
             --timerange 20260101- \
             --enable-protections
