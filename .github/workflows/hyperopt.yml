@@ -4,42 +4,58 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - 'strategies/**'
+      - 'strategies/LiquiditySweep.py'
+      - 'config.json'
       - '.github/workflows/hyperopt.yml'
 
 jobs:
   hyperopt:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Create user_data directory
+      - name: Prepare permissions
         run: |
-          mkdir -p user_data/data
+          # Freqtrade container runs as UID 1000. 
+          # GitHub runner is usually 1001.
+          # We make the current directory writable by everyone so the container can write results.
+          sudo chmod -R 777 .
 
       - name: Pull Freqtrade Image
         run: docker pull freqtradeorg/freqtrade:stable
 
-      - name: Fix permissions
-        run: |
-          sudo chown -R $USER:$USER .
-          chmod -R 777 user_data strategies
-
       - name: Download Data
+        # Mount current directory to /freqtrade/user_data
+        # Config is at root, so inside container it is 'config.json'
         run: |
-          # Map current directory (repo root) to /freqtrade/user_data
-          # This makes config.json available at /freqtrade/user_data/config.json
-          docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable download-data --config user_data/config.json --days 30 -t 15m 1h --exchange okx
+          docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable \
+            download-data --config config.json --days 30 -t 15m 1h
 
       - name: Run Hyperopt
         run: |
-          # Run hyperopt and capture output to strategies/LiquiditySweep.json
-          # We use --logfile /dev/null to avoid mixing logs with stdout JSON
-          docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable hyperopt --config user_data/config.json --strategy-path user_data/strategies/ --strategy LiquiditySweep --hyperopt-loss SharpeHyperOptLoss --spaces buy roi trailing stoploss -e 100 --print-json --logfile /dev/null > strategies/LiquiditySweep.json
+          # Run hyperopt. 
+          # We capture the output JSON to a file for artifact upload.
+          # We use --print-json to output the result to stdout.
+          # We filter the output to extract the JSON part if necessary, but 
+          # usually --print-json makes it clean if --logfile is /dev/null.
+          # However, let's rely on the file generated in hyperopt_results/ first, 
+          # then copy it to the artifact path.
+          
+          docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable \
+            hyperopt --config config.json --hyperopt-loss SharpeHyperOptLoss \
+            --strategy LiquiditySweep --epochs 100 --spaces buy roi trailing stoploss \
+            --job-workers 4
+          
+          # Find the latest result file
+          LATEST_RESULT=$(ls -t hyperopt_results/*.json | head -n 1)
+          echo "Latest result: $LATEST_RESULT"
+          
+          # Copy it to a stable name for artifact
+          cp "$LATEST_RESULT" user_data/strategies/LiquiditySweep.json || cp "$LATEST_RESULT" LiquiditySweep.json
 
-      - name: Upload Artifact
+      - name: Upload Results
         uses: actions/upload-artifact@v4
         with:
           name: hyperopt-results
-          path: strategies/LiquiditySweep.json
+          path: user_data/strategies/LiquiditySweep.json
