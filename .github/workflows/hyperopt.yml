@@ -20,7 +20,15 @@ jobs:
         with:
           python-version: '3.10'
 
+      - name: Cache TA-Lib
+        id: cache-talib
+        uses: actions/cache@v3
+        with:
+          path: ta-lib
+          key: ${{ runner.os }}-talib-0.4.0
+
       - name: Install TA-Lib
+        if: steps.cache-talib.outputs.cache-hit != 'true'
         run: |
           wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz
           tar xvzf ta-lib-0.4.0-src.tar.gz
@@ -29,7 +37,13 @@ jobs:
           make
           sudo make install
           cd ..
-          rm -rf ta-lib ta-lib-0.4.0-src.tar.gz
+          # rm -rf ta-lib ta-lib-0.4.0-src.tar.gz # Keep for cache
+
+      - name: Install TA-Lib (cached)
+        if: steps.cache-talib.outputs.cache-hit == 'true'
+        run: |
+          cd ta-lib
+          sudo make install
 
       - name: Install Freqtrade
         run: |
@@ -38,18 +52,17 @@ jobs:
           # Install any additional dependencies if requirements.txt exists
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      - name: Download Data
-        run: |
-          # Download 30 days of data for the pairs in config.json
-          # We need to extract pairs from config or just hardcode based on what I saw (BTC, ETH, SOL)
-          freqtrade download-data --config config.json --days 30 -t 15m 1h --userdir .
-
       - name: Run Hyperopt
         run: |
-          freqtrade hyperopt --config config.json --hyperopt-loss SharpeHyperOptLoss --strategy LiquiditySweep --spaces buy roi trailing stoploss -e 100 --no-color --userdir .
+          # Create user_data directory structure
+          mkdir -p user_data/strategies
+          
+          # Run hyperopt with existing data in 'data' directory
+          # We output to user_data/strategies/LiquiditySweep.json
+          freqtrade hyperopt --config config.json --hyperopt-loss SharpeHyperOptLoss --strategy LiquiditySweep --spaces buy roi trailing stoploss -e 100 --no-color --datadir data --userdir user_data
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: strategy-params
-          path: strategies/LiquiditySweep.json
+          path: user_data/strategies/LiquiditySweep.json
