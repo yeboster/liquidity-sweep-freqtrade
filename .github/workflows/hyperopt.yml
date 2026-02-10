@@ -12,27 +12,34 @@ jobs:
     container:
       image: freqtradeorg/freqtrade:stable
       options: --user root
-    
-    env:
-      PYTHONPATH: /home/ftuser/.local/lib/python3.13/site-packages
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Create user_data/strategies directory
-        run: mkdir -p user_data/strategies
-
-      - name: Run Hyperopt
+      - name: Prepare permissions and Run Hyperopt
         run: |
-          freqtrade hyperopt \
+          # The checkout action mounts the directory as root/runner.
+          # We need to give the container user (ftuser) permission to write to it.
+          # Standard freqtrade image user is 'ftuser' (uid 1000).
+          
+          # Ensure directories exist
+          mkdir -p user_data/strategies
+          mkdir -p user_data/hyperopt_results
+          
+          # recursively change ownership of the current directory to ftuser
+          chown -R ftuser:ftuser .
+
+          # Run hyperopt as ftuser to ensure access to installed python libraries
+          # We use "su ftuser -s /bin/bash -c '...'"
+          su ftuser -s /bin/bash -c "freqtrade hyperopt \
             --config config.json \
             --hyperopt-loss SharpeHyperOptLoss \
             --spaces buy roi trailing stoploss \
-            -e 100 \
+            -e 10 \
             --timerange 20240101-20241231 \
             --datadir data \
-            --print-json
+            --print-json"
 
       - name: Locate and Move Result
         run: |
