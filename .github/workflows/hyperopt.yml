@@ -17,31 +17,18 @@ jobs:
 
       - name: Prepare permissions
         run: |
-          # Freqtrade container runs as UID 1000. 
-          # GitHub runner is usually 1001.
-          # We make the current directory writable by everyone so the container can write results.
           sudo chmod -R 777 .
 
       - name: Pull Freqtrade Image
         run: docker pull freqtradeorg/freqtrade:stable
 
       - name: Download Data
-        # Mount current directory to /freqtrade/user_data
-        # Config is at root, so inside container it is 'config.json'
         run: |
           docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable \
             download-data --config config.json --days 30 -t 15m 1h
 
       - name: Run Hyperopt
         run: |
-          # Run hyperopt. 
-          # We capture the output JSON to a file for artifact upload.
-          # We use --print-json to output the result to stdout.
-          # We filter the output to extract the JSON part if necessary, but 
-          # usually --print-json makes it clean if --logfile is /dev/null.
-          # However, let's rely on the file generated in hyperopt_results/ first, 
-          # then copy it to the artifact path.
-          
           docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable \
             hyperopt --config config.json --hyperopt-loss SharpeHyperOptLoss \
             --strategy LiquiditySweep --epochs 100 --spaces buy roi trailing stoploss \
@@ -51,11 +38,11 @@ jobs:
           LATEST_RESULT=$(ls -t hyperopt_results/*.json | head -n 1)
           echo "Latest result: $LATEST_RESULT"
           
-          # Copy it to a stable name for artifact
-          cp "$LATEST_RESULT" user_data/strategies/LiquiditySweep.json || cp "$LATEST_RESULT" LiquiditySweep.json
+          # Copy it to strategies/LiquiditySweep.json so we can easily pick it up
+          cp "$LATEST_RESULT" strategies/LiquiditySweep.json
 
       - name: Upload Results
         uses: actions/upload-artifact@v4
         with:
           name: hyperopt-results
-          path: user_data/strategies/LiquiditySweep.json
+          path: strategies/LiquiditySweep.json
