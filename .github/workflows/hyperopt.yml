@@ -12,6 +12,9 @@ jobs:
     container:
       image: freqtradeorg/freqtrade:stable
       options: --user root
+    
+    env:
+      PYTHONPATH: /home/ftuser/.local/lib/python3.13/site-packages
 
     steps:
       - name: Checkout repository
