@@ -3,88 +3,38 @@ name: Freqtrade Hyperopt
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
     paths:
+      - 'strategies/**'
       - '.github/workflows/hyperopt.yml'
-
-permissions:
-  contents: read
 
 jobs:
   hyperopt:
     runs-on: ubuntu-latest
-    container:
-      image: freqtradeorg/freqtrade:stable
-      options: --user root
-
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
-      - name: Prepare permissions and Run Hyperopt
+      - name: Create user_data directory
         run: |
-          # Create entrypoint script to run as ftuser
-          cat << 'EOF' > run_analysis.sh
-          #!/bin/bash
-          set -e
-          
-          echo "Checking feather files (Python)..."
-          python3 -c "
-          import pandas as pd
-          import glob
-          for f in glob.glob('data/okx/*.feather'):
-              try:
-                  df = pd.read_feather(f)
-                  if 'date' in df.columns:
-                      print(f'{f}: {df['date'].min()} to {df['date'].max()} (rows: {len(df)})')
-                  else:
-                       print(f'{f}: No date column')
-              except Exception as e:
-                  print(f'Error reading {f}: {e}')
-          "
-          
-          echo "Setting up standard user_data directory..."
-          mkdir -p user_data/data/okx
-          cp data/okx/*.feather user_data/data/okx/
-          
-          echo "Running Hyperopt..."
-          freqtrade hyperopt \
-            --config config.json \
-            --hyperopt-loss SharpeHyperOptLoss \
-            --spaces buy roi trailing stoploss \
-            -e 10 \
-            --data-format-ohlcv feather \
-            --print-json
-          EOF
-          
-          chmod +x run_analysis.sh
+          mkdir -p user_data/data
 
-          # Ensure directories exist
-          mkdir -p user_data/strategies
-          mkdir -p user_data/hyperopt_results
-          
-          # Change ownership
-          chown -R ftuser:ftuser .
-          
-          # Execute as ftuser
-          su ftuser -s /bin/bash -c "./run_analysis.sh"
+      - name: Pull Freqtrade Image
+        run: docker pull freqtradeorg/freqtrade:stable
 
-      - name: Locate and Move Result
+      - name: Download Data
         run: |
-          # Find where the JSON landed. Usually next to the strategy file.
-          if [ -f strategies/LiquiditySweep.json ]; then
-            echo "Found optimization result in strategies/LiquiditySweep.json"
-            cp strategies/LiquiditySweep.json user_data/strategies/LiquiditySweep.json
-          elif [ -f user_data/strategies/LiquiditySweep.json ]; then
-             echo "Found optimization result in user_data/strategies/LiquiditySweep.json"
-          else
-             echo "Optimization result not found in expected locations. Listing files:"
-             find . -name "*.json"
-             exit 1
-          fi
+          # Map current directory (repo root) to /freqtrade/user_data
+          # This makes config.json available at /freqtrade/user_data/config.json
+          docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable download-data --config config.json --days 30 -t 15m 1h --exchange okx
+
+      - name: Run Hyperopt
+        run: |
+          # Run hyperopt and capture output to strategies/LiquiditySweep.json
+          # We use --logfile /dev/null to avoid mixing logs with stdout JSON
+          docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable hyperoptimization --config config.json --hyperopt-loss SharpeHyperOptLoss --spaces buy roi trailing stoploss -e 100 --print-json --logfile /dev/null > strategies/LiquiditySweep.json
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: liquidity-sweep-hyperopt-results
-          path: user_data/strategies/LiquiditySweep.json
+          name: hyperopt-results
+          path: strategies/LiquiditySweep.json
