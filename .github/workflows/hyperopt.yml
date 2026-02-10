@@ -21,17 +21,22 @@ jobs:
       - name: Pull Freqtrade Image
         run: docker pull freqtradeorg/freqtrade:stable
 
+      - name: Fix permissions
+        run: |
+          sudo chown -R $USER:$USER .
+          chmod -R 777 user_data strategies
+
       - name: Download Data
         run: |
           # Map current directory (repo root) to /freqtrade/user_data
           # This makes config.json available at /freqtrade/user_data/config.json
-          docker run --rm -u $(id -u):$(id -g) -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable download-data --config user_data/config.json --days 30 -t 15m 1h --exchange okx
+          docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable download-data --config user_data/config.json --days 30 -t 15m 1h --exchange okx
 
       - name: Run Hyperopt
         run: |
           # Run hyperopt and capture output to strategies/LiquiditySweep.json
           # We use --logfile /dev/null to avoid mixing logs with stdout JSON
-          docker run --rm -u $(id -u):$(id -g) -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable hyperoptimization --config user_data/config.json --strategy-path user_data/strategies/ --strategy LiquiditySweep --hyperopt-loss SharpeHyperOptLoss --spaces buy roi trailing stoploss -e 100 --print-json --logfile /dev/null > strategies/LiquiditySweep.json
+          docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable hyperoptimization --config user_data/config.json --strategy-path user_data/strategies/ --strategy LiquiditySweep --hyperopt-loss SharpeHyperOptLoss --spaces buy roi trailing stoploss -e 100 --print-json --logfile /dev/null > strategies/LiquiditySweep.json
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
