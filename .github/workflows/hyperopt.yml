@@ -25,6 +25,14 @@ jobs:
       - name: Pull Freqtrade Image
         run: docker pull freqtradeorg/freqtrade:stable
 
+      - name: Fix permissions (data)
+        run: |
+          docker run --rm \
+            --user 0 \
+            -v ${{ github.workspace }}:/freqtrade/user_data \
+            freqtradeorg/freqtrade:stable \
+            chown -R 1000:1000 /freqtrade/user_data
+
       - name: Run Hyperopt
         run: |
           docker run --rm \
