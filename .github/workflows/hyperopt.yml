@@ -31,6 +31,9 @@ jobs:
           pip install "freqtrade[hyperopt]"
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
+      - name: Download Data
+        run: freqtrade download-data --config config.json --timerange 20240101-
+
       - name: Run Hyperopt
         run: |
           mkdir -p user_data/strategies
