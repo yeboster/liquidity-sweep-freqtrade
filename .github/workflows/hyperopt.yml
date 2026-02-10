@@ -52,6 +52,10 @@ jobs:
           # Install any additional dependencies if requirements.txt exists
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
+      - name: Prepare User Directory
+        run: |
+          mkdir -p user_data/strategies
+
       - name: Debug Data
         run: |
           ls -R data
@@ -62,9 +66,6 @@ jobs:
 
       - name: Run Hyperopt
         run: |
-          # Create user_data directory structure
-          mkdir -p user_data/strategies
-          
           # Run hyperopt with existing data in 'data' directory
           # We output to user_data/strategies/LiquiditySweep.json
           freqtrade hyperopt --config config.json --hyperopt-loss SharpeHyperOptLoss --strategy LiquiditySweep --spaces buy roi trailing stoploss -e 100 --no-color --datadir data --userdir user_data --data-format-ohlcv feather
