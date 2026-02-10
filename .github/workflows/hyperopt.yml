@@ -11,6 +11,10 @@ on:
 jobs:
   hyperopt:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -25,24 +29,18 @@ jobs:
       - name: Download Data
         run: |
           docker run --rm -v ${{ github.workspace }}:/freqtrade/user_data freqtradeorg/freqtrade:stable \
-            download-data --config /freqtrade/user_data/config.json --days 30 -t 15m 1h --exchange okx
+            download-data --config /freqtrade/user_data/config.json --days 365 -t 15m 1h
 
       - name: Run Hyperopt
         run: |
-          # Use --print-json and redirect specifically to a file on the host mount
+          # Redirect stdout to file to capture JSON result. Logs should go to stderr.
           docker run --rm -v ${{ github.workspace }}:/freqtrade/user_data freqtradeorg/freqtrade:stable \
             hyperopt --config /freqtrade/user_data/config.json --hyperopt-loss SharpeHyperOptLoss \
             --strategy LiquiditySweep --epochs 100 --spaces buy roi trailing stoploss \
-            --job-workers 4 --print-json --logfile /dev/null > hyperopt_raw.txt
-          
-          # Clean up and extract JSON
-          grep -v "^202" hyperopt_raw.txt | grep "{" > strategies/LiquiditySweep.json || true
-          cat strategies/LiquiditySweep.json
+            --job-workers 4 --print-json > strategies/LiquiditySweep.json
 
       - name: Upload Results
         uses: actions/upload-artifact@v4
         with:
           name: hyperopt-params
-          path: |
-            strategies/LiquiditySweep.json
-            hyperopt_raw.txt
+          path: strategies/LiquiditySweep.json
