@@ -1,77 +1,37 @@
-name: Hyperopt Strategy
+name: Freqtrade Hyperopt
 
 on:
   workflow_dispatch:
   push:
-    paths:
-      - 'strategies/**'
-      - 'config.json'
-      - '.github/workflows/hyperopt.yml'
+    branches: [ main ]
 
 jobs:
   hyperopt:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v3
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
 
-      - name: Cache TA-Lib
-        id: cache-talib
-        uses: actions/cache@v3
-        with:
-          path: ta-lib
-          key: ${{ runner.os }}-talib-0.4.0
-
-      - name: Install TA-Lib
-        if: steps.cache-talib.outputs.cache-hit != 'true'
-        run: |
-          wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz
-          tar xvzf ta-lib-0.4.0-src.tar.gz
-          cd ta-lib
-          ./configure --prefix=/usr
-          make
-          sudo make install
-          cd ..
-          # rm -rf ta-lib ta-lib-0.4.0-src.tar.gz # Keep for cache
-
-      - name: Install TA-Lib (cached)
-        if: steps.cache-talib.outputs.cache-hit == 'true'
-        run: |
-          cd ta-lib
-          sudo make install
-
-      - name: Install Freqtrade
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install "freqtrade[hyperopt]"
-          # Install any additional dependencies if requirements.txt exists
+          pip install freqtrade
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-
-      - name: Prepare User Directory
-        run: |
-          mkdir -p user_data/strategies
-
-      - name: Debug Data (Download)
-        run: |
-          # Download fresh data to ensure compatibility and presence
-          freqtrade download-data --config config.json --days 30 --timeframes 15m 1h --data-format-ohlcv feather
-
-          ls -R user_data/data
-          
-          # Verify freqtrade can see the data
-          freqtrade list-data --config config.json --data-format-ohlcv feather
 
       - name: Run Hyperopt
         run: |
-          # Run hyperopt with downloaded data
-          freqtrade hyperopt --config config.json --hyperopt-loss SharpeHyperOptLoss --strategy LiquiditySweep --spaces buy roi trailing stoploss -e 100 --no-color --userdir user_data --data-format-ohlcv feather
+          mkdir -p user_data/strategies
+          freqtrade hyperopt --config config.json --strategy LiquiditySweep --hyperopt-loss SharpeHyperOptLoss --spaces buy roi trailing stoploss -e 100 --datadir data --timerange 20240101-
 
-      - name: Upload Artifacts
+      - name: Extract Best Params
+        run: |
+          freqtrade hyperopt-show --config config.json --hyperopt-loss SharpeHyperOptLoss --print-json --datadir data > user_data/strategies/LiquiditySweep.json
+
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: strategy-params
