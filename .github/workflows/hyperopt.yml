@@ -30,6 +30,22 @@ jobs:
           # recursively change ownership of the current directory to ftuser
           chown -R ftuser:ftuser .
 
+          # Check data content
+          su ftuser -s /bin/bash -c "python3 -c \"
+import pandas as pd
+import glob
+print('Checking feather files...')
+for f in glob.glob('data/okx/*.feather'):
+    try:
+        df = pd.read_feather(f)
+        if 'date' in df.columns:
+            print(f'{f}: {df['date'].min()} to {df['date'].max()} (rows: {len(df)})')
+        else:
+             print(f'{f}: No date column')
+    except Exception as e:
+        print(f'Error reading {f}: {e}')
+\""
+
           # Run hyperopt as ftuser to ensure access to installed python libraries
           # We use "su ftuser -s /bin/bash -c '...'"
           su ftuser -s /bin/bash -c "freqtrade hyperopt \
@@ -37,7 +53,6 @@ jobs:
             --hyperopt-loss SharpeHyperOptLoss \
             --spaces buy roi trailing stoploss \
             -e 10 \
-            --timerange 20240101-20241231 \
             --datadir data \
             --data-format-ohlcv feather \
             --print-json"
