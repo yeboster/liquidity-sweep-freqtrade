@@ -19,10 +19,9 @@ jobs:
 
       - name: Run Freqtrade Hyperopt
         # We mount the current directory (repository root) to /freqtrade/user_data
-        # This works because the repo structure matches user_data structure
-        # Config is at user_data/config.json inside container
+        # Run as the runner user to avoid permission issues
         run: |
-          docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable hyperopt \
+          docker run --rm --user $(id -u):$(id -g) -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable hyperopt \
             --config user_data/config.json \
             --strategy LiquiditySweep \
             --hyperopt-loss SharpeHyperOptLoss \
@@ -32,15 +31,15 @@ jobs:
 
       - name: Extract Best Parameters
         # Run hyperopt-show to output the best parameters as JSON
-        # We redirect stdout to the target file
+        # Output to root first to match permissions
         run: |
-          docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable hyperopt-show \
+          docker run --rm --user $(id -u):$(id -g) -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable hyperopt-show \
             --config user_data/config.json \
             --strategy LiquiditySweep \
-            --print-json > user_data/strategies/LiquiditySweep.json
+            --print-json > LiquiditySweep_optimized.json
 
       - name: Upload Best Parameters
         uses: actions/upload-artifact@v4
         with:
           name: optimized-params
-          path: user_data/strategies/LiquiditySweep.json
+          path: LiquiditySweep_optimized.json
