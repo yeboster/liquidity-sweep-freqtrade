@@ -2,6 +2,10 @@ name: Freqtrade Hyperopt
 
 on:
   workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/hyperopt.yml'
 
 permissions:
   contents: read
