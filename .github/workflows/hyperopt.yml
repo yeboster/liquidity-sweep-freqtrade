@@ -36,9 +36,9 @@ jobs:
       - name: Extract Best Parameters
         run: |
           # Now we can write to the directory
+          # Remove --strategy flag as it's not supported/needed for hyperopt-show (uses config/latest result)
           docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable hyperopt-show \
             --config user_data/config.json \
-            --strategy LiquiditySweep \
             --print-json > user_data/strategies/LiquiditySweep.json
 
       - name: Upload Best Parameters
