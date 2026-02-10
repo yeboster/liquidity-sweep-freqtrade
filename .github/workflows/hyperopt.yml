@@ -36,7 +36,7 @@ jobs:
         run: |
           # Run hyperopt and capture output to strategies/LiquiditySweep.json
           # We use --logfile /dev/null to avoid mixing logs with stdout JSON
-          docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable hyperoptimization --config user_data/config.json --strategy-path user_data/strategies/ --strategy LiquiditySweep --hyperopt-loss SharpeHyperOptLoss --spaces buy roi trailing stoploss -e 100 --print-json --logfile /dev/null > strategies/LiquiditySweep.json
+          docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable hyperopt --config user_data/config.json --strategy-path user_data/strategies/ --strategy LiquiditySweep --hyperopt-loss SharpeHyperOptLoss --spaces buy roi trailing stoploss -e 100 --print-json --logfile /dev/null > strategies/LiquiditySweep.json
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
