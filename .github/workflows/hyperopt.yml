@@ -35,6 +35,7 @@ jobs:
             --strategy LiquiditySweep \
             --strategy-path user_data/strategies \
             --datadir user_data/data \
+            --data-format-ohlcv feather \
             --spaces buy roi trailing stoploss \
             --hyperopt-loss SharpeHyperOptLoss \
             -e 100 \
@@ -64,6 +65,7 @@ jobs:
             --strategy LiquiditySweep \
             --strategy-path user_data/strategies \
             --datadir user_data/data \
+            --data-format-ohlcv feather \
             --hyperopt-filename $CONTAINER_PATH \
             --print-json > strategies/LiquiditySweep.json
             
