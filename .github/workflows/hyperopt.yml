@@ -5,7 +5,6 @@ on:
   push:
     paths:
       - 'strategies/**'
-      - 'config.json'
       - '.github/workflows/hyperopt.yml'
 
 jobs:
@@ -15,28 +14,32 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Create user_data directory structure in artifact prep
+        run: mkdir -p user_data/strategies
+
       - name: Run Freqtrade Hyperopt
-        # Mount current directory to /freqtrade/user_data
+        # We mount the current directory (repository root) to /freqtrade/user_data
+        # This works because the repo structure matches user_data structure
         run: |
           docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable hyperopt \
-            --config /freqtrade/user_data/config.json \
+            --config config.json \
             --strategy LiquiditySweep \
             --hyperopt-loss SharpeHyperOptLoss \
             --spaces buy roi trailing stoploss \
             -e 100 \
-            --data-format-ohlcv feather
+            --job-workers 4
 
-      - name: Export Best Params
-        continue-on-error: true
-        # Export to optimized.json to avoid conflicts
+      - name: Extract Best Parameters
+        # Run hyperopt-show to output the best parameters as JSON
+        # We redirect stdout to the target file
         run: |
           docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable hyperopt-show \
-            --config /freqtrade/user_data/config.json \
-            --hyperopt-filename last \
-            --print-json > optimized.json || echo "{}" > optimized.json
+            --config config.json \
+            --strategy LiquiditySweep \
+            --print-json > user_data/strategies/LiquiditySweep.json
 
-      - name: Upload Hyperopt Results
+      - name: Upload Best Parameters
         uses: actions/upload-artifact@v4
         with:
-          name: hyperopt-results
-          path: optimized.json
+          name: optimized-params
+          path: user_data/strategies/LiquiditySweep.json
