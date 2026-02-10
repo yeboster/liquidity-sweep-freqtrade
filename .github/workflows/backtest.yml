@@ -19,6 +19,15 @@ jobs:
           mkdir -p backtest_results
           chmod -R 777 backtest_results
 
+      - name: Fix permissions (data)
+        run: |
+          docker run --rm \
+            --user 0 \
+            --entrypoint /bin/sh \
+            -v ${{ github.workspace }}:/freqtrade/user_data \
+            freqtradeorg/freqtrade:stable \
+            -c "chown -R 1000:1000 /freqtrade/user_data"
+
       - name: Run Freqtrade Backtest
         run: |
           docker run --rm \
