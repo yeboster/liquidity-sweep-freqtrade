@@ -39,6 +39,7 @@ jobs:
             -e 10 \
             --timerange 20240101-20241231 \
             --datadir data \
+            --data-format-ohlcv feather \
             --print-json"
 
       - name: Locate and Move Result
