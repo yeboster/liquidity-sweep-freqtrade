@@ -11,6 +11,10 @@ on:
 jobs:
   hyperopt:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -25,24 +29,30 @@ jobs:
       - name: Download Data
         run: |
           docker run --rm -v ${{ github.workspace }}:/freqtrade/user_data freqtradeorg/freqtrade:stable \
-            download-data --config /freqtrade/user_data/config.json --days 30 -t 15m 1h --exchange okx
+            download-data --config /freqtrade/user_data/config.json --days 30 -t 15m 1h
 
       - name: Run Hyperopt
         run: |
           docker run --rm -v ${{ github.workspace }}:/freqtrade/user_data freqtradeorg/freqtrade:stable \
             hyperopt --config /freqtrade/user_data/config.json --hyperopt-loss SharpeHyperOptLoss \
             --strategy LiquiditySweep --epochs 100 --spaces buy roi trailing stoploss \
-            --job-workers 4 --print-json > hyperopt_output.json
+            --job-workers 4
           
-          # Extract JSON if printed
-          if grep -q "{" hyperopt_output.json; then
-             sed -n '/{/,/}/p' hyperopt_output.json > strategies/LiquiditySweep.json
+          # Find the latest result file
+          LATEST_RESULT=$(ls -t hyperopt_results/*.json | head -n 1)
+          echo "Latest result: $LATEST_RESULT"
+          
+          if [ -z "$LATEST_RESULT" ]; then
+            echo "No hyperopt result found!"
+            ls -R hyperopt_results/
+            exit 1
           fi
+          
+          # Copy it to strategies/LiquiditySweep.json
+          cp "$LATEST_RESULT" strategies/LiquiditySweep.json
 
       - name: Upload Results
         uses: actions/upload-artifact@v4
         with:
           name: hyperopt-params
-          path: |
-            strategies/LiquiditySweep.json
-            hyperopt_output.json
+          path: strategies/LiquiditySweep.json
