@@ -59,7 +59,7 @@ jobs:
           
           # Run hyperopt with existing data in 'data' directory
           # We output to user_data/strategies/LiquiditySweep.json
-          freqtrade hyperopt --config config.json --hyperopt-loss SharpeHyperOptLoss --strategy LiquiditySweep --spaces buy roi trailing stoploss -e 100 --no-color --datadir data --userdir user_data
+          freqtrade hyperopt --config config.json --hyperopt-loss SharpeHyperOptLoss --strategy LiquiditySweep --spaces buy roi trailing stoploss -e 100 --no-color --datadir data --userdir user_data --data-format-ohlcv feather
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
