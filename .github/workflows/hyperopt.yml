@@ -20,9 +20,10 @@ jobs:
       - name: Run Freqtrade Hyperopt
         # We mount the current directory (repository root) to /freqtrade/user_data
         # This works because the repo structure matches user_data structure
+        # Config is at user_data/config.json inside container
         run: |
           docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable hyperopt \
-            --config config.json \
+            --config user_data/config.json \
             --strategy LiquiditySweep \
             --hyperopt-loss SharpeHyperOptLoss \
             --spaces buy roi trailing stoploss \
@@ -34,7 +35,7 @@ jobs:
         # We redirect stdout to the target file
         run: |
           docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable hyperopt-show \
-            --config config.json \
+            --config user_data/config.json \
             --strategy LiquiditySweep \
             --print-json > user_data/strategies/LiquiditySweep.json
 
