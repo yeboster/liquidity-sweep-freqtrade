@@ -17,29 +17,34 @@ jobs:
       - name: Prepare directories
         run: |
           mkdir -p backtest_results
-          chmod -R 777 backtest_results
+          mkdir -p user_data/data
+          mkdir -p user_data/strategies
+          chmod -R 777 backtest_results user_data
 
-      - name: Fix permissions (data)
+      - name: Download Data
         run: |
           docker run --rm \
-            --user 0 \
-            --entrypoint /bin/sh \
-            -v ${{ github.workspace }}:/freqtrade/user_data \
+            -v ${{ github.workspace }}/user_data:/freqtrade/user_data \
+            -v ${{ github.workspace }}/config.json:/freqtrade/config.json \
             freqtradeorg/freqtrade:stable \
-            -c "chown -R 1000:1000 /freqtrade/user_data"
+            download-data \
+            --config /freqtrade/config.json \
+            --days 30 \
+            --timeframes 15m 1h \
+            --data-format-ohlcv feather
 
       - name: Run Freqtrade Backtest
         run: |
           docker run --rm \
-            -v ${{ github.workspace }}:/freqtrade/user_data \
+            -v ${{ github.workspace }}/user_data:/freqtrade/user_data \
+            -v ${{ github.workspace }}/config.json:/freqtrade/config.json \
+            -v ${{ github.workspace }}/strategies:/freqtrade/user_data/strategies \
             freqtradeorg/freqtrade:stable \
             backtesting \
-            --config /freqtrade/user_data/config.json \
+            --config /freqtrade/config.json \
             --strategy LiquiditySweep \
-            --strategy-path /freqtrade/user_data/strategies \
-            --datadir /freqtrade/user_data/data \
-            --data-format-ohlcv feather \
             --timerange 20260101- \
+            --data-format-ohlcv feather \
             --enable-protections
 
       - name: Upload Backtest Results
