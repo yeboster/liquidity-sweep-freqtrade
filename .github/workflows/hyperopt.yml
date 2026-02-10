@@ -32,7 +32,9 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Download Data
-        run: freqtrade download-data --config config.json --timerange 20240101-
+        run: |
+          mkdir -p user_data
+          freqtrade download-data --config config.json --timerange 20240101-
 
       - name: Run Hyperopt
         run: |
