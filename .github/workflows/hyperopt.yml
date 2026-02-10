@@ -43,13 +43,16 @@ jobs:
                   print(f'Error reading {f}: {e}')
           "
           
+          echo "Setting up standard user_data directory..."
+          mkdir -p user_data/data/okx
+          cp data/okx/*.feather user_data/data/okx/
+          
           echo "Running Hyperopt..."
           freqtrade hyperopt \
             --config config.json \
             --hyperopt-loss SharpeHyperOptLoss \
             --spaces buy roi trailing stoploss \
             -e 10 \
-            --datadir data \
             --data-format-ohlcv feather \
             --print-json
           EOF
