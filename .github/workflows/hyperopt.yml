@@ -52,6 +52,14 @@ jobs:
           # Install any additional dependencies if requirements.txt exists
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
+      - name: Debug Data
+        run: |
+          ls -R data
+          du -h data
+          
+          # Verify freqtrade can see the data
+          freqtrade list-data --config config.json --datadir data --data-format-ohlcv feather
+
       - name: Run Hyperopt
         run: |
           # Create user_data directory structure
