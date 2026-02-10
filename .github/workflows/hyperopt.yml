@@ -1,48 +1,77 @@
-name: Hyperopt Strategy
+name: Freqtrade Hyperopt
 
 on:
   workflow_dispatch:
   push:
     paths:
       - 'strategies/**'
+      - 'config.json'
       - '.github/workflows/hyperopt.yml'
 
 jobs:
   hyperopt:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Create user_data directory structure in artifact prep
-        run: mkdir -p user_data/strategies
-
-      - name: Run Freqtrade Hyperopt
-        # Run as default user (usually ftuser or root inside container)
+      - name: Prepare directories
         run: |
-          docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable hyperopt \
+          mkdir -p hyperopt_results
+          chmod -R 777 hyperopt_results
+          # Ensure data exists or fails fast? We assume it's checked out.
+          ls -R data
+
+      - name: Pull Freqtrade Image
+        run: docker pull freqtradeorg/freqtrade:stable
+
+      - name: Run Hyperopt
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/freqtrade/user_data \
+            freqtradeorg/freqtrade:stable \
+            hyperopt \
             --config user_data/config.json \
             --strategy LiquiditySweep \
-            --hyperopt-loss SharpeHyperOptLoss \
+            --strategy-path user_data/strategies \
+            --datadir user_data/data \
             --spaces buy roi trailing stoploss \
+            --hyperopt-loss SharpeHyperOptLoss \
             -e 100 \
-            --job-workers 4 || true
-          # We count failure as success here because hyperopt might exit code 1 if no improvement found
-          # But we still want to try extracting results
+            --print-json
 
-      - name: Fix Permissions
-        run: sudo chown -R $USER:$USER .
-
-      - name: Extract Best Parameters
+      - name: Extract Best Params
         run: |
-          # Now we can write to the directory
-          # Remove --strategy flag as it's not supported/needed for hyperopt-show (uses config/latest result)
-          docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable hyperopt-show \
-            --config user_data/config.json \
-            --print-json > user_data/strategies/LiquiditySweep.json
+          # Find the latest hyperopt result file (on host)
+          LAST_RESULT=$(ls -t hyperopt_results/* | head -n1)
+          
+          if [ -z "$LAST_RESULT" ]; then
+            echo "No hyperopt result found!"
+            exit 1
+          fi
 
-      - name: Upload Best Parameters
+          echo "Latest result: $LAST_RESULT"
+          
+          # Container path logic: host `hyperopt_results/foo` -> container `/freqtrade/user_data/hyperopt_results/foo`
+          CONTAINER_PATH="/freqtrade/user_data/hyperopt_results/$(basename $LAST_RESULT)"
+          
+          # Write to strategies/LiquiditySweep.json on host
+          docker run --rm \
+            -v ${{ github.workspace }}:/freqtrade/user_data \
+            freqtradeorg/freqtrade:stable \
+            hyperopt-show \
+            --config user_data/config.json \
+            --strategy LiquiditySweep \
+            --strategy-path user_data/strategies \
+            --datadir user_data/data \
+            --hyperopt-filename $CONTAINER_PATH \
+            --print-json > strategies/LiquiditySweep.json
+            
+          echo "Optimized params saved to strategies/LiquiditySweep.json"
+          cat strategies/LiquiditySweep.json
+
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: optimized-params
-          path: user_data/strategies/LiquiditySweep.json
+          path: strategies/LiquiditySweep.json
