@@ -28,13 +28,14 @@ jobs:
       - name: Run Hyperopt
         run: |
           docker run --rm \
+            --user $(id -u):$(id -g) \
             -v ${{ github.workspace }}:/freqtrade/user_data \
             freqtradeorg/freqtrade:stable \
             hyperopt \
-            --config user_data/config.json \
+            --config /freqtrade/user_data/config.json \
             --strategy LiquiditySweep \
-            --strategy-path user_data/strategies \
-            --datadir user_data/data \
+            --strategy-path /freqtrade/user_data/strategies \
+            --datadir /freqtrade/user_data/data \
             --data-format-ohlcv feather \
             --spaces buy roi trailing stoploss \
             --hyperopt-loss SharpeHyperOptLoss \
@@ -58,13 +59,14 @@ jobs:
           
           # Write to strategies/LiquiditySweep.json on host
           docker run --rm \
+            --user $(id -u):$(id -g) \
             -v ${{ github.workspace }}:/freqtrade/user_data \
             freqtradeorg/freqtrade:stable \
             hyperopt-show \
-            --config user_data/config.json \
+            --config /freqtrade/user_data/config.json \
             --strategy LiquiditySweep \
-            --strategy-path user_data/strategies \
-            --datadir user_data/data \
+            --strategy-path /freqtrade/user_data/strategies \
+            --datadir /freqtrade/user_data/data \
             --data-format-ohlcv feather \
             --hyperopt-filename $CONTAINER_PATH \
             --print-json > strategies/LiquiditySweep.json
