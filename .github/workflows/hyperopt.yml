@@ -56,19 +56,20 @@ jobs:
         run: |
           mkdir -p user_data/strategies
 
-      - name: Debug Data
+      - name: Debug Data (Download)
         run: |
-          ls -R data
-          du -h data
+          # Download fresh data to ensure compatibility and presence
+          freqtrade download-data --config config.json --days 30 --timeframes 15m 1h --data-format-ohlcv feather
+
+          ls -R user_data/data
           
           # Verify freqtrade can see the data
-          freqtrade list-data --config config.json --datadir data --data-format-ohlcv feather
+          freqtrade list-data --config config.json --data-format-ohlcv feather
 
       - name: Run Hyperopt
         run: |
-          # Run hyperopt with existing data in 'data' directory
-          # We output to user_data/strategies/LiquiditySweep.json
-          freqtrade hyperopt --config config.json --hyperopt-loss SharpeHyperOptLoss --strategy LiquiditySweep --spaces buy roi trailing stoploss -e 100 --no-color --datadir data --userdir user_data --data-format-ohlcv feather
+          # Run hyperopt with downloaded data
+          freqtrade hyperopt --config config.json --hyperopt-loss SharpeHyperOptLoss --strategy LiquiditySweep --spaces buy roi trailing stoploss -e 100 --no-color --userdir user_data --data-format-ohlcv feather
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
