@@ -1,4 +1,4 @@
-name: Freqtrade Hyperopt
+name: Hyperopt Strategy
 
 on:
   workflow_dispatch:
@@ -15,91 +15,30 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Prepare directories
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Freqtrade
         run: |
-          mkdir -p hyperopt_results
-          chmod -R 777 hyperopt_results
-          # Ensure data exists or fails fast? We assume it's checked out.
-          ls -R data
+          python -m pip install --upgrade pip
+          pip install freqtrade
+          # Install any additional dependencies if requirements.txt exists
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      - name: Pull Freqtrade Image
-        run: docker pull freqtradeorg/freqtrade:stable
-
-      - name: Fix permissions (data)
+      - name: Download Data
         run: |
-          docker run --rm \
-            --user 0 \
-            --entrypoint /bin/sh \
-            -v ${{ github.workspace }}:/freqtrade/user_data \
-            freqtradeorg/freqtrade:stable \
-            -c "chown -R 1000:1000 /freqtrade/user_data"
-
-      - name: Debug Data
-        run: |
-          docker run --rm \
-            -v ${{ github.workspace }}:/freqtrade/user_data \
-            freqtradeorg/freqtrade:stable \
-            list-data \
-            --config /freqtrade/user_data/config.json \
-            --datadir /freqtrade/user_data/data \
-            --data-format-ohlcv feather
-
-          echo "Listing files inside container:"
-          docker run --rm \
-            -v ${{ github.workspace }}:/freqtrade/user_data \
-            --entrypoint /bin/sh \
-            freqtradeorg/freqtrade:stable \
-            -c "ls -R /freqtrade/user_data/data"
+          # Download 30 days of data for the pairs in config.json
+          # We need to extract pairs from config or just hardcode based on what I saw (BTC, ETH, SOL)
+          freqtrade download-data --config config.json --days 30 -t 15m 1h
 
       - name: Run Hyperopt
         run: |
-          docker run --rm \
-            -v ${{ github.workspace }}:/freqtrade/user_data \
-            freqtradeorg/freqtrade:stable \
-            hyperopt \
-            --config /freqtrade/user_data/config.json \
-            --strategy LiquiditySweep \
-            --strategy-path /freqtrade/user_data/strategies \
-            --datadir /freqtrade/user_data/data \
-            --data-format-ohlcv feather \
-            --spaces buy roi trailing stoploss \
-            --hyperopt-loss SharpeHyperOptLoss \
-            -e 100 \
-            --print-json
+          freqtrade hyperopt --config config.json --hyperopt-loss SharpeHyperOptLoss --strategy LiquiditySweep --spaces buy roi trailing stoploss -e 100 --no-color
 
-      - name: Extract Best Params
-        run: |
-          # Find the latest hyperopt result file (on host)
-          LAST_RESULT=$(ls -t hyperopt_results/* | head -n1)
-          
-          if [ -z "$LAST_RESULT" ]; then
-            echo "No hyperopt result found!"
-            exit 1
-          fi
-
-          echo "Latest result: $LAST_RESULT"
-          
-          # Container path logic: host `hyperopt_results/foo` -> container `/freqtrade/user_data/hyperopt_results/foo`
-          CONTAINER_PATH="/freqtrade/user_data/hyperopt_results/$(basename $LAST_RESULT)"
-          
-          # Write to strategies/LiquiditySweep.json on host
-          docker run --rm \
-            -v ${{ github.workspace }}:/freqtrade/user_data \
-            freqtradeorg/freqtrade:stable \
-            hyperopt-show \
-            --config /freqtrade/user_data/config.json \
-            --strategy LiquiditySweep \
-            --strategy-path /freqtrade/user_data/strategies \
-            --datadir /freqtrade/user_data/data \
-            --data-format-ohlcv feather \
-            --hyperopt-filename $CONTAINER_PATH \
-            --print-json > strategies/LiquiditySweep.json
-            
-          echo "Optimized params saved to strategies/LiquiditySweep.json"
-          cat strategies/LiquiditySweep.json
-
-      - name: Upload Artifact
+      - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: optimized-params
+          name: strategy-params
           path: strategies/LiquiditySweep.json
