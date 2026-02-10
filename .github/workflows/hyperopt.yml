@@ -18,10 +18,10 @@ jobs:
         run: mkdir -p user_data/strategies
 
       - name: Run Freqtrade Hyperopt
-        # We mount the current directory (repository root) to /freqtrade/user_data
-        # Run as the runner user to avoid permission issues
+        # Run as default user (usually ftuser or root inside container)
+        # We will fix permissions afterwards
         run: |
-          docker run --rm --user $(id -u):$(id -g) -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable hyperopt \
+          docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable hyperopt \
             --config user_data/config.json \
             --strategy LiquiditySweep \
             --hyperopt-loss SharpeHyperOptLoss \
@@ -30,16 +30,22 @@ jobs:
             --job-workers 4
 
       - name: Extract Best Parameters
-        # Run hyperopt-show to output the best parameters as JSON
-        # Output to root first to match permissions
         run: |
-          docker run --rm --user $(id -u):$(id -g) -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable hyperopt-show \
+          # Generate the JSON file as container user
+          # Note: We output to a temp file then move it to handle permissions/paths
+          docker run --rm -v $(pwd):/freqtrade/user_data freqtradeorg/freqtrade:stable hyperopt-show \
             --config user_data/config.json \
             --strategy LiquiditySweep \
-            --print-json > LiquiditySweep_optimized.json
+            --print-json > LiquiditySweep_temp.json
+          
+          # Fix permissions for the entire user_data directory and temp file so the runner can access it
+          sudo chown -R $USER:$USER .
+          
+          # Move/Rename to the desired artifact path
+          mv LiquiditySweep_temp.json user_data/strategies/LiquiditySweep.json
 
       - name: Upload Best Parameters
         uses: actions/upload-artifact@v4
         with:
           name: optimized-params
-          path: LiquiditySweep_optimized.json
+          path: user_data/strategies/LiquiditySweep.json
