@@ -42,11 +42,11 @@ jobs:
         run: |
           # Download 30 days of data for the pairs in config.json
           # We need to extract pairs from config or just hardcode based on what I saw (BTC, ETH, SOL)
-          freqtrade download-data --config config.json --days 30 -t 15m 1h
+          freqtrade download-data --config config.json --days 30 -t 15m 1h --userdir .
 
       - name: Run Hyperopt
         run: |
-          freqtrade hyperopt --config config.json --hyperopt-loss SharpeHyperOptLoss --strategy LiquiditySweep --spaces buy roi trailing stoploss -e 100 --no-color
+          freqtrade hyperopt --config config.json --hyperopt-loss SharpeHyperOptLoss --strategy LiquiditySweep --spaces buy roi trailing stoploss -e 100 --no-color --userdir .
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
