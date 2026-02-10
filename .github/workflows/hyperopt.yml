@@ -23,43 +23,48 @@ jobs:
 
       - name: Prepare permissions and Run Hyperopt
         run: |
-          # The checkout action mounts the directory as root/runner.
-          # We need to give the container user (ftuser) permission to write to it.
-          # Standard freqtrade image user is 'ftuser' (uid 1000).
+          # Create entrypoint script to run as ftuser
+          cat << 'EOF' > run_analysis.sh
+          #!/bin/bash
+          set -e
           
-          # Ensure directories exist
-          mkdir -p user_data/strategies
-          mkdir -p user_data/hyperopt_results
+          echo "Checking feather files (Python)..."
+          python3 -c "
+          import pandas as pd
+          import glob
+          for f in glob.glob('data/okx/*.feather'):
+              try:
+                  df = pd.read_feather(f)
+                  if 'date' in df.columns:
+                      print(f'{f}: {df['date'].min()} to {df['date'].max()} (rows: {len(df)})')
+                  else:
+                       print(f'{f}: No date column')
+              except Exception as e:
+                  print(f'Error reading {f}: {e}')
+          "
           
-          # recursively change ownership of the current directory to ftuser
-          chown -R ftuser:ftuser .
-
-          # Check data content
-          su ftuser -s /bin/bash -c "python3 -c \"
-import pandas as pd
-import glob
-print('Checking feather files...')
-for f in glob.glob('data/okx/*.feather'):
-    try:
-        df = pd.read_feather(f)
-        if 'date' in df.columns:
-            print(f'{f}: {df['date'].min()} to {df['date'].max()} (rows: {len(df)})')
-        else:
-             print(f'{f}: No date column')
-    except Exception as e:
-        print(f'Error reading {f}: {e}')
-\""
-
-          # Run hyperopt as ftuser to ensure access to installed python libraries
-          # We use "su ftuser -s /bin/bash -c '...'"
-          su ftuser -s /bin/bash -c "freqtrade hyperopt \
+          echo "Running Hyperopt..."
+          freqtrade hyperopt \
             --config config.json \
             --hyperopt-loss SharpeHyperOptLoss \
             --spaces buy roi trailing stoploss \
             -e 10 \
             --datadir data \
             --data-format-ohlcv feather \
-            --print-json"
+            --print-json
+          EOF
+          
+          chmod +x run_analysis.sh
+
+          # Ensure directories exist
+          mkdir -p user_data/strategies
+          mkdir -p user_data/hyperopt_results
+          
+          # Change ownership
+          chown -R ftuser:ftuser .
+          
+          # Execute as ftuser
+          su ftuser -s /bin/bash -c "./run_analysis.sh"
 
       - name: Locate and Move Result
         run: |
