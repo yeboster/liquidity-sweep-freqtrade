@@ -40,7 +40,14 @@
         "pair_whitelist": [
             "BTC/USDT",
             "ETH/USDT",
-            "SOL/USDT"
+            "SOL/USDT",
+            "XRP/USDT",
+            "DOGE/USDT",
+            "ADA/USDT",
+            "AVAX/USDT",
+            "LINK/USDT",
+            "MATIC/USDT",
+            "DOT/USDT"
         ],
         "pair_blacklist": []
     },

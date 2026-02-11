@@ -26,21 +26,27 @@ jobs:
       - name: Pull Freqtrade Image
         run: docker pull freqtradeorg/freqtrade:stable
 
-      - name: Download Data
+      - name: Download Data (365 days)
         run: |
           docker run --rm -v ${{ github.workspace }}:/freqtrade/user_data freqtradeorg/freqtrade:stable \
             download-data --config /freqtrade/user_data/config.json --days 365 -t 15m 1h
 
-      - name: Run Hyperopt
+      - name: Run Hyperopt (200 epochs)
         run: |
-          # Redirect stdout to file to capture JSON result. Logs should go to stderr.
+          # Run hyperopt and capture output
           docker run --rm -v ${{ github.workspace }}:/freqtrade/user_data freqtradeorg/freqtrade:stable \
             hyperopt --config /freqtrade/user_data/config.json --hyperopt-loss SharpeHyperOptLoss \
-            --strategy LiquiditySweep --epochs 100 --spaces buy roi trailing stoploss \
-            --job-workers 4 --print-json > strategies/LiquiditySweep.json
+            --strategy LiquiditySweep --epochs 200 --spaces buy roi trailing stoploss \
+            --job-workers 4 --print-json --no-color 2>&1 | tee hyperopt_output.log
+          
+          # Extract JSON result (last JSON object in output)
+          grep -E '^\{' hyperopt_output.log | tail -1 > strategies/LiquiditySweep.json || echo '{"error": "no_result"}' > strategies/LiquiditySweep.json
+          cat strategies/LiquiditySweep.json
 
       - name: Upload Results
         uses: actions/upload-artifact@v4
         with:
           name: hyperopt-params
-          path: strategies/LiquiditySweep.json
+          path: |
+            strategies/LiquiditySweep.json
+            hyperopt_output.log
