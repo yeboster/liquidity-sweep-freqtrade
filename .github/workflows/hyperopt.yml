@@ -26,21 +26,25 @@ jobs:
       - name: Pull Freqtrade Image
         run: docker pull freqtradeorg/freqtrade:stable
 
-      - name: Download Data (365 days)
+      - name: Download Data (730 days)
         run: |
           docker run --rm -v ${{ github.workspace }}:/freqtrade/user_data freqtradeorg/freqtrade:stable \
-            download-data --config /freqtrade/user_data/config.json --days 365 -t 15m 1h
+            download-data --config /freqtrade/user_data/config.json --days 730 -t 15m 1h
 
-      - name: Run Hyperopt (200 epochs)
+      - name: Run Hyperopt (500 epochs, SortinoHyperOptLoss)
         run: |
-          # Run hyperopt and capture output
+          # Run hyperopt with SortinoHyperOptLoss (handles sparse trades better than Sharpe)
+          # Using 500 epochs and all spaces for comprehensive search
           docker run --rm -v ${{ github.workspace }}:/freqtrade/user_data freqtradeorg/freqtrade:stable \
-            hyperopt --config /freqtrade/user_data/config.json --hyperopt-loss SharpeHyperOptLoss \
-            --strategy LiquiditySweep --epochs 200 --spaces buy roi trailing stoploss \
-            --job-workers 4 --print-json --no-color 2>&1 | tee hyperopt_output.log
+            hyperopt --config /freqtrade/user_data/config.json --hyperopt-loss SortinoHyperOptLoss \
+            --strategy LiquiditySweep --epochs 500 --spaces buy roi trailing stoploss \
+            --job-workers 4 --print-json --no-color --min-trades 5 2>&1 | tee hyperopt_output.log
           
-          # Extract JSON result (last JSON object in output)
-          grep -E '^\{' hyperopt_output.log | tail -1 > strategies/LiquiditySweep.json || echo '{"error": "no_result"}' > strategies/LiquiditySweep.json
+          # Extract JSON result (last valid JSON params)
+          grep -E '^\{' hyperopt_output.log | tail -1 > strategies/LiquiditySweep.json || echo '{}' > strategies/LiquiditySweep.json
+          
+          # Also extract best result summary if present
+          grep -A5 "Best result:" hyperopt_output.log >> hyperopt_summary.txt 2>/dev/null || true
           cat strategies/LiquiditySweep.json
 
       - name: Upload Results
@@ -50,3 +54,4 @@ jobs:
           path: |
             strategies/LiquiditySweep.json
             hyperopt_output.log
+            hyperopt_summary.txt

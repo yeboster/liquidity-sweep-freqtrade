@@ -62,12 +62,12 @@ class LiquiditySweep(IStrategy):
     # Required candle count for startup
     startup_candle_count = 100
     
-    # Strategy parameters (hyperoptable) - Defaults from hyperopt 2026-02-11
-    ote_lower = DecimalParameter(0.40, 0.75, default=0.672, space="buy", optimize=True) 
-    ote_upper = DecimalParameter(0.70, 0.95, default=0.88, space="buy", optimize=True) 
-    pivot_lookback = IntParameter(2, 6, default=2, space="buy", optimize=True) 
-    buffer_pips = DecimalParameter(0.0001, 0.0050, default=0.003, space="buy", optimize=True) 
-    min_rr = DecimalParameter(1.0, 5.0, default=2.133, space="buy", optimize=True) 
+    # Strategy parameters (hyperoptable) - Wider ranges for hyperopt exploration
+    ote_lower = DecimalParameter(0.30, 0.70, default=0.50, space="buy", optimize=True) 
+    ote_upper = DecimalParameter(0.60, 1.00, default=0.85, space="buy", optimize=True) 
+    pivot_lookback = IntParameter(2, 8, default=3, space="buy", optimize=True) 
+    buffer_pips = DecimalParameter(0.0001, 0.0100, default=0.005, space="buy", optimize=True) 
+    min_rr = DecimalParameter(0.5, 4.0, default=1.5, space="buy", optimize=True) 
     
     # FVG Requirement
     require_fvg = CategoricalParameter([True, False], default=True, space="buy", optimize=True)
