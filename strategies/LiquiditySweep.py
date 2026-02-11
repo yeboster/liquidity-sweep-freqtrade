@@ -36,19 +36,24 @@ class LiquiditySweep(IStrategy):
     INTERFACE_VERSION = 3
     
     # Strategy version tag (Iteration Tracker)
-    STRATEGY_VERSION = "0.9.3" # Loosened for Hyperopt Volume
+    STRATEGY_VERSION = "0.9.4" # Hyperopt-optimized (2026-02-11)
 
-    # ROI table - we use custom_exit for TP (liquidity target)
-    # Set high ROI to avoid premature exit, or keep as safety net
+    # ROI table - Hyperopt optimized
     minimal_roi = {
-        "0": 0.1, # Allow earlier exits for testing volume
+        "0": 0.32,
+        "30": 0.082,
+        "111": 0.034,
+        "243": 0
     }
     
-    # Stoploss - conservative, we override with custom_stoploss (sweep high)
-    stoploss = -0.10  # Widen to allow custom SL to breathe
+    # Stoploss - Hyperopt optimized
+    stoploss = -0.22
     
-    # Trailing stop disabled - we use fixed SL at sweep high
-    trailing_stop = False
+    # Trailing stop - Hyperopt optimized
+    trailing_stop = True
+    trailing_stop_positive = 0.051
+    trailing_stop_positive_offset = 0.085
+    trailing_only_offset_is_reached = False
     
     # Timeframe
     timeframe = '15m'
@@ -57,32 +62,24 @@ class LiquiditySweep(IStrategy):
     # Required candle count for startup
     startup_candle_count = 100
     
-    # Strategy parameters (hyperoptable)
-    # Refined ranges based on typical crypto/forex volatility for 15m timeframe
-    ote_lower = DecimalParameter(0.40, 0.68, default=0.45, space="buy", optimize=True) 
-    ote_upper = DecimalParameter(0.70, 0.95, default=0.85, space="buy", optimize=True) 
-    pivot_lookback = IntParameter(2, 6, default=3, space="buy", optimize=True) 
-    buffer_pips = DecimalParameter(0.0001, 0.0050, default=0.0010, space="buy", optimize=True) 
-    min_rr = DecimalParameter(1.0, 5.0, default=1.2, space="buy", optimize=True) 
+    # Strategy parameters (hyperoptable) - Defaults from hyperopt 2026-02-11
+    ote_lower = DecimalParameter(0.40, 0.75, default=0.672, space="buy", optimize=True) 
+    ote_upper = DecimalParameter(0.70, 0.95, default=0.88, space="buy", optimize=True) 
+    pivot_lookback = IntParameter(2, 6, default=2, space="buy", optimize=True) 
+    buffer_pips = DecimalParameter(0.0001, 0.0050, default=0.003, space="buy", optimize=True) 
+    min_rr = DecimalParameter(1.0, 5.0, default=2.133, space="buy", optimize=True) 
     
-    # New: Trigger detection window
-    # trigger_lookback = IntParameter(2, 10, default=4, space="buy", optimize=True) # Deprecated in 0.7.0
-    
-    # New: FVG Requirement
-    require_fvg = CategoricalParameter([True, False], default=False, space="buy", optimize=True)  # Filter by FVG presence
+    # FVG Requirement
+    require_fvg = CategoricalParameter([True, False], default=True, space="buy", optimize=True)
 
-    # New: Internal BoS (Break of Structure) Requirement
+    # Internal BoS (Break of Structure) Requirement
     use_structure_break = CategoricalParameter([True, False], default=False, space="buy", optimize=True)
     
-    # New: Trigger Pivot Length (Fractal size for internal structure)
-    # 1 = One candle on each side (very sensitive)
-    # 2 = Two candles on each side (more robust internal structure)
-    trigger_pivot = IntParameter(1, 3, default=1, space="buy", optimize=True)
+    # Trigger Pivot Length (Fractal size for internal structure)
+    trigger_pivot = IntParameter(1, 3, default=3, space="buy", optimize=True)
 
-    # New: Entry Refinement (Market or Limit at FVG Midpoint)
-    # 'market': Enter immediately on confirmation close.
-    # 'limit_fvg_50': Place limit order at 50% of the FVG candle body (Retrace Entry).
-    entry_refinement = CategoricalParameter(['market', 'limit_fvg_50'], default='market', space="buy", optimize=True)
+    # Entry Refinement (Market or Limit at FVG Midpoint)
+    entry_refinement = CategoricalParameter(['market', 'limit_fvg_50'], default='limit_fvg_50', space="buy", optimize=True)
 
     # Plotting
     plot_config = {

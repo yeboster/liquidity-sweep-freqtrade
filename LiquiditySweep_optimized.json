@@ -1,0 +1,24 @@
+{
+  "params": {
+    "buy": {
+      "ote_lower": 0.55,
+      "ote_upper": 0.79,
+      "pivot_lookback": 2,
+      "buffer_pips": 0.0005,
+      "min_rr": 1.5,
+      "require_fvg": true,
+      "use_structure_break": true,
+      "trigger_pivot": 1,
+      "entry_refinement": "market"
+    },
+    "roi": {
+      "0": 100.0
+    },
+    "stoploss": {
+      "stoploss": -0.05
+    },
+    "trailing": {
+      "trailing_stop": false
+    }
+  }
+}
