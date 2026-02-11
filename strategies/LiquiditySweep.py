@@ -36,16 +36,16 @@ class LiquiditySweep(IStrategy):
     INTERFACE_VERSION = 3
     
     # Strategy version tag (Iteration Tracker)
-    STRATEGY_VERSION = "0.9.2" # Relaxed OTE/Pivot/RR for Volume
+    STRATEGY_VERSION = "0.9.3" # Loosened for Hyperopt Volume
 
     # ROI table - we use custom_exit for TP (liquidity target)
     # Set high ROI to avoid premature exit, or keep as safety net
     minimal_roi = {
-        "0": 100.0,
+        "0": 0.1, # Allow earlier exits for testing volume
     }
     
     # Stoploss - conservative, we override with custom_stoploss (sweep high)
-    stoploss = -0.05  # Widen default stoploss to allow custom_stoploss to function without pre-emptive hits in high vol
+    stoploss = -0.10  # Widen to allow custom SL to breathe
     
     # Trailing stop disabled - we use fixed SL at sweep high
     trailing_stop = False
@@ -59,23 +59,20 @@ class LiquiditySweep(IStrategy):
     
     # Strategy parameters (hyperoptable)
     # Refined ranges based on typical crypto/forex volatility for 15m timeframe
-    ote_lower = DecimalParameter(0.50, 0.68, default=0.55, space="buy", optimize=True) # Widened lower bound to catch slightly shallower retracements
-    ote_upper = DecimalParameter(0.70, 0.88, default=0.79, space="buy", optimize=True) # Widened upper bound to catch deep wicks
-    pivot_lookback = IntParameter(2, 6, default=2, space="buy", optimize=True) # Reduced max lookback; 10 is too slow for 15m
-    buffer_pips = DecimalParameter(0.0001, 0.0020, default=0.0005, space="buy", optimize=True) # Increased range for volatile assets
-    min_rr = DecimalParameter(1.5, 5.0, default=1.5, space="buy", optimize=True) # Higher R:R potential allowed
+    ote_lower = DecimalParameter(0.40, 0.68, default=0.45, space="buy", optimize=True) 
+    ote_upper = DecimalParameter(0.70, 0.95, default=0.85, space="buy", optimize=True) 
+    pivot_lookback = IntParameter(2, 6, default=3, space="buy", optimize=True) 
+    buffer_pips = DecimalParameter(0.0001, 0.0050, default=0.0010, space="buy", optimize=True) 
+    min_rr = DecimalParameter(1.0, 5.0, default=1.2, space="buy", optimize=True) 
     
     # New: Trigger detection window
     # trigger_lookback = IntParameter(2, 10, default=4, space="buy", optimize=True) # Deprecated in 0.7.0
     
     # New: FVG Requirement
-    require_fvg = CategoricalParameter([True, False], default=True, space="buy", optimize=True)  # Filter by FVG presence
+    require_fvg = CategoricalParameter([True, False], default=False, space="buy", optimize=True)  # Filter by FVG presence
 
     # New: Internal BoS (Break of Structure) Requirement
-    # Require the close to break not just the triggering low, but a structural pivot?
-    # In this iteration, we refine the 'triggering_low' to be a valid Fractal/Pivot if possible, 
-    # rather than just a rolling min, to confirm a true Change of Character (ChoCH) on the lower timeframe.
-    use_structure_break = CategoricalParameter([True, False], default=True, space="buy", optimize=True)
+    use_structure_break = CategoricalParameter([True, False], default=False, space="buy", optimize=True)
     
     # New: Trigger Pivot Length (Fractal size for internal structure)
     # 1 = One candle on each side (very sensitive)
