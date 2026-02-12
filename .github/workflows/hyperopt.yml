@@ -31,15 +31,15 @@ jobs:
           docker run --rm -v ${{ github.workspace }}:/freqtrade/user_data freqtradeorg/freqtrade:stable \
             download-data --config /freqtrade/user_data/config.json --days 730 -t 15m 1h
 
-      - name: Run Hyperopt (300 epochs, SortinoHyperOptLoss)
+      - name: Run Hyperopt (500 epochs, ProfitDrawDownHyperOptLoss)
         run: |
-          # Run hyperopt with SortinoHyperOptLoss (handles sparse trades better than Sharpe)
-          # Using 300 epochs and all spaces for comprehensive search
+          # Run hyperopt with ProfitDrawDownHyperOptLoss (better for sparse strategies)
+          # Using 500 epochs, all spaces, min-trades 1 (allow any signal)
           # Note: Docker writes to strategies/ with ftuser permissions
           docker run --rm -v ${{ github.workspace }}:/freqtrade/user_data freqtradeorg/freqtrade:stable \
-            hyperopt --config /freqtrade/user_data/config.json --hyperopt-loss SortinoHyperOptLoss \
-            --strategy LiquiditySweep --epochs 300 --spaces buy roi trailing stoploss \
-            --job-workers 4 --print-json --no-color --min-trades 10 2>&1 | tee hyperopt_output.log
+            hyperopt --config /freqtrade/user_data/config.json --hyperopt-loss ProfitDrawDownHyperOptLoss \
+            --strategy LiquiditySweep --epochs 500 --spaces buy roi trailing stoploss \
+            --job-workers 4 --print-json --no-color --min-trades 1 2>&1 | tee hyperopt_output.log
           
           # Fix permissions after docker run
           sudo chmod -R 777 .
