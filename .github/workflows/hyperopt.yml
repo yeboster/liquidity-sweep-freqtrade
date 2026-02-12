@@ -37,6 +37,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
+          pip install "numpy<2.0"  # Pin numpy to avoid binary incompatibility
           pip install freqtrade
           pip install ta-lib-bin  # Pre-compiled TA-Lib for CI
 
@@ -68,9 +69,8 @@ jobs:
             --timerange ${{ github.event.inputs.timerange || '20240101-' }} \
             --epochs ${{ github.event.inputs.epochs || '100' }} \
             --random-state 42 \
-            --min-trades 10 \
+            --min-trades 5 \
             --datadir user_data/data \
-            --export-csv user_data/hyperopt_results/hyperopt_results.csv \
             --print-json \
             | tee hyperopt_output.log
 

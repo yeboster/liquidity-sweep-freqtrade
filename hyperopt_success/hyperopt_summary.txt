@@ -1,0 +1,5 @@
+Best result:
+
+   292/500:      1 trades. 1/0/0 Wins/Draws/Losses. Avg profit   0.35%. Median profit   0.35%. Total profit  1.14431241 USDT (   0.11%). Avg duration 4:00:00 min. Objective: -1.14431
+
+{"params":{"buffer_pips":0.001,"entry_refinement":"limit_fvg_50","min_rr":1.023,"ote_lower":0.409,"ote_upper":0.891,"pivot_lookback":5,"require_fvg":false,"trigger_pivot":2,"use_structure_break":false},"minimal_roi":{"0":0.24,"43":0.083,"139":0.048,"226":0},"stoploss":-0.075,"trailing_stop":true,"trailing_stop_positive":0.293,"trailing_stop_positive_offset":0.299,"trailing_only_offset_is_reached":true,"max_open_trades":3}

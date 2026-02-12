@@ -36,24 +36,24 @@ class LiquiditySweep(IStrategy):
     INTERFACE_VERSION = 3
     
     # Strategy version tag (Iteration Tracker)
-    STRATEGY_VERSION = "0.9.4" # Hyperopt-optimized (2026-02-11)
+    STRATEGY_VERSION = "0.9.5" # Hyperopt-optimized (2026-02-12)
 
-    # ROI table - Hyperopt optimized
+    # ROI table - Hyperopt optimized (run 21930270331)
     minimal_roi = {
-        "0": 0.32,
-        "30": 0.082,
-        "111": 0.034,
-        "243": 0
+        "0": 0.24,
+        "43": 0.083,
+        "139": 0.048,
+        "226": 0
     }
     
     # Stoploss - Hyperopt optimized
-    stoploss = -0.22
+    stoploss = -0.075
     
     # Trailing stop - Hyperopt optimized
     trailing_stop = True
-    trailing_stop_positive = 0.051
-    trailing_stop_positive_offset = 0.085
-    trailing_only_offset_is_reached = False
+    trailing_stop_positive = 0.293
+    trailing_stop_positive_offset = 0.299
+    trailing_only_offset_is_reached = True
     
     # Timeframe
     timeframe = '15m'
@@ -63,20 +63,21 @@ class LiquiditySweep(IStrategy):
     startup_candle_count = 100
     
     # Strategy parameters (hyperoptable) - Wider ranges for hyperopt exploration
-    ote_lower = DecimalParameter(0.30, 0.70, default=0.50, space="buy", optimize=True) 
-    ote_upper = DecimalParameter(0.60, 1.00, default=0.85, space="buy", optimize=True) 
-    pivot_lookback = IntParameter(2, 8, default=3, space="buy", optimize=True) 
-    buffer_pips = DecimalParameter(0.0001, 0.0100, default=0.005, space="buy", optimize=True) 
-    min_rr = DecimalParameter(0.5, 4.0, default=1.5, space="buy", optimize=True) 
+    # Optimized defaults from hyperopt run 21930270331 (2026-02-12)
+    ote_lower = DecimalParameter(0.30, 0.70, default=0.409, space="buy", optimize=True) 
+    ote_upper = DecimalParameter(0.60, 1.00, default=0.891, space="buy", optimize=True) 
+    pivot_lookback = IntParameter(2, 8, default=5, space="buy", optimize=True) 
+    buffer_pips = DecimalParameter(0.0001, 0.0100, default=0.001, space="buy", optimize=True) 
+    min_rr = DecimalParameter(0.5, 4.0, default=1.023, space="buy", optimize=True) 
     
     # FVG Requirement
-    require_fvg = CategoricalParameter([True, False], default=True, space="buy", optimize=True)
+    require_fvg = CategoricalParameter([True, False], default=False, space="buy", optimize=True)
 
     # Internal BoS (Break of Structure) Requirement
     use_structure_break = CategoricalParameter([True, False], default=False, space="buy", optimize=True)
     
     # Trigger Pivot Length (Fractal size for internal structure)
-    trigger_pivot = IntParameter(1, 3, default=3, space="buy", optimize=True)
+    trigger_pivot = IntParameter(1, 3, default=2, space="buy", optimize=True)
 
     # Entry Refinement (Market or Limit at FVG Midpoint)
     entry_refinement = CategoricalParameter(['market', 'limit_fvg_50'], default='limit_fvg_50', space="buy", optimize=True)
