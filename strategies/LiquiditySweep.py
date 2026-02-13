@@ -36,7 +36,7 @@ class LiquiditySweep(IStrategy):
     INTERFACE_VERSION = 3
     
     # Strategy version tag (Iteration Tracker)
-    STRATEGY_VERSION = "0.9.5" # Hyperopt-optimized (2026-02-12)
+    STRATEGY_VERSION = "0.10.0" # Make OTE zone optional (2026-02-13)
 
     # ROI table - Hyperopt optimized (run 21930270331)
     minimal_roi = {
@@ -72,6 +72,9 @@ class LiquiditySweep(IStrategy):
     
     # FVG Requirement
     require_fvg = CategoricalParameter([True, False], default=False, space="buy", optimize=True)
+
+    # OTE Zone Requirement (v0.10.0: Make optional to increase trade volume)
+    require_ote = CategoricalParameter([True, False], default=False, space="buy", optimize=True)
 
     # Internal BoS (Break of Structure) Requirement
     use_structure_break = CategoricalParameter([True, False], default=False, space="buy", optimize=True)
@@ -378,11 +381,14 @@ class LiquiditySweep(IStrategy):
         dataframe['rr_long'] = np.where(dataframe['risk_long'] > 0, dataframe['reward_long'] / dataframe['risk_long'], 0)
         dataframe['rr_short'] = np.where(dataframe['risk_short'] > 0, dataframe['reward_short'] / dataframe['risk_short'], 0)
         
+        # OTE zone check (optional via parameter)
+        ote_check = dataframe['in_ote'] if self.require_ote.value else True
+        
         # Long Entry Conditions
         if htf_trend_col in dataframe.columns:
             dataframe.loc[
                 (dataframe[htf_trend_col] == 1) &  # Bullish HTF trend
-                (dataframe['in_ote']) &             # Price in OTE zone
+                (ote_check) &                       # Price in OTE zone (if required)
                 (dataframe['long_confirmation']) &   # Sweep + confirmation
                 (dataframe['rr_long'] >= self.min_rr.value), # Min R:R
                 'enter_long'
@@ -391,7 +397,7 @@ class LiquiditySweep(IStrategy):
             # Short Entry Conditions
             dataframe.loc[
                 (dataframe[htf_trend_col] == -1) &  # Bearish HTF trend
-                (dataframe['in_ote']) &              # Price in OTE zone
+                (ote_check) &                        # Price in OTE zone (if required)
                 (dataframe['short_confirmation']) &    # Sweep + confirmation
                 (dataframe['rr_short'] >= self.min_rr.value), # Min R:R
                 'enter_short'

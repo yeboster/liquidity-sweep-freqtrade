@@ -29,7 +29,7 @@ jobs:
             freqtradeorg/freqtrade:stable \
             download-data \
             --config /freqtrade/config.json \
-            --days 30 \
+            --days 730 \
             --timeframes 15m 1h \
             --data-format-ohlcv feather
 
@@ -43,9 +43,10 @@ jobs:
             backtesting \
             --config /freqtrade/config.json \
             --strategy LiquiditySweep \
-            --timerange 20260101- \
+            --timerange 20240213- \
             --data-format-ohlcv feather \
-            --enable-protections
+            --export trades \
+            --export-filename user_data/backtest_results/backtest-trades.json
 
       - name: Upload Backtest Results
         uses: actions/upload-artifact@v4
