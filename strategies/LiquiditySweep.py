@@ -36,7 +36,7 @@ class LiquiditySweep(IStrategy):
     INTERFACE_VERSION = 3
     
     # Strategy version tag (Iteration Tracker)
-    STRATEGY_VERSION = "0.10.0" # Make OTE zone optional (2026-02-13)
+    STRATEGY_VERSION = "0.11.0" # Re-enable OTE with wider default bounds (2026-02-14)
 
     # ROI table - Hyperopt optimized (run 21930270331)
     minimal_roi = {
@@ -63,9 +63,9 @@ class LiquiditySweep(IStrategy):
     startup_candle_count = 100
     
     # Strategy parameters (hyperoptable) - Wider ranges for hyperopt exploration
-    # Optimized defaults from hyperopt run 21930270331 (2026-02-12)
-    ote_lower = DecimalParameter(0.30, 0.70, default=0.409, space="buy", optimize=True) 
-    ote_upper = DecimalParameter(0.60, 1.00, default=0.891, space="buy", optimize=True) 
+    # v0.11.0: Much looser OTE bounds to capture more opportunities while maintaining quality
+    ote_lower = DecimalParameter(0.20, 0.70, default=0.30, space="buy", optimize=True) 
+    ote_upper = DecimalParameter(0.60, 1.00, default=0.90, space="buy", optimize=True) 
     pivot_lookback = IntParameter(2, 8, default=5, space="buy", optimize=True) 
     buffer_pips = DecimalParameter(0.0001, 0.0100, default=0.001, space="buy", optimize=True) 
     min_rr = DecimalParameter(0.5, 4.0, default=1.023, space="buy", optimize=True) 
@@ -73,8 +73,8 @@ class LiquiditySweep(IStrategy):
     # FVG Requirement
     require_fvg = CategoricalParameter([True, False], default=False, space="buy", optimize=True)
 
-    # OTE Zone Requirement (v0.10.0: Make optional to increase trade volume)
-    require_ote = CategoricalParameter([True, False], default=False, space="buy", optimize=True)
+    # OTE Zone Requirement (v0.11.0: Re-enable by default with wider bounds for quality)
+    require_ote = CategoricalParameter([True, False], default=True, space="buy", optimize=True)
 
     # Internal BoS (Break of Structure) Requirement
     use_structure_break = CategoricalParameter([True, False], default=False, space="buy", optimize=True)
