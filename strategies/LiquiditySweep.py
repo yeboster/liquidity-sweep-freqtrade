@@ -36,7 +36,7 @@ class LiquiditySweep(IStrategy):
     INTERFACE_VERSION = 3
     
     # Strategy version tag (Iteration Tracker)
-    STRATEGY_VERSION = "0.11.0" # Re-enable OTE with wider default bounds (2026-02-14)
+    STRATEGY_VERSION = "0.12.0" # Lower min_rr to 0.7 for higher trade capture (2026-02-15)
 
     # ROI table - Hyperopt optimized (run 21930270331)
     minimal_roi = {
@@ -63,12 +63,12 @@ class LiquiditySweep(IStrategy):
     startup_candle_count = 100
     
     # Strategy parameters (hyperoptable) - Wider ranges for hyperopt exploration
-    # v0.11.0: Much looser OTE bounds to capture more opportunities while maintaining quality
+    # v0.12.0: Reduced min_rr to capture more trades where the target is closer
     ote_lower = DecimalParameter(0.20, 0.70, default=0.30, space="buy", optimize=True) 
     ote_upper = DecimalParameter(0.60, 1.00, default=0.90, space="buy", optimize=True) 
     pivot_lookback = IntParameter(2, 8, default=5, space="buy", optimize=True) 
     buffer_pips = DecimalParameter(0.0001, 0.0100, default=0.001, space="buy", optimize=True) 
-    min_rr = DecimalParameter(0.5, 4.0, default=1.023, space="buy", optimize=True) 
+    min_rr = DecimalParameter(0.5, 4.0, default=0.7, space="buy", optimize=True) 
     
     # FVG Requirement
     require_fvg = CategoricalParameter([True, False], default=False, space="buy", optimize=True)
