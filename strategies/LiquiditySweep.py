@@ -36,7 +36,7 @@ class LiquiditySweep(IStrategy):
     INTERFACE_VERSION = 3
     
     # Strategy version tag (Iteration Tracker)
-    STRATEGY_VERSION = "0.13.0" # Pivot lookback 3, market entry, lower OTE 0.2 (2026-02-16)
+    STRATEGY_VERSION = "0.15.0" # Removed HTF trend requirement (2026-02-17)
 
     # ROI table - Hyperopt optimized (run 21930270331)
     minimal_roi = {
@@ -74,7 +74,7 @@ class LiquiditySweep(IStrategy):
     require_fvg = CategoricalParameter([True, False], default=False, space="buy", optimize=True)
 
     # OTE Zone Requirement (v0.11.0: Re-enable by default with wider bounds for quality)
-    require_ote = CategoricalParameter([True, False], default=True, space="buy", optimize=True)
+    require_ote = CategoricalParameter([True, False], default=False, space="buy", optimize=True)
 
     # Internal BoS (Break of Structure) Requirement
     use_structure_break = CategoricalParameter([True, False], default=False, space="buy", optimize=True)
@@ -385,23 +385,22 @@ class LiquiditySweep(IStrategy):
         ote_check = dataframe['in_ote'] if self.require_ote.value else True
         
         # Long Entry Conditions
-        if htf_trend_col in dataframe.columns:
-            dataframe.loc[
-                (dataframe[htf_trend_col] == 1) &  # Bullish HTF trend
-                (ote_check) &                       # Price in OTE zone (if required)
-                (dataframe['long_confirmation']) &   # Sweep + confirmation
-                (dataframe['rr_long'] >= self.min_rr.value), # Min R:R
-                'enter_long'
-            ] = 1
-            
-            # Short Entry Conditions
-            dataframe.loc[
-                (dataframe[htf_trend_col] == -1) &  # Bearish HTF trend
-                (ote_check) &                        # Price in OTE zone (if required)
-                (dataframe['short_confirmation']) &    # Sweep + confirmation
-                (dataframe['rr_short'] >= self.min_rr.value), # Min R:R
-                'enter_short'
-            ] = 1
+        # (htf_trend_col == 1) &  # Bullish HTF trend
+        dataframe.loc[
+            (ote_check) &                       # Price in OTE zone (if required)
+            (dataframe['long_confirmation']) &   # Sweep + confirmation
+            (dataframe['rr_long'] >= self.min_rr.value), # Min R:R
+            'enter_long'
+        ] = 1
+        
+        # Short Entry Conditions
+        # (htf_trend_col == -1) &  # Bearish HTF trend
+        dataframe.loc[
+            (ote_check) &                        # Price in OTE zone (if required)
+            (dataframe['short_confirmation']) &    # Sweep + confirmation
+            (dataframe['rr_short'] >= self.min_rr.value), # Min R:R
+            'enter_short'
+        ] = 1
         
         return dataframe
 
