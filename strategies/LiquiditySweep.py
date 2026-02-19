@@ -11,6 +11,11 @@ Core Logic:
 
 Author: Jarvis (OpenClaw)
 Version: 0.5.0
+
+Changelog:
+- v0.16.0 (2026-02-19): Disabled custom_stoploss - using static SL only.
+  ROI exits have 70% win rate; custom_stoploss was causing 332/608 premature stops.
+  Widened static stoploss from -7.5% to -12% to give trades more room.
 """
 
 import numpy as np
@@ -36,7 +41,7 @@ class LiquiditySweep(IStrategy):
     INTERFACE_VERSION = 3
     
     # Strategy version tag (Iteration Tracker)
-    STRATEGY_VERSION = "0.15.0" # Removed HTF trend requirement (2026-02-17)
+    STRATEGY_VERSION = "0.16.0" # Disabled custom_stoploss, widened static SL to -12% (2026-02-19)
 
     # ROI table - Hyperopt optimized (run 21930270331)
     minimal_roi = {
@@ -46,8 +51,9 @@ class LiquiditySweep(IStrategy):
         "226": 0
     }
     
-    # Stoploss - Hyperopt optimized
-    stoploss = -0.075
+    # Stoploss - Widened in v0.16.0 to give trades room (custom_stoploss disabled)
+    # Previous value: -0.075 was causing 332/608 premature stop-outs
+    stoploss = -0.12
     
     # Trailing stop - Hyperopt optimized
     trailing_stop = True
@@ -427,7 +433,11 @@ class LiquiditySweep(IStrategy):
         
         return dataframe
 
-    use_custom_stoploss = True
+    # v0.16.0: Disabled custom_stoploss. Root cause analysis showed 332/608 trades
+    # were stopped out via stop_loss with -1.11% avg loss, wiping all gains from
+    # the profitable ROI exits (184 trades, 70% win rate, +1.16% avg).
+    # Using static -12% stoploss gives trades room to breathe and reach ROI targets.
+    use_custom_stoploss = False
 
     def custom_exit(self, pair: str, trade: 'Trade', current_time: datetime, current_rate: float,
                     current_profit: float, **kwargs):
@@ -467,28 +477,15 @@ class LiquiditySweep(IStrategy):
                         current_rate: float, current_profit: float,
                         after_fill: bool, **kwargs) -> Optional[float]:
         """
-        Custom stoploss based on sweep high/low + buffer.
+        Custom stoploss - DISABLED in v0.16.0.
+        
+        Root cause: custom_stoploss was calculating SL dynamically from recent_swing_high/low
+        which repositions with each candle. This caused 332/608 trades (55%) to get stopped
+        out prematurely via stop_loss at -1.11% avg, vs ROI exits at +1.16% avg (70% win rate).
+        
+        Keeping method body for reference but use_custom_stoploss = False above.
         """
-        dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
-        
-        if len(dataframe) == 0:
-            return None
-            
-        last_candle = dataframe.iloc[-1]
-        
-        if trade.is_short:
-            # For shorts: SL above sweep high
-            if 'recent_swing_high' in last_candle:
-                sl_price = last_candle['recent_swing_high'] + self.buffer_pips.value
-                sl_percent = (sl_price - current_rate) / current_rate
-                return sl_percent
-        else:
-            # For longs: SL below sweep low
-            if 'recent_swing_low' in last_candle:
-                sl_price = last_candle['recent_swing_low'] - self.buffer_pips.value
-                sl_percent = (current_rate - sl_price) / current_rate
-                return -sl_percent
-        
+        # This method is not called when use_custom_stoploss = False
         return None
 
     def custom_entry_price(self, pair: str, trade: Optional['Trade'], current_time: datetime, proposed_rate: float,
