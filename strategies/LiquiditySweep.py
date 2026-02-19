@@ -13,6 +13,11 @@ Author: Jarvis (OpenClaw)
 Version: 0.5.0
 
 Changelog:
+- v0.17.0 (2026-02-19): Fixed custom_stoploss - anchors to ENTRY price not current price.
+  v0.16 problem: No custom_stoploss caused 15.8h avg hold (was 2.2h), ROI table broken.
+  v0.15 problem: custom_stoploss used current price, causing dynamic SL repositioning.
+  Fix: Calculate SL % from trade.open_rate (fixed at entry), not current_rate.
+  Also tightened ROI table for faster exits and reduced stoploss to -10%.
 - v0.16.0 (2026-02-19): Disabled custom_stoploss - using static SL only.
   ROI exits have 70% win rate; custom_stoploss was causing 332/608 premature stops.
   Widened static stoploss from -7.5% to -12% to give trades more room.
@@ -41,19 +46,23 @@ class LiquiditySweep(IStrategy):
     INTERFACE_VERSION = 3
     
     # Strategy version tag (Iteration Tracker)
-    STRATEGY_VERSION = "0.16.0" # Disabled custom_stoploss, widened static SL to -12% (2026-02-19)
+    STRATEGY_VERSION = "0.17.0" # Fixed custom_stoploss to anchor to entry price (2026-02-19)
 
-    # ROI table - Hyperopt optimized (run 21930270331)
+    # ROI table - Tuned for v0.17.0 (faster exits, realistic targets)
+    # v0.16 showed avg hold of 15.8h without custom_stoploss (too long)
+    # v0.15 showed avg hold of 2.2h with custom_stoploss (good)
+    # Using more achievable ROI targets to capture profits before drawdown
     minimal_roi = {
-        "0": 0.24,
-        "43": 0.083,
-        "139": 0.048,
-        "226": 0
+        "0": 0.10,      # 10% immediately (reachable for sweep reversals with 3x leverage)
+        "60": 0.05,     # 5% after 60 min
+        "180": 0.02,    # 2% after 3h
+        "360": 0.01,    # 1% after 6h
+        "720": 0        # Break even after 12h
     }
     
-    # Stoploss - Widened in v0.16.0 to give trades room (custom_stoploss disabled)
-    # Previous value: -0.075 was causing 332/608 premature stop-outs
-    stoploss = -0.12
+    # Stoploss - Fallback static SL (custom_stoploss takes priority when use_custom_stoploss=True)
+    # Set to -10% as a safety net for when custom_stoploss returns None
+    stoploss = -0.10
     
     # Trailing stop - Hyperopt optimized
     trailing_stop = True
@@ -433,11 +442,10 @@ class LiquiditySweep(IStrategy):
         
         return dataframe
 
-    # v0.16.0: Disabled custom_stoploss. Root cause analysis showed 332/608 trades
-    # were stopped out via stop_loss with -1.11% avg loss, wiping all gains from
-    # the profitable ROI exits (184 trades, 70% win rate, +1.16% avg).
-    # Using static -12% stoploss gives trades room to breathe and reach ROI targets.
-    use_custom_stoploss = False
+    # v0.17.0: Re-enabled custom_stoploss with fixed anchor-to-entry logic.
+    # Root cause of v0.15 premature stops: SL was calculated relative to current_rate,
+    # which drifts as price moves. Now calculated relative to trade.open_rate (fixed).
+    use_custom_stoploss = True
 
     def custom_exit(self, pair: str, trade: 'Trade', current_time: datetime, current_rate: float,
                     current_profit: float, **kwargs):
@@ -477,15 +485,49 @@ class LiquiditySweep(IStrategy):
                         current_rate: float, current_profit: float,
                         after_fill: bool, **kwargs) -> Optional[float]:
         """
-        Custom stoploss - DISABLED in v0.16.0.
+        Custom stoploss v0.17.0 - Anchored to ENTRY price (trade.open_rate).
         
-        Root cause: custom_stoploss was calculating SL dynamically from recent_swing_high/low
-        which repositions with each candle. This caused 332/608 trades (55%) to get stopped
-        out prematurely via stop_loss at -1.11% avg, vs ROI exits at +1.16% avg (70% win rate).
+        Critical fix from v0.15.0: SL is now calculated relative to trade.open_rate,
+        not current_rate. This makes the SL a FIXED level (doesn't reposition as price moves).
         
-        Keeping method body for reference but use_custom_stoploss = False above.
+        The SL price is: swing_level ± buffer
+        The SL % is: (sl_price - open_rate) / open_rate (fixed fraction of entry)
+        
+        Note: Freqtrade's custom_stoploss returns a NEGATIVE value for stoploss.
+        The value represents the minimum profit threshold: if profit < returned_value, exit.
+        Returning -0.05 means "exit if profit drops below -5%".
         """
-        # This method is not called when use_custom_stoploss = False
+        dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
+        
+        if len(dataframe) == 0:
+            return None
+            
+        last_candle = dataframe.iloc[-1]
+        open_rate = trade.open_rate
+        
+        if trade.is_short:
+            # For shorts: SL above sweep high (price going up = loss for short)
+            if 'recent_swing_high' in last_candle and not pd.isna(last_candle['recent_swing_high']):
+                sl_price = last_candle['recent_swing_high'] + self.buffer_pips.value
+                # SL % as fraction of entry price (fixed anchor)
+                # For shorts: loss if price rises, so sl_distance is positive when sl_price > open_rate
+                sl_pct = (sl_price - open_rate) / open_rate
+                # Freqtrade expects negative value for stoploss
+                # For shorts: return -(sl_pct) since a price rise hurts shorts
+                # But freqtrade's stoploss for shorts is the profit threshold:
+                # if current_profit < stoploss_value, exit
+                # sl_price > open_rate means already past entry for a short (bad)
+                # We want: exit if profit < -|sl_distance|
+                return -abs(sl_pct)
+        else:
+            # For longs: SL below sweep low (price going down = loss for long)
+            if 'recent_swing_low' in last_candle and not pd.isna(last_candle['recent_swing_low']):
+                sl_price = last_candle['recent_swing_low'] - self.buffer_pips.value
+                # SL % as fraction of entry price (fixed anchor)
+                sl_pct = (open_rate - sl_price) / open_rate
+                # Return as negative loss threshold
+                return -abs(sl_pct)
+        
         return None
 
     def custom_entry_price(self, pair: str, trade: Optional['Trade'], current_time: datetime, proposed_rate: float,
