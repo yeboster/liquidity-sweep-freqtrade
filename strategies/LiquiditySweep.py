@@ -13,6 +13,11 @@ Author: Jarvis (OpenClaw)
 Version: 0.5.0
 
 Changelog:
+- v0.18.0 (2026-02-20): Disabled trailing stop — it was killing 78% of trades.
+  v0.17 problem: trailing_stop=True with offset 0.299 required ~30% profit to activate,
+  then any retrace triggered it. Result: 486/617 trades (78%) stopped out by trailing SL.
+  Fix: trailing_stop=False. Use only custom_stoploss (swing-based) + static SL + ROI table.
+  Also fixed custom_stoploss: return stoploss_from_open() equivalent for better behavior.
 - v0.17.0 (2026-02-19): Fixed custom_stoploss - anchors to ENTRY price not current price.
   v0.16 problem: No custom_stoploss caused 15.8h avg hold (was 2.2h), ROI table broken.
   v0.15 problem: custom_stoploss used current price, causing dynamic SL repositioning.
@@ -46,7 +51,7 @@ class LiquiditySweep(IStrategy):
     INTERFACE_VERSION = 3
     
     # Strategy version tag (Iteration Tracker)
-    STRATEGY_VERSION = "0.17.0" # Fixed custom_stoploss to anchor to entry price (2026-02-19)
+    STRATEGY_VERSION = "0.18.0" # Disabled trailing_stop - was causing 78% of trades to exit via trailing SL (2026-02-20)
 
     # ROI table - Tuned for v0.17.0 (faster exits, realistic targets)
     # v0.16 showed avg hold of 15.8h without custom_stoploss (too long)
@@ -64,11 +69,12 @@ class LiquiditySweep(IStrategy):
     # Set to -10% as a safety net for when custom_stoploss returns None
     stoploss = -0.10
     
-    # Trailing stop - Hyperopt optimized
-    trailing_stop = True
-    trailing_stop_positive = 0.293
-    trailing_stop_positive_offset = 0.299
-    trailing_only_offset_is_reached = True
+    # Trailing stop - DISABLED in v0.18.0
+    # v0.17 had trailing_stop=True with offset 0.299, causing 486/617 trades (78%) to exit via
+    # trailing_stop_loss. The trailing stop required ~30% profit to activate, then any retrace
+    # killed the trade. Result: -0.38% avg profit (terrible).
+    # Fix: Use only custom_stoploss (swing-based fixed SL) + static fallback + ROI table.
+    trailing_stop = False
     
     # Timeframe
     timeframe = '15m'
@@ -442,9 +448,8 @@ class LiquiditySweep(IStrategy):
         
         return dataframe
 
-    # v0.17.0: Re-enabled custom_stoploss with fixed anchor-to-entry logic.
-    # Root cause of v0.15 premature stops: SL was calculated relative to current_rate,
-    # which drifts as price moves. Now calculated relative to trade.open_rate (fixed).
+    # v0.18.0: custom_stoploss still enabled for swing-based SL placement.
+    # Now capped at -8% max to prevent overly wide stops when swings are far away.
     use_custom_stoploss = True
 
     def custom_exit(self, pair: str, trade: 'Trade', current_time: datetime, current_rate: float,
@@ -485,18 +490,18 @@ class LiquiditySweep(IStrategy):
                         current_rate: float, current_profit: float,
                         after_fill: bool, **kwargs) -> Optional[float]:
         """
-        Custom stoploss v0.17.0 - Anchored to ENTRY price (trade.open_rate).
+        Custom stoploss v0.18.0 - Swing-based SL anchored to ENTRY price, capped at -8%.
         
-        Critical fix from v0.15.0: SL is now calculated relative to trade.open_rate,
-        not current_rate. This makes the SL a FIXED level (doesn't reposition as price moves).
+        From v0.17.0: SL is calculated relative to trade.open_rate (fixed anchor).
+        New in v0.18.0: Cap the SL at -8% max to avoid overly wide stops when swings are far.
+        This means swing-based SL is only used when it's TIGHTER than -8%.
+        If swing is too far away, the static stoploss (-10%) acts as fallback.
         
-        The SL price is: swing_level ± buffer
-        The SL % is: (sl_price - open_rate) / open_rate (fixed fraction of entry)
-        
-        Note: Freqtrade's custom_stoploss returns a NEGATIVE value for stoploss.
-        The value represents the minimum profit threshold: if profit < returned_value, exit.
+        Note: Freqtrade's custom_stoploss returns a NEGATIVE profit threshold.
         Returning -0.05 means "exit if profit drops below -5%".
         """
+        MAX_SL_PCT = 0.08  # Cap stop at 8% max loss
+        
         dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
         
         if len(dataframe) == 0:
@@ -509,24 +514,18 @@ class LiquiditySweep(IStrategy):
             # For shorts: SL above sweep high (price going up = loss for short)
             if 'recent_swing_high' in last_candle and not pd.isna(last_candle['recent_swing_high']):
                 sl_price = last_candle['recent_swing_high'] + self.buffer_pips.value
-                # SL % as fraction of entry price (fixed anchor)
-                # For shorts: loss if price rises, so sl_distance is positive when sl_price > open_rate
-                sl_pct = (sl_price - open_rate) / open_rate
-                # Freqtrade expects negative value for stoploss
-                # For shorts: return -(sl_pct) since a price rise hurts shorts
-                # But freqtrade's stoploss for shorts is the profit threshold:
-                # if current_profit < stoploss_value, exit
-                # sl_price > open_rate means already past entry for a short (bad)
-                # We want: exit if profit < -|sl_distance|
-                return -abs(sl_pct)
+                sl_pct = abs((sl_price - open_rate) / open_rate)
+                # Use swing-based SL only if it's tighter than max cap
+                sl_pct = min(sl_pct, MAX_SL_PCT)
+                return -sl_pct
         else:
             # For longs: SL below sweep low (price going down = loss for long)
             if 'recent_swing_low' in last_candle and not pd.isna(last_candle['recent_swing_low']):
                 sl_price = last_candle['recent_swing_low'] - self.buffer_pips.value
-                # SL % as fraction of entry price (fixed anchor)
-                sl_pct = (open_rate - sl_price) / open_rate
-                # Return as negative loss threshold
-                return -abs(sl_pct)
+                sl_pct = abs((open_rate - sl_price) / open_rate)
+                # Use swing-based SL only if it's tighter than max cap
+                sl_pct = min(sl_pct, MAX_SL_PCT)
+                return -sl_pct
         
         return None
 

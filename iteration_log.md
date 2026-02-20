@@ -1,20 +1,30 @@
-# Iteration Completed: Improved Swing Detection
+# Iteration Completed: Fixed Custom SL (Anchor to Entry) + Tuned ROI
 
 **Project:** `projects/liquidity-sweep-freqtrade`
-**Version:** 0.1.1
+**Version:** 0.17.0
 
 **Changes:**
-1.  **Removed Lookahead Bias:** The original `rolling(lookback, center=True)` function was removed. This function used future data to determine swings, which is invalid for live trading.
-2.  **Implemented Proper Pivot Detection:**
-    -   Added `pivot_lookback` parameter (default 3 candles).
-    -   Implemented a lag-based fractal/pivot detection: A swing is confirmed only after `pivot_lookback` candles have passed where the central candle remains the highest/lowest.
-    -   This introduces a realistic delay in signal generation but ensures robustness.
-3.  **Updated Logic:**
-    -   Replaced `_detect_swings` entirely with the new logic.
-    -   Updated `populate_indicators` to use `pivot_lookback`.
+1.  **Fixed Custom SL:** Anchored stoploss calculation to `trade.open_rate` instead of `current_rate` (or so I thought).
+2.  **Tuned ROI:** Tightened ROI to 10% @ 0m, 5% @ 60m.
 
-**Next Steps:**
--   Backtest the new logic (expect fewer signals but higher quality).
--   Consider adding FVG detection in the next iteration.
+**Results (v0.17.0):**
+-   **Total Trades:** 617 (Volume is good)
+-   **Win Rate:** 19.9% (Low)
+-   **Profit Mean:** -0.38%
+-   **Avg Hold:** 1h 15m
+-   **Exit Reasons:**
+    -   `trailing_stop_loss`: 486 trades (78%) - **MAJOR ISSUE**
+    -   `stop_loss`: 92 trades
+    -   `roi`: 33 trades (+2.94% avg - High Quality)
 
-**Commit:** `9171d54` - "Iteration: Improve swing detection (remove lookahead bias, use pivot logic)"
+**Analysis:**
+I accidentally created a **trailing stop**.
+By returning a fixed percentage (e.g. -0.05 based on entry) from `custom_stoploss`, Freqtrade applied that percentage to the *current price* at every step.
+-   Entry: 100. Target SL: 95. I return -0.05. SL set at 95.
+-   Price moves to 102. I return -0.05. SL moves to 96.9 (Trails up).
+-   Price retraces to 97. Stopped out at 96.9 (Loss).
+-   Original Fixed SL at 95 would have survived.
+
+**Action Plan (v0.18.0):**
+Fix `custom_stoploss` to calculate percentage relative to **current_rate** so that the target price remains fixed.
+Formula: `(target_sl_price - current_rate) / current_rate`.
