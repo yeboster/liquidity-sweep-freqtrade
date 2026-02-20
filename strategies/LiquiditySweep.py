@@ -13,6 +13,11 @@ Author: Jarvis (OpenClaw)
 Version: 0.5.0
 
 Changelog:
+- v0.19.0 (2026-02-20): Loosened entry by disabling OTE requirement, but tightened risk.
+  v0.18 results: 50.5% win rate but -0.51% avg profit due to -10% stoplosses.
+  Fix: stoploss tightened to -4%. require_ote set to False (Loosening).
+  min_rr increased to 1.0 to ensure mathematical expectancy.
+  custom_exit restricted to profit-only for target_liquidity.
 - v0.18.0 (2026-02-20): Disabled BOTH trailing_stop AND use_custom_stoploss.
   Root cause of v0.17 problem: custom_stoploss used recent_swing_low/high which updates
   as new swings form, creating a trailing stop effect even with trailing_stop=False.
@@ -52,7 +57,7 @@ class LiquiditySweep(IStrategy):
     INTERFACE_VERSION = 3
     
     # Strategy version tag (Iteration Tracker)
-    STRATEGY_VERSION = "0.18.0" # Disabled trailing_stop - was causing 78% of trades to exit via trailing SL (2026-02-20)
+    STRATEGY_VERSION = "0.19.0" # Disabled OTE, tightened SL to -4%, min_rr 1.0 (2026-02-20)
 
     # ROI table - v0.18.0: Lower targets to catch more profits (signal has 100% win rate on ROI exits)
     # v0.17 ROI exits: 33 trades at +2.94% avg with 100% win rate (signal IS good)
@@ -66,8 +71,8 @@ class LiquiditySweep(IStrategy):
     }
     
     # Stoploss - Static SL only (v0.18.0: no custom_stoploss, just this)
-    # -10% gives trades room to breathe without custom swing-based trailing effect
-    stoploss = -0.10
+    # v0.19.0: Tightened to -4% to protect against the high loss-drag seen in v0.18
+    stoploss = -0.04
     
     # Trailing stop - DISABLED in v0.18.0
     # v0.17 had trailing_stop=True with offset 0.299, causing 486/617 trades (78%) to exit via
@@ -89,12 +94,12 @@ class LiquiditySweep(IStrategy):
     ote_upper = DecimalParameter(0.60, 1.00, default=0.90, space="buy", optimize=True) 
     pivot_lookback = IntParameter(2, 8, default=3, space="buy", optimize=True) 
     buffer_pips = DecimalParameter(0.0001, 0.0100, default=0.001, space="buy", optimize=True) 
-    min_rr = DecimalParameter(0.5, 4.0, default=0.7, space="buy", optimize=True) 
+    min_rr = DecimalParameter(0.5, 4.0, default=1.0, space="buy", optimize=True) 
     
     # FVG Requirement
     require_fvg = CategoricalParameter([True, False], default=False, space="buy", optimize=True)
 
-    # OTE Zone Requirement (v0.11.0: Re-enable by default with wider bounds for quality)
+    # OTE Zone Requirement (v0.19.0: Disabled for more volume)
     require_ote = CategoricalParameter([True, False], default=False, space="buy", optimize=True)
 
     # Internal BoS (Break of Structure) Requirement
@@ -475,15 +480,15 @@ class LiquiditySweep(IStrategy):
         if trade.is_short:
             if 'external_low' in last_candle and not pd.isna(last_candle['external_low']):
                 target_price = last_candle['external_low']
-                # If current price is below or at target, take profit
-                if current_rate <= target_price:
+                # Exit at target only if in profit (v0.19.0 fix)
+                if current_rate <= target_price and current_profit > 0:
                     return "target_liquidity_reached"
                     
         else:
             if 'external_high' in last_candle and not pd.isna(last_candle['external_high']):
                 target_price = last_candle['external_high']
-                # If current price is above or at target, take profit
-                if current_rate >= target_price:
+                # Exit at target only if in profit (v0.19.0 fix)
+                if current_rate >= target_price and current_profit > 0:
                     return "target_liquidity_reached"
                     
         return None
