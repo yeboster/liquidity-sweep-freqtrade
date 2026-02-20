@@ -13,11 +13,12 @@ Author: Jarvis (OpenClaw)
 Version: 0.5.0
 
 Changelog:
-- v0.18.0 (2026-02-20): Disabled trailing stop — it was killing 78% of trades.
-  v0.17 problem: trailing_stop=True with offset 0.299 required ~30% profit to activate,
-  then any retrace triggered it. Result: 486/617 trades (78%) stopped out by trailing SL.
-  Fix: trailing_stop=False. Use only custom_stoploss (swing-based) + static SL + ROI table.
-  Also fixed custom_stoploss: return stoploss_from_open() equivalent for better behavior.
+- v0.18.0 (2026-02-20): Disabled BOTH trailing_stop AND use_custom_stoploss.
+  Root cause of v0.17 problem: custom_stoploss used recent_swing_low/high which updates
+  as new swings form, creating a trailing stop effect even with trailing_stop=False.
+  486/617 trades (78%) exited via "trailing_stop_loss" which was actually custom_stoploss.
+  Fix: Disable custom_stoploss entirely. Use only static stoploss=-10% + ROI table.
+  This gives trades full room to breathe. The 33 ROI exits at +2.94% avg show the signal works.
 - v0.17.0 (2026-02-19): Fixed custom_stoploss - anchors to ENTRY price not current price.
   v0.16 problem: No custom_stoploss caused 15.8h avg hold (was 2.2h), ROI table broken.
   v0.15 problem: custom_stoploss used current price, causing dynamic SL repositioning.
@@ -53,20 +54,19 @@ class LiquiditySweep(IStrategy):
     # Strategy version tag (Iteration Tracker)
     STRATEGY_VERSION = "0.18.0" # Disabled trailing_stop - was causing 78% of trades to exit via trailing SL (2026-02-20)
 
-    # ROI table - Tuned for v0.17.0 (faster exits, realistic targets)
-    # v0.16 showed avg hold of 15.8h without custom_stoploss (too long)
-    # v0.15 showed avg hold of 2.2h with custom_stoploss (good)
-    # Using more achievable ROI targets to capture profits before drawdown
+    # ROI table - v0.18.0: Lower targets to catch more profits (signal has 100% win rate on ROI exits)
+    # v0.17 ROI exits: 33 trades at +2.94% avg with 100% win rate (signal IS good)
+    # Lower ROI targets to capture more of the 486 previously trailing-stopped trades as wins
     minimal_roi = {
-        "0": 0.10,      # 10% immediately (reachable for sweep reversals with 3x leverage)
-        "60": 0.05,     # 5% after 60 min
+        "0": 0.05,      # 5% immediately (lower bar to capture more wins)
+        "60": 0.03,     # 3% after 60 min
         "180": 0.02,    # 2% after 3h
         "360": 0.01,    # 1% after 6h
         "720": 0        # Break even after 12h
     }
     
-    # Stoploss - Fallback static SL (custom_stoploss takes priority when use_custom_stoploss=True)
-    # Set to -10% as a safety net for when custom_stoploss returns None
+    # Stoploss - Static SL only (v0.18.0: no custom_stoploss, just this)
+    # -10% gives trades room to breathe without custom swing-based trailing effect
     stoploss = -0.10
     
     # Trailing stop - DISABLED in v0.18.0
@@ -448,9 +448,11 @@ class LiquiditySweep(IStrategy):
         
         return dataframe
 
-    # v0.18.0: custom_stoploss still enabled for swing-based SL placement.
-    # Now capped at -8% max to prevent overly wide stops when swings are far away.
-    use_custom_stoploss = True
+    # v0.18.0: DISABLED - custom_stoploss was creating a trailing effect via recent_swing levels.
+    # recent_swing_low/high updates as new swings form → SL moves up → acts as trailing stop.
+    # Result: same 486 "trailing_stop_loss" exits even with trailing_stop=False.
+    # Fix: Use ONLY static stoploss=-10%. Let ROI table handle profitable exits.
+    use_custom_stoploss = False
 
     def custom_exit(self, pair: str, trade: 'Trade', current_time: datetime, current_rate: float,
                     current_profit: float, **kwargs):
