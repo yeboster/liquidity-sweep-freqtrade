@@ -39,14 +39,15 @@ jobs:
             -v ${{ github.workspace }}/user_data:/freqtrade/user_data \
             -v ${{ github.workspace }}/config.json:/freqtrade/config.json \
             -v ${{ github.workspace }}/strategies:/freqtrade/user_data/strategies \
+            --entrypoint /bin/bash \
             freqtradeorg/freqtrade:stable \
-            backtesting \
+            -c "pip install smartmoneyconcepts && freqtrade backtesting \
             --config /freqtrade/config.json \
             --strategy LiquiditySweep \
             --timerange 20240213- \
             --data-format-ohlcv feather \
             --export trades \
-            --export-filename user_data/backtest_results/backtest-trades.json
+            --export-filename user_data/backtest_results/backtest-trades.json"
 
       - name: Upload Backtest Results
         uses: actions/upload-artifact@v4

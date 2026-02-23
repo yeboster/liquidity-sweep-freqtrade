@@ -40,6 +40,7 @@ jobs:
           pip install "numpy<2.0"  # Pin numpy to avoid binary incompatibility
           pip install freqtrade
           pip install ta-lib-bin  # Pre-compiled TA-Lib for CI
+          pip install smartmoneyconcepts
 
       - name: Create user_data structure
         run: |
