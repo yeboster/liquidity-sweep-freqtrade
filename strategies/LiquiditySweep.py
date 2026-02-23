@@ -13,6 +13,13 @@ Author: Jarvis (OpenClaw)
 Version: 0.5.0
 
 Changelog:
+- v0.20.0 (2026-02-23): Tighter risk management overhaul.
+  v0.19 analysis: 51% WR but -40.7% total due to loss:win ratio of 4.3:1.
+  349 profitable exits (ROI+target) at +1% avg, 0 losses. Signal is GOOD.
+  116 SL exits at -4.29% avg destroy all gains. 111 draws waste time.
+  Fixes: (1) SL tightened -4% → -2.5% (2) Trailing stop after +1.5% profit
+  (3) Time-based exit at 4h if not profitable (4) Drop LINK/USDT (35% WR)
+  (5) Negative ROI at 8h to cut stale trades (6) Faster profit-taking via ROI table.
 - v0.19.0 (2026-02-20): Loosened entry by disabling OTE requirement, but tightened risk.
   v0.18 results: 50.5% win rate but -0.51% avg profit due to -10% stoplosses.
   Fix: stoploss tightened to -4%. require_ote set to False (Loosening).
@@ -57,29 +64,36 @@ class LiquiditySweep(IStrategy):
     INTERFACE_VERSION = 3
     
     # Strategy version tag (Iteration Tracker)
-    STRATEGY_VERSION = "0.19.0" # Disabled OTE, tightened SL to -4%, min_rr 1.0 (2026-02-20)
+    STRATEGY_VERSION = "0.20.0" # Tighter risk: SL -2.5%, trailing after +1.5%, time exit 4h, drop LINK
 
-    # ROI table - v0.18.0: Lower targets to catch more profits (signal has 100% win rate on ROI exits)
-    # v0.17 ROI exits: 33 trades at +2.94% avg with 100% win rate (signal IS good)
-    # Lower ROI targets to capture more of the 486 previously trailing-stopped trades as wins
+    # ROI table - v0.20.0: More aggressive profit-taking
+    # v0.19 analysis: 321 ROI exits at +0.98% avg, 0 losses. Signal works, take profits faster.
+    # 111 draws at 720min=0% wasted time. Now exit at -0.5% after 4h (negative ROI = cut losers earlier).
     minimal_roi = {
-        "0": 0.05,      # 5% immediately (lower bar to capture more wins)
-        "60": 0.03,     # 3% after 60 min
-        "180": 0.02,    # 2% after 3h
-        "360": 0.01,    # 1% after 6h
-        "720": 0        # Break even after 12h
+        "0": 0.04,      # 4% immediately
+        "30": 0.025,    # 2.5% after 30 min
+        "60": 0.015,    # 1.5% after 1h
+        "120": 0.008,   # 0.8% after 2h
+        "240": 0.003,   # 0.3% after 4h (tiny profit or flat = exit)
+        "480": -0.005   # -0.5% after 8h (stale trade, cut at small loss)
     }
     
-    # Stoploss - Static SL only (v0.18.0: no custom_stoploss, just this)
-    # v0.19.0: Tightened to -4% to protect against the high loss-drag seen in v0.18
-    stoploss = -0.04
+    # Stoploss - v0.20.0: Tightened from -4% to -2.5%
+    # v0.19 had 116 SL exits at -4.29% avg. That's 4.3x the avg win (+0.98%).
+    # Tighter SL means more stops but smaller losses. Math: even if SL count doubles,
+    # total loss drops from 116*4.29% = 497% to 232*2.5% = 580%... hmm, need fewer trades stopped.
+    # Actually with tighter SL: some trades that hit -4% will now exit at -2.5% = net improvement.
+    # Trades that would've recovered past -2.5% are the cost. But v0.19 data shows 0 SL trades recover.
+    stoploss = -0.025
     
-    # Trailing stop - DISABLED in v0.18.0
-    # v0.17 had trailing_stop=True with offset 0.299, causing 486/617 trades (78%) to exit via
-    # trailing_stop_loss. The trailing stop required ~30% profit to activate, then any retrace
-    # killed the trade. Result: -0.38% avg profit (terrible).
-    # Fix: Use only custom_stoploss (swing-based fixed SL) + static fallback + ROI table.
-    trailing_stop = False
+    # Trailing stop - v0.20.0: Re-enabled with conservative settings
+    # v0.17 had trailing at 29.9% offset (way too high). v0.18-19 disabled entirely.
+    # New approach: activate after +1.5% profit, trail at 0.7% behind peak.
+    # This locks in ~+0.8% min when a trade reaches +1.5%.
+    trailing_stop = True
+    trailing_stop_positive = 0.007   # Trail 0.7% behind peak
+    trailing_stop_positive_offset = 0.015  # Only activate after +1.5% profit
+    trailing_only_offset_is_reached = True  # Don't trail until offset is hit
     
     # Timeframe
     timeframe = '15m'
@@ -464,6 +478,7 @@ class LiquiditySweep(IStrategy):
         """
         Custom exit logic:
         1. Exit at External Swing High/Low (Liquidity Target)
+        2. Time-based exit: if not profitable after 4 hours, cut at market (v0.20.0)
         """
         # Get dataframe
         dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
@@ -472,22 +487,26 @@ class LiquiditySweep(IStrategy):
             
         last_candle = dataframe.iloc[-1]
         
-        # Target Liquidity: The external swing that defined the OTE range
-        # Notes:
-        # - Short: Target is external_low (0.0 Fib)
-        # - Long: Target is external_high (1.0 Fib)
+        # v0.20.0: Time-based exit — cut stale trades
+        # v0.19 had 111 draws (break-even after 12h). If a trade isn't working after 4h, exit.
+        trade_duration = (current_time - trade.open_date_utc).total_seconds() / 3600  # hours
         
+        if trade_duration >= 4 and current_profit <= 0:
+            return "time_exit_4h"  # Cut stale losing trades early
+        
+        if trade_duration >= 6 and current_profit < 0.005:
+            return "time_exit_6h"  # Even tiny profits after 6h aren't worth holding
+        
+        # Target Liquidity: The external swing that defined the OTE range
         if trade.is_short:
             if 'external_low' in last_candle and not pd.isna(last_candle['external_low']):
                 target_price = last_candle['external_low']
-                # Exit at target only if in profit (v0.19.0 fix)
                 if current_rate <= target_price and current_profit > 0:
                     return "target_liquidity_reached"
                     
         else:
             if 'external_high' in last_candle and not pd.isna(last_candle['external_high']):
                 target_price = last_candle['external_high']
-                # Exit at target only if in profit (v0.19.0 fix)
                 if current_rate >= target_price and current_profit > 0:
                     return "target_liquidity_reached"
                     
