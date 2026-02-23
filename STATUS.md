@@ -6,78 +6,50 @@
 
 ## Current State
 
-- **Version:** 0.19.0
-- **Status:** ❌ Negative profitability (-40.7%), but signal quality is promising
-- **Branch:** `master` — latest commit: `c4935cd`
-- **Last Backtest:** 2026-02-20 (CI run #22221823996)
+- **Version:** 0.21.0 (SMC library refactor)
+- **Status:** CI Backtest running
+- **Branch:** `main` — latest commit: `7b435ca`
 
 ---
 
-## Latest Backtest Results (v0.19.0)
+## Latest Backtest Results (v0.20.0)
 
-| Metric | Value |
-|--------|-------|
-| Timerange | 2024-02-22 → 2026-02-20 (~2 years) |
-| Total Trades | 465 |
-| Win Rate | 51.2% (238W / 116L / 111D) |
-| Profit Total | -40.69% |
-| Profit Mean | -0.32% per trade |
-| Profit Median | +0.105% (positive — skewed by big losses) |
-| Max Drawdown | 45.3% |
-| Avg Duration | 11h 45m |
-| Profit Factor | 0.71 |
+| Metric | Value | Change vs v0.19.0 |
+|--------|-------|-------------------|
+| Timerange | 2024-02-22 → 2026-02-20 | |
+| Total Trades| 430 | -35 |
+| Win Rate | 43.0% (185W / 245L / 0D) | 📉 -8.2% |
+| Profit Total| -38.18% | 📈 +2.51% |
+| Profit Mean | -0.334% per trade | 📉 -0.01% |
+| Max Drawdown| 38.2% | 📈 Better (was 45.3%) |
+| Avg Duration| 2h 55m | 🚀 Much faster (was 11h) |
 
 ### Exit Reason Breakdown
+| Exit Reason | Trades | Avg Profit | Wins |
+|-------------|--------|-----------|------|
+| **roi** | 147 | +0.92% | 147 |
+| **trailing_stop** | 31 | +0.99% | 31 |
+| **time_exit_4h/6h** | 185 | -0.79% | 0 |
+| **stop_loss** | 61 | -2.79% | 0 |
 
-| Exit Reason | Trades | Avg Profit | Wins | Losses |
-|-------------|--------|-----------|------|--------|
-| **ROI** | 321 | **+0.98%** | 210 | 0 |
-| **target_liquidity** | 28 | **+1.16%** | 28 | 0 |
-| **stop_loss** | 116 | **-4.29%** | 0 | 116 |
-
-### Key Insight
-The signal quality is GOOD — 349 profitable exits (ROI + target) at ~1% avg with ZERO losses.
-But 116 stop losses at -4.29% avg wipe out all gains. The loss:win amount ratio is 4.3:1.
-
-### Per-Pair Performance
-| Pair | Trades | Avg % | Win Rate | Notes |
-|------|--------|-------|----------|-------|
-| ADA/USDT | 48 | +0.24% | 60% | ✅ Best performer |
-| DOT/USDT | 45 | -0.21% | 62% | Decent WR but losses hurt |
-| SOL/USDT | 54 | -0.15% | 56% | |
-| ETH/USDT | 39 | -0.25% | 54% | |
-| DOGE/USDT | 45 | -0.27% | 58% | |
-| XRP/USDT | 54 | -0.41% | 44% | ⚠️ Below 50% |
-| AVAX/USDT | 67 | -0.19% | 54% | Most trades |
-| BTC/USDT | 59 | -0.48% | 42% | ⚠️ Worst WR |
-| LINK/USDT | 54 | -1.10% | 35% | ❌ Worst performer |
+*Insight:* Time exit works at cutting losers (185 trades at -0.79%) but it hurts the Win Rate because many marginal winners exit at 4h before hitting ROI.
 
 ---
 
-## Root Cause Analysis
+## v0.21.0: SMC Library Integration
 
-**Problem:** Asymmetric risk:reward. Wins avg +1%, losses avg -4.3%.
-
-**Why:** 
-1. Static -4% SL is too wide for the signal quality
-2. ROI table catches winners early (5%→3%→2%→1%→0) but can't recover from full SL hits
-3. No trailing mechanism to protect partial gains before SL is hit
-4. The 111 draws (break-even ROI exits at 720m) suggest trades that go nowhere are held too long
-
-**Fix strategy (v0.20.0):**
-- Tighten stoploss to -2.5% (from -4%) — cuts avg loss nearly in half
-- Add a time-based exit: if trade isn't profitable after 4h, close at market
-- Consider a simple trailing stop: after +1% profit, trail at +0.3% (lock in small gain)
-- Drop LINK/USDT from whitelist (35% WR, -1.1% avg — consistent underperformer)
+Full rewrite of the indicator logic using the `smartmoneyconcepts` library:
+- **Liquidity sweeps**: True clustering and swept detection instead of simple rolling max.
+- **Order Blocks**: Added `require_ob` filter for confluence.
+- **FVG**: Added mitigation tracking (only raw/unmitigated FVGs count).
+- **Trend**: Differentiates between BOS (continuation) and ChoCH (reversal).
 
 ---
 
 ## Pending / Next Steps
 
-- [ ] **v0.20.0: Tighten risk management** — SL to -2.5%, time-based exit at 4h, optional trailing after +1%
-- [ ] **Drop LINK/USDT** — consistently worst performer across all metrics
-- [ ] **Run hyperopt** — optimize new SL + ROI + trailing params
-- [ ] **Analyze draws** — 111 draws at 0% suggest ROI table `720: 0` is catching stale trades; consider negative ROI exit
+- [ ] **v0.21.0: Analyze SMC results** — check if Win Rate and Profit Factor improve with better indicator logic
+- [ ] **Run hyperopt** — optimize new SL + ROI + trailing params with SMC indicators
 - [ ] **Re-evaluate OTE filter** — v0.19 disabled it for volume; test with loose OTE (20-90%) vs no OTE
 - [ ] **Per-pair parameter optimization** — ADA has 60% WR, BTC has 42%; different params per pair?
 - [ ] **Add ATR-based dynamic SL** — instead of fixed %, use 1.5x ATR for market-adaptive stops
@@ -89,6 +61,9 @@ But 116 stop losses at -4.29% avg wipe out all gains. The loss:win amount ratio 
 
 | Decision | Rationale |
 |----------|-----------|
+| SMC Library (v0.21) | Drops hand-rolled code for battle-tested ICT concepts |
+| Time exit (v0.20) | Cutting stale trades at 4h instead of waiting 12h for break-even |
+| Trailing stop (v0.20) | Lock in +0.8% after +1.5% profit avoids winners turning into losers |
 | OTE disabled (v0.19) | Doubles trade volume without significantly hurting WR |
 | Custom stoploss disabled (v0.18) | Was creating trailing effect via updating swing levels |
 | Static SL only | Simplest approach after trailing/custom SL issues in v0.15-0.18 |
@@ -106,4 +81,5 @@ But 116 stop losses at -4.29% avg wipe out all gains. The loss:win amount ratio 
 | 2026-02-13 | 0.10 | Decided to re-introduce OTE filter |
 | 2026-02-19 | 0.15-0.17 | Custom SL fixes, trailing stop experiments |
 | 2026-02-20 | 0.18-0.19 | Disabled custom SL + trailing, tightened static SL to -4%, disabled OTE |
-| 2026-02-23 | 0.20.0 | **Tighten risk: SL → -2.5%, time exit 4h, trailing after +1%, drop LINK** |
+| 2026-02-23 | 0.20.0 | **Tighten risk**: SL → -2.5%, time exit 4h, trailing after +1%, drop LINK. Result: 430 trades, Win Rate dropped to 43.0% (-8.2%), Profit -38.2% (+2.5%), DD 38.2% (better). Time exits caught losers early but hurt win rate. |
+| 2026-02-23 | 0.21.0 | **SMC Refactor**: Replaced hand-rolled indicators with `smartmoneyconcepts` library. Added OB confluence, FVG mitigation tracking. |
