@@ -6,9 +6,9 @@
 
 ## Current State
 
-- **Version:** 0.22.0 (ATR-based dynamic SL + OTE re-enabled)
-- **Status:** CI Backtest triggered (push to main)
-- **Branch:** `main` — latest commit: `846a98b`
+- **Version:** 0.23.0 (Docker-based hyperopt CI + OTE tightened to 30-70%)
+- **Status:** Committed and pushed. Ready to run hyperopt manually via GitHub Actions → workflow_dispatch.
+- **Branch:** `main` — latest commit: `bb4ce6b`
 
 ---
 
@@ -51,9 +51,11 @@ Full rewrite of the indicator logic using the `smartmoneyconcepts` library:
 - [ ] **v0.22.0: Analyze backtest results** — compare SL exit count and avg SL loss vs v0.20
 - [ ] **Run hyperopt on v0.22.0** — optimize `atr_multiplier`, `ote_lower/upper`, `require_ote`, `min_rr`
 - [ ] **Per-pair parameter optimization** — ADA has 60% WR, BTC has 42%; different params per pair?
-- [ ] **Migrate hyperopt to Docker CI** — current pip-based CI had silent failures before
+- [x] **Migrate hyperopt to Docker CI** — done in v0.23.0 (matches backtest.yml pattern)
 - [x] **ATR-based dynamic SL** — implemented in v0.22.0
-- [x] **Re-evaluate OTE filter** — re-enabled (loose 20-90%) in v0.22.0
+- [x] **OTE filter tightened to 30-70%** — done in v0.23.0 (was 20-90%, now clean Fib zone)
+- [ ] **Run hyperopt on v0.23.0** — trigger manually via GitHub Actions workflow_dispatch
+- [ ] **Analyze v0.23.0 backtest results** — compare vs v0.22.0 (OTE 20-90%) for trade quality
 
 ---
 
@@ -84,3 +86,4 @@ Full rewrite of the indicator logic using the `smartmoneyconcepts` library:
 | 2026-02-23 | 0.20.0 | **Tighten risk**: SL → -2.5%, time exit 4h, trailing after +1%, drop LINK. Result: 430 trades, Win Rate dropped to 43.0% (-8.2%), Profit -38.2% (+2.5%), DD 38.2% (better). Time exits caught losers early but hurt win rate. |
 | 2026-02-23 | 0.21.0 | **SMC Refactor**: Replaced hand-rolled indicators with `smartmoneyconcepts` library. Added OB confluence, FVG mitigation tracking. |
 | 2026-02-26 | 0.22.0 | **ATR dynamic SL**: Replaced fixed -2.5% SL with 1.5x ATR(14). Floor -1.5%, ceiling -4.0%. Re-enabled OTE filter (loose 20-90%). CI triggered on push. |
+| 2026-02-26 | 0.23.0 | **Docker CI + OTE 30-70%**: Migrated hyperopt from pip-based to Docker (freqtradeorg/freqtrade:stable) to fix silent failures. Tightened OTE from 20-90% to 30-70% (cleaner Fib retracement zone). Hyperopt now manual-only via workflow_dispatch. |
