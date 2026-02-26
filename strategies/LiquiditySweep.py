@@ -13,9 +13,20 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.21.0
+Version: 0.22.0
 
 Changelog:
+- v0.22.0 (2026-02-26): ATR-based dynamic stoploss + OTE filter re-enabled by default.
+  Problem: v0.20 had 61 SL exits at avg -2.79%. Fixed -2.5% SL was too blunt — too tight
+  for BTC (high vol) causing premature stops, too wide in calm markets (ETH, ADA).
+  Fixes:
+  (1) use_custom_stoploss = True — ATR-based SL at 1.5x ATR(14) from entry candle.
+      Floor: -1.5% (max precision), Ceiling: -4.0% (don't let it run).
+  (2) require_ote default → True (loose: 20-90%). Re-enables quality filter.
+      Motivation: v0.19 disabled OTE, volume went up but quality fell. v0.20 kept it off
+      but signal quality wasn't the bottleneck — SL placement was.
+  (3) atr_multiplier added as hyperopt param (1.0-2.5x) for future optimization.
+  static stoploss remains at -0.04 as absolute backstop (Freqtrade requirement).
 - v0.21.0 (2026-02-23): MAJOR REFACTOR — replaced all hand-rolled indicators with smartmoneyconcepts library.
   New features: proper liquidity sweep detection (clustered highs/lows + swept tracking),
   FVG with mitigation tracking, BOS + ChoCH distinction, Order Block confluence.
@@ -54,9 +65,9 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.21.0"  # SMC library refactor
+    STRATEGY_VERSION = "0.22.0"  # ATR-based dynamic SL + OTE re-enabled
 
-    # ── Risk Management (preserved from v0.20.0) ─────────────────────────────
+    # ── Risk Management ───────────────────────────────────────────────────────
     minimal_roi = {
         "0": 0.04,      # 4% immediately
         "30": 0.025,    # 2.5% after 30 min
@@ -66,12 +77,17 @@ class LiquiditySweep(IStrategy):
         "480": -0.005   # -0.5% after 8h (stale trade exit)
     }
     
-    stoploss = -0.025  # -2.5% static SL
+    # Absolute backstop required by Freqtrade — custom_stoploss will use ATR, this is fallback
+    stoploss = -0.04   # -4.0% absolute backstop (ATR SL should hit first)
     
+    # Trailing stop — still active as profit protection (unchanged from v0.20)
     trailing_stop = True
     trailing_stop_positive = 0.007      # Trail 0.7% behind peak
     trailing_stop_positive_offset = 0.015  # Activate after +1.5%
     trailing_only_offset_is_reached = True
+    
+    # ATR-based dynamic stoploss enabled in v0.22.0
+    use_custom_stoploss = True
 
     # ── Timeframes ────────────────────────────────────────────────────────────
     timeframe = '15m'
@@ -83,10 +99,14 @@ class LiquiditySweep(IStrategy):
     swing_length = IntParameter(3, 15, default=5, space="buy", optimize=True)
     htf_swing_length = IntParameter(5, 20, default=10, space="buy", optimize=True)
     
-    # OTE zone
-    ote_lower = DecimalParameter(0.20, 0.70, default=0.50, space="buy", optimize=True)
+    # OTE zone — re-enabled by default in v0.22.0 (loose range: 20-90%)
+    ote_lower = DecimalParameter(0.20, 0.70, default=0.20, space="buy", optimize=True)
     ote_upper = DecimalParameter(0.60, 1.00, default=0.90, space="buy", optimize=True)
-    require_ote = CategoricalParameter([True, False], default=False, space="buy", optimize=True)
+    require_ote = CategoricalParameter([True, False], default=True, space="buy", optimize=True)
+    
+    # ATR-based SL — new in v0.22.0
+    atr_multiplier = DecimalParameter(1.0, 2.5, default=1.5, space="buy", optimize=True)
+    atr_period = IntParameter(10, 20, default=14, space="buy", optimize=False)
     
     # Entry filters
     min_rr = DecimalParameter(0.5, 4.0, default=1.0, space="buy", optimize=True)
@@ -242,6 +262,11 @@ class LiquiditySweep(IStrategy):
         # 6. OTE Zone
         dataframe = self._calculate_ote(dataframe)
         
+        # 7. ATR for dynamic stoploss (v0.22.0)
+        dataframe['atr'] = ta.ATR(dataframe, timeperiod=self.atr_period.value)
+        # Normalize ATR as % of close for cross-asset comparison
+        dataframe['atr_pct'] = dataframe['atr'] / dataframe['close']
+        
         return dataframe
 
     def _add_htf_indicators(self, dataframe: DataFrame) -> DataFrame:
@@ -377,8 +402,56 @@ class LiquiditySweep(IStrategy):
         
         return dataframe
 
-    # ── Custom Stoploss ───────────────────────────────────────────────────────
-    use_custom_stoploss = False  # Using static SL + trailing only (v0.20.0 decision)
+    # ── Custom Stoploss (ATR-based, v0.22.0) ─────────────────────────────────
+
+    def custom_stoploss(self, pair: str, trade: 'Trade', current_time: datetime,
+                        current_rate: float, current_profit: float, **kwargs) -> float:
+        """
+        ATR-based dynamic stoploss (v0.22.0).
+        
+        SL is placed at 1.5x ATR(14) below entry price (longs) or above (shorts).
+        This makes the stoploss:
+        - Tighter in calm markets (ETH/ADA) → less loss per stop hit
+        - Wider in volatile markets (BTC/SOL) → fewer premature exits
+        
+        Floor: -1.5% (don't place SL too tight — chop zone)
+        Ceiling: -4.0% (don't let it run beyond backstop SL)
+        """
+        dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
+        
+        # Safety: can't compute SL without data
+        if len(dataframe) == 0:
+            return self.stoploss  # Fallback to static
+        
+        # Use the entry candle's ATR for stability (not current candle which may be mid-move)
+        # Find candle at trade open time
+        trade_open_dt = trade.open_date_utc
+        entry_candle = dataframe[dataframe['date'] <= trade_open_dt]
+        
+        if len(entry_candle) == 0 or 'atr_pct' not in entry_candle.columns:
+            return self.stoploss  # Fallback
+        
+        entry_atr_pct = entry_candle.iloc[-1]['atr_pct']
+        
+        if pd.isna(entry_atr_pct) or entry_atr_pct <= 0:
+            return self.stoploss  # Fallback
+        
+        # Dynamic SL = ATR multiplier * ATR% (as negative ratio)
+        dynamic_sl = -(self.atr_multiplier.value * entry_atr_pct)
+        
+        # Apply floor and ceiling
+        dynamic_sl = max(dynamic_sl, -0.04)   # No worse than -4%
+        dynamic_sl = min(dynamic_sl, -0.015)  # No tighter than -1.5%
+        
+        # Return as ratio from current_rate perspective
+        # Freqtrade expects: stoploss relative to current_rate (not entry)
+        # But custom_stoploss must return value relative to entry price
+        # so we convert: if current profit is positive, SL from current is less negative
+        # Actually Freqtrade custom_stoploss returns value relative to CURRENT rate
+        # A return of -0.05 means: if current rate drops 5% from now, stop.
+        # But we want entry-based. Use: return stoploss_from_open()
+        from freqtrade.strategy import stoploss_from_open
+        return stoploss_from_open(dynamic_sl, current_profit, is_short=trade.is_short)
 
     def custom_exit(self, pair: str, trade: 'Trade', current_time: datetime, current_rate: float,
                     current_profit: float, **kwargs):
