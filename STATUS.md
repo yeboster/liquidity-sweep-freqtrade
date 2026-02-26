@@ -6,9 +6,9 @@
 
 ## Current State
 
-- **Version:** 0.21.0 (SMC library refactor)
-- **Status:** CI Backtest running
-- **Branch:** `main` — latest commit: `7b435ca`
+- **Version:** 0.22.0 (ATR-based dynamic SL + OTE re-enabled)
+- **Status:** CI Backtest triggered (push to main)
+- **Branch:** `main` — latest commit: `846a98b`
 
 ---
 
@@ -48,12 +48,12 @@ Full rewrite of the indicator logic using the `smartmoneyconcepts` library:
 
 ## Pending / Next Steps
 
-- [ ] **v0.21.0: Analyze SMC results** — check if Win Rate and Profit Factor improve with better indicator logic
-- [ ] **Run hyperopt** — optimize new SL + ROI + trailing params with SMC indicators
-- [ ] **Re-evaluate OTE filter** — v0.19 disabled it for volume; test with loose OTE (20-90%) vs no OTE
+- [ ] **v0.22.0: Analyze backtest results** — compare SL exit count and avg SL loss vs v0.20
+- [ ] **Run hyperopt on v0.22.0** — optimize `atr_multiplier`, `ote_lower/upper`, `require_ote`, `min_rr`
 - [ ] **Per-pair parameter optimization** — ADA has 60% WR, BTC has 42%; different params per pair?
-- [ ] **Add ATR-based dynamic SL** — instead of fixed %, use 1.5x ATR for market-adaptive stops
 - [ ] **Migrate hyperopt to Docker CI** — current pip-based CI had silent failures before
+- [x] **ATR-based dynamic SL** — implemented in v0.22.0
+- [x] **Re-evaluate OTE filter** — re-enabled (loose 20-90%) in v0.22.0
 
 ---
 
@@ -83,3 +83,4 @@ Full rewrite of the indicator logic using the `smartmoneyconcepts` library:
 | 2026-02-20 | 0.18-0.19 | Disabled custom SL + trailing, tightened static SL to -4%, disabled OTE |
 | 2026-02-23 | 0.20.0 | **Tighten risk**: SL → -2.5%, time exit 4h, trailing after +1%, drop LINK. Result: 430 trades, Win Rate dropped to 43.0% (-8.2%), Profit -38.2% (+2.5%), DD 38.2% (better). Time exits caught losers early but hurt win rate. |
 | 2026-02-23 | 0.21.0 | **SMC Refactor**: Replaced hand-rolled indicators with `smartmoneyconcepts` library. Added OB confluence, FVG mitigation tracking. |
+| 2026-02-26 | 0.22.0 | **ATR dynamic SL**: Replaced fixed -2.5% SL with 1.5x ATR(14). Floor -1.5%, ceiling -4.0%. Re-enabled OTE filter (loose 20-90%). CI triggered on push. |
