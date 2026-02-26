@@ -65,7 +65,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.22.0"  # ATR-based dynamic SL + OTE re-enabled
+    STRATEGY_VERSION = "0.23.0"  # OTE range tightened to 30-70%, hyperopt migrated to Docker CI
 
     # ── Risk Management ───────────────────────────────────────────────────────
     minimal_roi = {
@@ -99,9 +99,10 @@ class LiquiditySweep(IStrategy):
     swing_length = IntParameter(3, 15, default=5, space="buy", optimize=True)
     htf_swing_length = IntParameter(5, 20, default=10, space="buy", optimize=True)
     
-    # OTE zone — re-enabled by default in v0.22.0 (loose range: 20-90%)
-    ote_lower = DecimalParameter(0.20, 0.70, default=0.20, space="buy", optimize=True)
-    ote_upper = DecimalParameter(0.60, 1.00, default=0.90, space="buy", optimize=True)
+    # OTE zone — tightened in v0.23.0 to 30-70% (quality filter, avoids extremes)
+    # Rationale: 20-90% was too loose (noise at both ends). 30-70% = clean retracement zone.
+    ote_lower = DecimalParameter(0.30, 0.50, default=0.30, space="buy", optimize=True)
+    ote_upper = DecimalParameter(0.55, 0.70, default=0.70, space="buy", optimize=True)
     require_ote = CategoricalParameter([True, False], default=True, space="buy", optimize=True)
     
     # ATR-based SL — new in v0.22.0

@@ -15,110 +15,116 @@ on:
         description: 'Loss function for optimization'
         required: false
         default: 'SharpeHyperOptLoss'
-  push:
-    paths:
-      - 'strategies/LiquiditySweep.py'
-      - '.github/workflows/hyperopt.yml'
+
+# NOTE: hyperopt is NOT triggered on push — it's expensive and run manually.
+# Use workflow_dispatch from GitHub Actions UI to trigger.
 
 jobs:
   hyperopt:
     runs-on: ubuntu-latest
     timeout-minutes: 120  # 2 hour timeout for long hyperopt runs
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install dependencies
+      - name: Prepare directories
         run: |
-          pip install --upgrade pip
-          pip install "numpy<2.0"  # Pin numpy to avoid binary incompatibility
-          pip install freqtrade
-          pip install ta-lib-bin  # Pre-compiled TA-Lib for CI
-          pip install smartmoneyconcepts
-
-      - name: Create user_data structure
-        run: |
-          mkdir -p user_data/strategies
           mkdir -p user_data/data
+          mkdir -p user_data/strategies
           mkdir -p user_data/hyperopt_results
+          chmod -R 777 user_data
+
+      - name: Copy strategy and config
+        run: |
           cp strategies/LiquiditySweep.py user_data/strategies/
           cp config.json user_data/
 
       - name: Download historical data
         run: |
-          freqtrade download-data \
-            --config user_data/config.json \
+          docker run --rm \
+            -v ${{ github.workspace }}/user_data:/freqtrade/user_data \
+            -v ${{ github.workspace }}/config.json:/freqtrade/config.json \
+            freqtradeorg/freqtrade:stable \
+            download-data \
+            --config /freqtrade/config.json \
             --timerange ${{ github.event.inputs.timerange || '20240101-' }} \
             --timeframes 15m 1h \
-            --pairs BTC/USDT ETH/USDT SOL/USDT \
-            --exchange okx \
-            --datadir user_data/data
+            --data-format-ohlcv feather
 
       - name: Run Hyperopt
         run: |
-          freqtrade hyperopt \
-            --config user_data/config.json \
-            --strategy LiquiditySweep \
-            --hyperopt-loss ${{ github.event.inputs.loss_function || 'SharpeHyperOptLoss' }} \
-            --spaces buy roi trailing stoploss \
-            --timerange ${{ github.event.inputs.timerange || '20240101-' }} \
-            --epochs ${{ github.event.inputs.epochs || '100' }} \
-            --random-state 42 \
-            --min-trades 5 \
-            --datadir user_data/data \
-            --print-json \
+          docker run --rm \
+            -v ${{ github.workspace }}/user_data:/freqtrade/user_data \
+            -v ${{ github.workspace }}/config.json:/freqtrade/config.json \
+            -v ${{ github.workspace }}/strategies:/freqtrade/user_data/strategies \
+            --entrypoint /bin/bash \
+            freqtradeorg/freqtrade:stable \
+            -c "pip install smartmoneyconcepts && freqtrade hyperopt \
+              --config /freqtrade/config.json \
+              --strategy LiquiditySweep \
+              --hyperopt-loss ${{ github.event.inputs.loss_function || 'SharpeHyperOptLoss' }} \
+              --spaces buy roi trailing stoploss \
+              --timerange ${{ github.event.inputs.timerange || '20240101-' }} \
+              --epochs ${{ github.event.inputs.epochs || '100' }} \
+              --random-state 42 \
+              --min-trades 5 \
+              --data-format-ohlcv feather \
+              --print-json" \
             | tee hyperopt_output.log
+          # Non-zero exit from docker will fail the job — no more silent failures.
 
       - name: Extract best parameters
+        if: always()
         run: |
-          # Extract the JSON block from hyperopt output
-          grep -A 1000 "Best result:" hyperopt_output.log | grep -A 1000 "{" | head -100 > best_params.json || true
-          
-          # Also try to get params from the hyperopt results
-          freqtrade hyperopt-show --best --print-json \
-            --config user_data/config.json \
-            --datadir user_data/data \
-            > best_params_full.json 2>/dev/null || echo "{}" > best_params_full.json
-          
-          # Export the params file for the strategy (if freqtrade generated one)
+          # Show best result from log
+          grep -A 50 "Best result:" hyperopt_output.log || echo "No best result found — hyperopt may have failed."
+
+          # Export params file if freqtrade wrote one
           if [ -f "user_data/strategies/LiquiditySweep.json" ]; then
             cp user_data/strategies/LiquiditySweep.json ./strategy_params.json
+            echo "✅ strategy_params.json extracted"
+          else
+            echo "⚠️  No strategy_params.json found (may need more epochs or trades)"
+            echo "{}" > strategy_params.json
           fi
-          
-          # List what we have
-          echo "=== Generated Files ==="
-          ls -la *.json user_data/hyperopt_results/ 2>/dev/null || true
+
+          # Show hyperopt results directory
+          ls -la user_data/hyperopt_results/ || echo "No hyperopt_results dir"
 
       - name: Run backtest with optimized params
         run: |
-          freqtrade backtesting \
-            --config user_data/config.json \
-            --strategy LiquiditySweep \
-            --timerange ${{ github.event.inputs.timerange || '20240101-' }} \
-            --datadir user_data/data \
+          docker run --rm \
+            -v ${{ github.workspace }}/user_data:/freqtrade/user_data \
+            -v ${{ github.workspace }}/config.json:/freqtrade/config.json \
+            -v ${{ github.workspace }}/strategies:/freqtrade/user_data/strategies \
+            --entrypoint /bin/bash \
+            freqtradeorg/freqtrade:stable \
+            -c "pip install smartmoneyconcepts && freqtrade backtesting \
+              --config /freqtrade/config.json \
+              --strategy LiquiditySweep \
+              --timerange ${{ github.event.inputs.timerange || '20240101-' }} \
+              --data-format-ohlcv feather \
+              --export trades \
+              --export-filename user_data/backtest_results/backtest-trades.json" \
             | tee backtest_results.txt
 
       - name: Upload hyperopt results
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: hyperopt-results-${{ github.run_number }}
           path: |
-            best_params.json
-            best_params_full.json
             strategy_params.json
             hyperopt_output.log
             backtest_results.txt
             user_data/hyperopt_results/
+            user_data/backtest_results/
           retention-days: 30
           if-no-files-found: warn
 
       - name: Summary
+        if: always()
         run: |
           echo "## Hyperopt Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -128,10 +134,10 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Best Parameters" >> $GITHUB_STEP_SUMMARY
           echo '```json' >> $GITHUB_STEP_SUMMARY
-          cat best_params_full.json >> $GITHUB_STEP_SUMMARY || echo "See artifacts" >> $GITHUB_STEP_SUMMARY
+          cat strategy_params.json >> $GITHUB_STEP_SUMMARY 2>/dev/null || echo "See artifacts" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Backtest Results (Optimized)" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          tail -50 backtest_results.txt >> $GITHUB_STEP_SUMMARY || echo "See artifacts" >> $GITHUB_STEP_SUMMARY
+          tail -50 backtest_results.txt >> $GITHUB_STEP_SUMMARY 2>/dev/null || echo "See artifacts" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
