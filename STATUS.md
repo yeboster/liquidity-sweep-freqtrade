@@ -6,8 +6,8 @@
 
 ## Current State
 
-- **Version:** 0.24.0 (Docker-based hyperopt CI + OTE tightened to 30-70% + Time exits hyperoptable)
-- **Status:** Fixing `smartmoneyconcepts` CI dependencies and implementing time-exit hyperopt params.
+- **Version:** 0.25.0 (Per-pair parameter dictionary overrides)
+- **Status:** Implementing dictionary-based parameter overrides for pair-specific logic (BTC vs ADA volatility).
 - **Branch:** `main`
 
 ---
@@ -49,8 +49,8 @@ Full rewrite of the indicator logic using the `smartmoneyconcepts` library:
 ## Pending / Next Steps
 
 - [x] **v0.22.0: Analyze backtest results** — analyze after CI fix is complete
-- [ ] **Run hyperopt on v0.24.0** — optimize `atr_multiplier`, `ote_lower/upper`, `require_ote`, `min_rr`, and `time_exit` space
-- [ ] **Per-pair parameter optimization** — ADA has 60% WR, BTC has 42%; test dictionary-based overrides
+- [x] **Run hyperopt on v0.24.0** (Completed, but yielded overfitted/low-trade results. Needs logic refinement.) — optimize `atr_multiplier`, `ote_lower/upper`, `require_ote`, `min_rr`, and `time_exit` space
+- [x] **Per-pair parameter optimization** — Added `custom_pair_params` for dictionary-based overrides (v0.25.0).
 - [x] **Migrate hyperopt to Docker CI** — done in v0.23.0 (matches backtest.yml pattern)
 - [x] **Fix CI installation of smartmoneyconcepts** — changed to install numba and ignore deps
 - [x] **Time exits hyperoptimization** — implemented in v0.24.0
@@ -89,3 +89,4 @@ Full rewrite of the indicator logic using the `smartmoneyconcepts` library:
 | 2026-02-26 | 0.23.0 | **Docker CI + OTE 30-70%**: Migrated hyperopt from pip-based to Docker (freqtradeorg/freqtrade:stable) to fix silent failures. Tightened OTE from 20-90% to 30-70% (cleaner Fib retracement zone). Hyperopt now manual-only via workflow_dispatch. |
 | 2026-02-26 | 0.24.0 | **Hyperoptable Time Exits**: Migrated hardcoded 4h/6h time-based exits into tuning `sell` parameters so hyperopt can find the optimal stale-trade cutoff thresholds. |
 | 2026-02-27 | 0.24.0 | **Time Exit Optimization**: Replaced fixed 4h and 6h time exits with hyperoptable integer and decimal parameters within `sell` space, letting the optimizer determine best parameters for duration and profitability threshold. |
+| 2026-02-27 | 0.25.0 | **Per-pair overrides**: Implemented a dictionary-based `custom_pair_params` configuration to override strategy parameters (like `atr_multiplier` and `require_ote`) explicitly per pair (e.g., BTC vs. ADA) to address highly variable win-rates. |

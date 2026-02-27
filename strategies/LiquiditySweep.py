@@ -13,9 +13,13 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.24.0
+Version: 0.25.0
 
 Changelog:
+- v0.25.0 (2026-02-27): Per-pair parameter overrides.
+  Added a custom_pair_params dictionary to allow overriding hyperoptable parameters
+  (like atr_multiplier, require_ote, time_exit hours) explicitly for pairs with different 
+  volatile profiles (e.g. BTC vs ADA).
 - v0.24.0 (2026-02-27): Made time-based exits hyperoptable.
   Problem: Static time exits (4h and 6h) have been hurting win rate by cutting marginal
   winners prematurely. By making these parameters hyperoptable within the "sell" space,
@@ -70,7 +74,30 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.24.0"  # Time exits made hyperoptable
+    STRATEGY_VERSION = "0.25.0"
+
+    # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
+    # Keys should match parameter names exactly. If a pair is not listed, the strategy
+    # falls back to the default/hyperopted global parameters.
+    custom_pair_params = {
+        "BTC/USDT": {
+            "atr_multiplier": 2.0,       # BTC is volatile, use wider dynamic SL
+            "require_ote": False,        # BTC trends hard, often misses OTE
+            "time_exit_1_hours": 6       # Give BTC more time to play out
+        },
+        "ADA/USDT": {
+            "atr_multiplier": 1.2,       # ADA is less volatile, tighter SL
+            "require_ote": True,         # Quality filter for ADA
+            "time_exit_1_hours": 4       # Cut early if it stalls
+        }
+    }
+
+    def get_param(self, param_name: str, pair: str, default_value: Any) -> Any:
+        """Helper to fetch pair-specific parameter or fallback to global"""
+        if pair in self.custom_pair_params and param_name in self.custom_pair_params[pair]:
+            return self.custom_pair_params[pair][param_name]
+        return default_value
+
 
     # ── Risk Management ───────────────────────────────────────────────────────
     minimal_roi = {
@@ -344,13 +371,19 @@ class LiquiditySweep(IStrategy):
         htf_trend_col = f'trend_{self.informative_timeframe}'
         
         # ── Filters ───────────────────────────────────────────────────────────
-        ote_check = dataframe['in_ote'] if self.require_ote.value else True
         
-        fvg_check_short = dataframe['active_bearish_fvg'] if self.require_fvg.value else True
-        fvg_check_long = dataframe['active_bullish_fvg'] if self.require_fvg.value else True
+        # We need pair metadata to fetch custom parameters
+        pair = metadata.get('pair', '')
         
-        ob_check_short = dataframe['in_bearish_ob'] if self.require_ob.value else True
-        ob_check_long = dataframe['in_bullish_ob'] if self.require_ob.value else True
+        req_ote = self.get_param('require_ote', pair, self.require_ote.value)
+        req_fvg = self.get_param('require_fvg', pair, self.require_fvg.value)
+        req_ob = self.get_param('require_ob', pair, self.require_ob.value)
+        
+        ote_check = dataframe['in_ote'] if req_ote else True
+        fvg_check_short = dataframe['active_bearish_fvg'] if req_fvg else True
+        fvg_check_long = dataframe['active_bullish_fvg'] if req_fvg else True
+        ob_check_short = dataframe['in_bearish_ob'] if req_ob else True
+        ob_check_long = dataframe['in_bullish_ob'] if req_ob else True
         
         # ── R:R Calculation ───────────────────────────────────────────────────
         buffer = self.buffer_pips.value
@@ -449,9 +482,12 @@ class LiquiditySweep(IStrategy):
         
         if pd.isna(entry_atr_pct) or entry_atr_pct <= 0:
             return self.stoploss  # Fallback
+            
+        # Dynamically fetch ATR multiplier for this pair
+        atr_mult = self.get_param('atr_multiplier', pair, self.atr_multiplier.value)
         
         # Dynamic SL = ATR multiplier * ATR% (as negative ratio)
-        dynamic_sl = -(self.atr_multiplier.value * entry_atr_pct)
+        dynamic_sl = -(atr_mult * entry_atr_pct)
         
         # Apply floor and ceiling
         dynamic_sl = max(dynamic_sl, -0.04)   # No worse than -4%
@@ -483,13 +519,22 @@ class LiquiditySweep(IStrategy):
         # Time-based exit
         trade_duration = (current_time - trade.open_date_utc).total_seconds() / 3600
         
-        if self.time_exit_1_enabled.value:
-            if trade_duration >= self.time_exit_1_hours.value and current_profit <= self.time_exit_1_profit.value:
-                return f"time_exit_{self.time_exit_1_hours.value}h"
+        # Fetch custom exits for pair
+        te1_enabled = self.get_param('time_exit_1_enabled', pair, self.time_exit_1_enabled.value)
+        te1_hours = self.get_param('time_exit_1_hours', pair, self.time_exit_1_hours.value)
+        te1_profit = self.get_param('time_exit_1_profit', pair, self.time_exit_1_profit.value)
         
-        if self.time_exit_2_enabled.value:
-            if trade_duration >= self.time_exit_2_hours.value and current_profit < self.time_exit_2_profit.value:
-                return f"time_exit_{self.time_exit_2_hours.value}h"
+        te2_enabled = self.get_param('time_exit_2_enabled', pair, self.time_exit_2_enabled.value)
+        te2_hours = self.get_param('time_exit_2_hours', pair, self.time_exit_2_hours.value)
+        te2_profit = self.get_param('time_exit_2_profit', pair, self.time_exit_2_profit.value)
+        
+        if te1_enabled:
+            if trade_duration >= te1_hours and current_profit <= te1_profit:
+                return f"time_exit_{te1_hours}h"
+        
+        if te2_enabled:
+            if trade_duration >= te2_hours and current_profit < te2_profit:
+                return f"time_exit_{te2_hours}h"
         
         # Target liquidity
         if trade.is_short:
