@@ -6,9 +6,9 @@
 
 ## Current State
 
-- **Version:** 0.23.0 (Docker-based hyperopt CI + OTE tightened to 30-70%)
-- **Status:** Committed and pushed. Ready to run hyperopt manually via GitHub Actions → workflow_dispatch.
-- **Branch:** `main` — latest commit: `bb4ce6b`
+- **Version:** 0.24.0 (Docker-based hyperopt CI + OTE tightened to 30-70% + Time exits hyperoptable)
+- **Status:** Fixing `smartmoneyconcepts` CI dependencies and implementing time-exit hyperopt params.
+- **Branch:** `main`
 
 ---
 
@@ -48,14 +48,14 @@ Full rewrite of the indicator logic using the `smartmoneyconcepts` library:
 
 ## Pending / Next Steps
 
-- [ ] **v0.22.0: Analyze backtest results** — compare SL exit count and avg SL loss vs v0.20
-- [ ] **Run hyperopt on v0.22.0** — optimize `atr_multiplier`, `ote_lower/upper`, `require_ote`, `min_rr`
-- [ ] **Per-pair parameter optimization** — ADA has 60% WR, BTC has 42%; different params per pair?
+- [x] **v0.22.0: Analyze backtest results** — analyze after CI fix is complete
+- [ ] **Run hyperopt on v0.24.0** — optimize `atr_multiplier`, `ote_lower/upper`, `require_ote`, `min_rr`, and `time_exit` space
+- [ ] **Per-pair parameter optimization** — ADA has 60% WR, BTC has 42%; test dictionary-based overrides
 - [x] **Migrate hyperopt to Docker CI** — done in v0.23.0 (matches backtest.yml pattern)
+- [x] **Fix CI installation of smartmoneyconcepts** — changed to install numba and ignore deps
+- [x] **Time exits hyperoptimization** — implemented in v0.24.0
 - [x] **ATR-based dynamic SL** — implemented in v0.22.0
 - [x] **OTE filter tightened to 30-70%** — done in v0.23.0 (was 20-90%, now clean Fib zone)
-- [ ] **Run hyperopt on v0.23.0** — trigger manually via GitHub Actions workflow_dispatch
-- [ ] **Analyze v0.23.0 backtest results** — compare vs v0.22.0 (OTE 20-90%) for trade quality
 
 ---
 
@@ -87,3 +87,5 @@ Full rewrite of the indicator logic using the `smartmoneyconcepts` library:
 | 2026-02-23 | 0.21.0 | **SMC Refactor**: Replaced hand-rolled indicators with `smartmoneyconcepts` library. Added OB confluence, FVG mitigation tracking. |
 | 2026-02-26 | 0.22.0 | **ATR dynamic SL**: Replaced fixed -2.5% SL with 1.5x ATR(14). Floor -1.5%, ceiling -4.0%. Re-enabled OTE filter (loose 20-90%). CI triggered on push. |
 | 2026-02-26 | 0.23.0 | **Docker CI + OTE 30-70%**: Migrated hyperopt from pip-based to Docker (freqtradeorg/freqtrade:stable) to fix silent failures. Tightened OTE from 20-90% to 30-70% (cleaner Fib retracement zone). Hyperopt now manual-only via workflow_dispatch. |
+| 2026-02-26 | 0.24.0 | **Hyperoptable Time Exits**: Migrated hardcoded 4h/6h time-based exits into tuning `sell` parameters so hyperopt can find the optimal stale-trade cutoff thresholds. |
+| 2026-02-27 | 0.24.0 | **Time Exit Optimization**: Replaced fixed 4h and 6h time exits with hyperoptable integer and decimal parameters within `sell` space, letting the optimizer determine best parameters for duration and profitability threshold. |
