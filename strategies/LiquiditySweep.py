@@ -124,13 +124,6 @@ class LiquiditySweep(IStrategy):
     # Buffer for SL placement
     buffer_pips = DecimalParameter(0.0001, 0.0100, default=0.002, space="buy", optimize=True)
 
-    # ── Time-based Exits (Hyperoptable) ──────────────────────────────────────
-    time_exit_1_hours = IntParameter(2, 12, default=4, space="sell", optimize=True)
-    time_exit_1_profit = DecimalParameter(-0.015, 0.005, default=0.0, space="sell", optimize=True)
-    
-    time_exit_2_hours = IntParameter(6, 24, default=6, space="sell", optimize=True)
-    time_exit_2_profit = DecimalParameter(0.001, 0.02, default=0.005, space="sell", optimize=True)
-
     # Time-based custom exits (hyperoptable in v0.24.0)
     time_exit_1_enabled = CategoricalParameter([True, False], default=True, space="sell", optimize=True)
     time_exit_1_hours = IntParameter(2, 6, default=4, space="sell", optimize=True)
