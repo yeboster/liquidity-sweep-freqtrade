@@ -41,7 +41,7 @@ jobs:
             -v ${{ github.workspace }}/strategies:/freqtrade/user_data/strategies \
             --entrypoint /bin/bash \
             freqtradeorg/freqtrade:stable \
-            -c "pip install smartmoneyconcepts && freqtrade backtesting \
+            -c "pip install numba && pip install --no-deps smartmoneyconcepts && freqtrade backtesting \
             --config /freqtrade/config.json \
             --strategy LiquiditySweep \
             --timerange 20240213- \
