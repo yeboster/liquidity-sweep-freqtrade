@@ -13,9 +13,13 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.25.0
+Version: 0.26.0
 
 Changelog:
+- v0.26.0 (2026-02-27): Decouple sweep from ChoCH confirmation.
+  Fixed a logic bug introduced in v0.21.0 where both the liquidity sweep AND the structure 
+  break (close below swing low) were required on the *same* 15m candle, devastating trade volume.
+  Now uses a 5-candle rolling window for recent sweeps, and checks for a proper SMC ChoCH.
 - v0.25.0 (2026-02-27): Per-pair parameter overrides.
   Added a custom_pair_params dictionary to allow overriding hyperoptable parameters
   (like atr_multiplier, require_ote, time_exit hours) explicitly for pairs with different 
@@ -74,7 +78,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.25.0"
+    STRATEGY_VERSION = "0.26.0"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -300,6 +304,10 @@ class LiquiditySweep(IStrategy):
         dataframe['sweep_high'] = dataframe['buy_liq_swept'] | dataframe['wick_sweep_high']
         dataframe['sweep_low'] = dataframe['sell_liq_swept'] | dataframe['wick_sweep_low']
         
+        # State: Was liquidity swept recently? (5 candles = 1h15m to form ChoCH)
+        dataframe['recent_sweep_high'] = dataframe['sweep_high'].rolling(window=5, min_periods=1).max() > 0
+        dataframe['recent_sweep_low'] = dataframe['sweep_low'].rolling(window=5, min_periods=1).max() > 0
+        
         # 6. OTE Zone
         dataframe = self._calculate_ote(dataframe)
         
@@ -406,10 +414,10 @@ class LiquiditySweep(IStrategy):
         
         # ── Short Entry ───────────────────────────────────────────────────────
         # Sweep of buy-side liquidity (highs) → price reverses down
-        # Confirmation: close below previous swing low (internal structure break)
+        # Confirmation: Bearish Change of Character (ChoCH)
         dataframe.loc[
-            (dataframe['sweep_high']) &                              # Liquidity swept above
-            (dataframe['close'] < dataframe['swing_low_level'].shift(1)) &  # Confirmation break
+            (dataframe['recent_sweep_high']) &                       # Liquidity swept above recently
+            (dataframe['choch'] == -1) &                             # Confirmation break
             (ote_check) &                                            # OTE (if required)
             (fvg_check_short) &                                      # FVG (if required)
             (ob_check_short) &                                       # Order Block (if required)
@@ -419,10 +427,10 @@ class LiquiditySweep(IStrategy):
         
         # ── Long Entry ────────────────────────────────────────────────────────
         # Sweep of sell-side liquidity (lows) → price reverses up
-        # Confirmation: close above previous swing high
+        # Confirmation: Bullish Change of Character (ChoCH)
         dataframe.loc[
-            (dataframe['sweep_low']) &                               # Liquidity swept below
-            (dataframe['close'] > dataframe['swing_high_level'].shift(1)) &  # Confirmation break
+            (dataframe['recent_sweep_low']) &                        # Liquidity swept below recently
+            (dataframe['choch'] == 1) &                              # Confirmation break
             (ote_check) &                                            # OTE (if required)
             (fvg_check_long) &                                       # FVG (if required)
             (ob_check_long) &                                        # Order Block (if required)
