@@ -13,9 +13,14 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.22.0
+Version: 0.24.0
 
 Changelog:
+- v0.24.0 (2026-02-27): Made time-based exits hyperoptable.
+  Problem: Static time exits (4h and 6h) have been hurting win rate by cutting marginal
+  winners prematurely. By making these parameters hyperoptable within the "sell" space,
+  we allow the optimizer to determine the best duration and profit thresholds,
+  or disable time exits altogether if dynamic stop loss handles it well enough.
 - v0.22.0 (2026-02-26): ATR-based dynamic stoploss + OTE filter re-enabled by default.
   Problem: v0.20 had 61 SL exits at avg -2.79%. Fixed -2.5% SL was too blunt — too tight
   for BTC (high vol) causing premature stops, too wide in calm markets (ETH, ADA).
@@ -65,7 +70,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.23.0"  # OTE range tightened to 30-70%, hyperopt migrated to Docker CI
+    STRATEGY_VERSION = "0.24.0"  # Time exits made hyperoptable
 
     # ── Risk Management ───────────────────────────────────────────────────────
     minimal_roi = {
@@ -100,7 +105,6 @@ class LiquiditySweep(IStrategy):
     htf_swing_length = IntParameter(5, 20, default=10, space="buy", optimize=True)
     
     # OTE zone — tightened in v0.23.0 to 30-70% (quality filter, avoids extremes)
-    # Rationale: 20-90% was too loose (noise at both ends). 30-70% = clean retracement zone.
     ote_lower = DecimalParameter(0.30, 0.50, default=0.30, space="buy", optimize=True)
     ote_upper = DecimalParameter(0.55, 0.70, default=0.70, space="buy", optimize=True)
     require_ote = CategoricalParameter([True, False], default=True, space="buy", optimize=True)
@@ -119,6 +123,22 @@ class LiquiditySweep(IStrategy):
     
     # Buffer for SL placement
     buffer_pips = DecimalParameter(0.0001, 0.0100, default=0.002, space="buy", optimize=True)
+
+    # ── Time-based Exits (Hyperoptable) ──────────────────────────────────────
+    time_exit_1_hours = IntParameter(2, 12, default=4, space="sell", optimize=True)
+    time_exit_1_profit = DecimalParameter(-0.015, 0.005, default=0.0, space="sell", optimize=True)
+    
+    time_exit_2_hours = IntParameter(6, 24, default=6, space="sell", optimize=True)
+    time_exit_2_profit = DecimalParameter(0.001, 0.02, default=0.005, space="sell", optimize=True)
+
+    # Time-based custom exits (hyperoptable in v0.24.0)
+    time_exit_1_enabled = CategoricalParameter([True, False], default=True, space="sell", optimize=True)
+    time_exit_1_hours = IntParameter(2, 6, default=4, space="sell", optimize=True)
+    time_exit_1_profit = DecimalParameter(-0.02, 0.01, default=0.0, space="sell", optimize=True)
+    
+    time_exit_2_enabled = CategoricalParameter([True, False], default=True, space="sell", optimize=True)
+    time_exit_2_hours = IntParameter(5, 12, default=6, space="sell", optimize=True)
+    time_exit_2_profit = DecimalParameter(0.0, 0.02, default=0.005, space="sell", optimize=True)
 
     # ── Plotting ──────────────────────────────────────────────────────────────
     plot_config = {
@@ -470,11 +490,13 @@ class LiquiditySweep(IStrategy):
         # Time-based exit
         trade_duration = (current_time - trade.open_date_utc).total_seconds() / 3600
         
-        if trade_duration >= 4 and current_profit <= 0:
-            return "time_exit_4h"
+        if self.time_exit_1_enabled.value:
+            if trade_duration >= self.time_exit_1_hours.value and current_profit <= self.time_exit_1_profit.value:
+                return f"time_exit_{self.time_exit_1_hours.value}h"
         
-        if trade_duration >= 6 and current_profit < 0.005:
-            return "time_exit_6h"
+        if self.time_exit_2_enabled.value:
+            if trade_duration >= self.time_exit_2_hours.value and current_profit < self.time_exit_2_profit.value:
+                return f"time_exit_{self.time_exit_2_hours.value}h"
         
         # Target liquidity
         if trade.is_short:
