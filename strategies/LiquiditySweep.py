@@ -8,15 +8,32 @@ Core Logic:
 2. Wait for price to retrace into OTE (optional)
 3. Detect liquidity sweep (price takes out swing high/low cluster)
 4. Enter on confirmation (close beyond triggering swing)
-5. Optional: Order Block / FVG confluence for higher probability entries
+5. Require Order Block confluence — enter only inside structural demand/supply zones
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.29.0
+Version: 0.30.0
 
 Changelog:
+- v0.30.0 (2026-02-28): Mandatory Order Block confluence + wider ROI targets.
+  Analysis of v0.29.0 (99 trades, 24.2% WR, -19.16%):
+  - TSL exits reduced from 55→36 (imbalance filter worked), but still too many.
+  - Root cause: avg win = +0.57%, avg TSL loss = -1.61%. Need ~74% WR to break
+    even. With SMC signals at 24%, math is broken at the R:R level.
+  - Two-pronged fix:
+    (1) require_ob=True by default: Force entry to be inside an active Order Block
+        zone. OBs are the structural footprint of institutional money — the
+        last down-candle before a BOS up (bullish OB) or last up-candle before
+        a BOS down (bearish OB). Price returns to OBs as demand/supply zones.
+        Entering at OB + sweep + ChoCH = max confluence ICT entry. Fewer trades,
+        much higher reversal probability (expected WR 35-50%).
+    (2) Widen ROI table to let winners run: avg ROI exit was +0.57% — institutional
+        moves at OBs tend to be impulsive (BOS candles). Targets widened to:
+        0min→5%, 30min→3.5%, 60min→2%, 120min→1.2%, 240min→0.5%, 480min→-0.5%.
+        Goal: push avg ROI exit from 0.57% to 1.5%+, transforming the math.
+  Expected: 40-60 trades (OB filter is strict), WR 35-50%, first profitable run.
 - v0.29.0 (2026-02-28): Fix FVG zone detection bug (0 trades in v0.28.0).
   Bug: v0.28.0 produced ZERO trades. Root cause: `active_bullish_fvg` used
   `.ffill()` on a boolean series (always False except sparse FVG candles), so
@@ -119,7 +136,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.29.0"
+    STRATEGY_VERSION = "0.30.0"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -145,13 +162,16 @@ class LiquiditySweep(IStrategy):
 
 
     # ── Risk Management ───────────────────────────────────────────────────────
+    # v0.30.0: Widened ROI targets — OB entries at institutional demand/supply zones
+    # tend to produce impulsive moves. Previous +0.57% avg win was too conservative.
+    # Target: let institutional momentum trades run to 1.5%+ before taking profit.
     minimal_roi = {
-        "0": 0.04,      # 4% immediately
-        "30": 0.025,    # 2.5% after 30 min
-        "60": 0.015,    # 1.5% after 1h
-        "120": 0.008,   # 0.8% after 2h
-        "240": 0.003,   # 0.3% after 4h
-        "480": -0.005   # -0.5% after 8h (stale trade exit)
+        "0": 0.05,      # 5% immediately (wide for impulsive OB-driven moves)
+        "30": 0.035,    # 3.5% after 30 min
+        "60": 0.02,     # 2.0% after 1h
+        "120": 0.012,   # 1.2% after 2h
+        "240": 0.005,   # 0.5% after 4h
+        "480": -0.005   # -0.5% after 8h (stale trade exit, unchanged)
     }
     
     # Absolute backstop required by Freqtrade — custom_stoploss will use ATR, this is fallback
@@ -188,7 +208,11 @@ class LiquiditySweep(IStrategy):
     # Entry filters
     min_rr = DecimalParameter(0.5, 4.0, default=1.5, space="buy", optimize=True)
     require_fvg = CategoricalParameter([True, False], default=False, space="buy", optimize=True)
-    require_ob = CategoricalParameter([True, False], default=False, space="buy", optimize=True)
+    # v0.30.0: Order Block now mandatory by default (was False).
+    # OB = structural demand/supply zone created by institutional move. Entering
+    # at OB + sweep + ChoCH = max confluence ICT setup. Expected to cut TSL exits
+    # dramatically (price at OB has structural support, less likely to continue against us).
+    require_ob = CategoricalParameter([True, False], default=True, space="buy", optimize=True)
     
     # Liquidity detection
     liquidity_range_pct = DecimalParameter(0.005, 0.03, default=0.01, space="buy", optimize=True)
