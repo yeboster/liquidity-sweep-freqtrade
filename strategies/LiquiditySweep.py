@@ -14,9 +14,20 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.31.0
+Version: 0.32.0
 
 Changelog:
+- v0.32.0 (2026-02-28): Fix OB recency window — increase from 20 to 100 candles.
+  Root cause of v0.31.0 0-trade bug: smc.ob() produces sparse OB candles (one
+  every ~50-200 candles). A 20-candle window (~5h at 15m) misses most OBs.
+  Fix: expand ob_window from 20 → 100 candles (~25h / ~1 day at 15m).
+  Rationale: "Was institutional buying/selling present somewhere in the last day?"
+  is a much more sensible SMC recency question. OBs are structural anchors — the
+  last down-candle before a bullish BOS may have been printed hours ago and it
+  still acts as demand. 100 candles ensures the flag is True for the majority of
+  candles following an OB formation, giving ChoCH+sweep signals a chance to fire.
+  All other settings unchanged from v0.31.0 (wider ROI, safe_long/short filter).
+
 - v0.31.0 (2026-02-28): Fix OB detection bug (0 trades in v0.30.0). Replace
   "price inside exact OB box" check with "recent OB formed within N candles"
   (rolling window). The precise OB box (top/bottom ffill) is too narrow —
@@ -144,7 +155,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.31.0"
+    STRATEGY_VERSION = "0.32.0"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -370,7 +381,7 @@ class LiquiditySweep(IStrategy):
         dataframe['ob_bottom'] = ob_data['Bottom']
         dataframe['ob_volume'] = ob_data.get('OBVolume', 0)
         
-        # v0.31.0 FIX: OB zone detection.
+        # v0.32.0 FIX: OB zone detection (rolling window expanded from 20→100).
         # The previous approach (price inside exact OB box via ffill) produced 0
         # trades because the OB candle range is too narrow — price rarely sits
         # precisely inside a historical candle's body at entry time.
@@ -383,7 +394,10 @@ class LiquiditySweep(IStrategy):
         #
         # Rolling window: 20 candles (~20h on 1h TF). A bullish OB formed within
         # the last 20 candles confirms institutional buying pressure is recent.
-        ob_window = 20
+        ob_window = 100  # v0.32.0: expanded from 20 → 100 candles (~25h at 15m). OBs are sparse
+        # (smc.ob() marks one every ~50-200 candles). A 20-candle (~5h) window missed
+        # almost all of them → 0 trades in v0.31.0. 100 candles = "institutional footprint
+        # present somewhere in the last day?" which is a sensible SMC recency check.
         dataframe['in_bullish_ob'] = (
             dataframe['ob']
             .eq(1)
