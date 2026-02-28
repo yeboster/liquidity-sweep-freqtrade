@@ -13,9 +13,20 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.26.0
+Version: 0.27.0
 
 Changelog:
+- v0.27.0 (2026-02-27): Restore HTF trend alignment filter.
+  Root cause of v0.26.0's 21.7% win rate found: the HTF trend column was computed 
+  in populate_indicators but the `htf_trend_col` variable in populate_entry_trend was 
+  declared but NEVER used in any filter condition — it was a dead variable dropped during 
+  the v0.21.0 SMC refactor. This meant entries fired against the 1H trend direction 
+  (entering longs in bear markets, shorts in bull markets), leading to 55 immediate 
+  trailing_stop_loss exits at avg -1.58%.
+  Fix: Added `htf_trend_col` to both long and short entry conditions.
+  Long entries now require trend_1h == 1 (bullish 1H structure).
+  Short entries now require trend_1h == -1 (bearish 1H structure).
+  Expected: Fewer trades, significantly higher win rate.
 - v0.26.0 (2026-02-27): Decouple sweep from ChoCH confirmation.
   Fixed a logic bug introduced in v0.21.0 where both the liquidity sweep AND the structure 
   break (close below swing low) were required on the *same* 15m candle, devastating trade volume.
@@ -78,7 +89,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.26.0"
+    STRATEGY_VERSION = "0.27.0"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -412,10 +423,18 @@ class LiquiditySweep(IStrategy):
             dataframe['reward_short'] / dataframe['risk_short'], 0
         )
         
+        # ── HTF Trend Alignment ───────────────────────────────────────────────
+        # v0.27.0 FIX: htf_trend_col was computed but never used in entry filters
+        # (dead variable introduced during v0.21.0 SMC refactor). This caused
+        # counter-trend entries and was the root cause of the 21.7% win rate.
+        htf_bearish = dataframe[htf_trend_col] == -1 if htf_trend_col in dataframe.columns else True
+        htf_bullish = dataframe[htf_trend_col] == 1 if htf_trend_col in dataframe.columns else True
+
         # ── Short Entry ───────────────────────────────────────────────────────
         # Sweep of buy-side liquidity (highs) → price reverses down
-        # Confirmation: Bearish Change of Character (ChoCH)
+        # Confirmation: Bearish Change of Character (ChoCH) + bearish HTF trend
         dataframe.loc[
+            (htf_bearish) &                                          # HTF trend alignment (v0.27.0)
             (dataframe['recent_sweep_high']) &                       # Liquidity swept above recently
             (dataframe['choch'] == -1) &                             # Confirmation break
             (ote_check) &                                            # OTE (if required)
@@ -427,8 +446,9 @@ class LiquiditySweep(IStrategy):
         
         # ── Long Entry ────────────────────────────────────────────────────────
         # Sweep of sell-side liquidity (lows) → price reverses up
-        # Confirmation: Bullish Change of Character (ChoCH)
+        # Confirmation: Bullish Change of Character (ChoCH) + bullish HTF trend
         dataframe.loc[
+            (htf_bullish) &                                          # HTF trend alignment (v0.27.0)
             (dataframe['recent_sweep_low']) &                        # Liquidity swept below recently
             (dataframe['choch'] == 1) &                              # Confirmation break
             (ote_check) &                                            # OTE (if required)
