@@ -6,13 +6,24 @@
 
 ## Current State
 
-- **Version:** 0.30.0 (Mandatory Order Block confluence + wider ROI targets)
-- **Status:** CI triggered on push. Implementing two-pronged fix for persistent TSL exit problem.
+- **Version:** 0.31.0 (Fix OB detection bug — rolling window recency check)
+- **Status:** CI triggered on push. v0.30.0 produced 0 trades (same bug as v0.28.0: OB box too narrow). Fixed.
 - **Branch:** `main`
 
 ---
 
-## Latest Backtest Results (v0.29.0)
+## Latest Backtest Results (v0.30.0)
+
+| Metric | Value | Notes |
+|--------|-------|-------|
+| Total Trades | **0** | ❌ Bug — OB zone (ffill top/bottom) too narrow; price never inside exact historical candle body |
+| Root Cause | `in_bullish_ob` always False | Same class of bug as v0.28.0. ffill carries OB top/bottom but price rarely sits inside a historical candle body at entry. |
+
+*Fixed in v0.31.0: rolling(20).max() on ob==1/ob==-1 checks "was a bullish/bearish OB formed within last 20 candles?" — correct SMC recency interpretation.*
+
+---
+
+## Previous Backtest Results (v0.29.0)
 
 | Metric | Value | Change vs v0.27.0 |
 |--------|-------|-------------------|
@@ -140,7 +151,8 @@ Full rewrite of the indicator logic using the `smartmoneyconcepts` library:
 - [x] **Analyze v0.27.0 backtest results** — 128 trades, 21.1% WR, -27.03%. Identical to v0.26.0. HTF trend filter ineffective in 2024-2026 bull period. Root cause: entry quality (imbalance magnets).
 - [x] **Analyze v0.28.0 backtest results** — ❌ 0 trades. FVG zone detection bug. Fixed in v0.29.0.
 - [x] **Analyze v0.29.0 backtest results** — 99 trades, 24.2% WR, -19.16%. Improvement over v0.27.0 (+3.1% WR, +7.87% profit). TSL exits reduced 55→36. Still not profitable. Root cause: avg win +0.57% vs avg loss -1.61% = terrible R:R. Fixed in v0.30.0.
-- [ ] **Analyze v0.30.0 backtest results** — expect 40-60 trades (OB is strict filter). WR target 35-50%. With wider ROI, avg win should approach 1.5%+. First profitable run possible.
+- [x] **Analyze v0.30.0 backtest results** — ❌ 0 trades. OB zone detection bug (same class as v0.28.0). Fixed in v0.31.0.
+- [ ] **Analyze v0.31.0 backtest results** — expect 40-80 trades. OB recency check (20-candle rolling window). WR target 30-45%. With wider ROI from v0.30.0, avg win should approach 1.5%+.
 
 ---
 
@@ -180,4 +192,5 @@ Full rewrite of the indicator logic using the `smartmoneyconcepts` library:
 | 2026-02-28 | 0.28.0 | **FVG confluence + opposite-side imbalance filter**: v0.27.0 results identical to v0.26.0 — HTF trend filter had no impact (2024-2026 is heavily bullish, most entries were already long-aligned). Root cause of 55 TSL exits is ENTRY QUALITY: price attracted to unmitigated FVGs beyond SL. Fix: (1) `require_fvg=True` — only enter inside active unmitigated FVG zone; (2) Opposite-side imbalance check — skip if bearish FVG below long SL or bullish FVG above short SL; (3) `min_rr` raised to 1.5. **RESULT: 0 trades — FVG zone detection bug.** |
 | 2026-02-28 | 0.29.0 | **Fix FVG zone detection bug**: v0.28.0 `active_bullish_fvg` was always False because `ffill()` was applied to a boolean series (not NaN series). Fix: forward-fill FVG zone top/bottom levels, then check `close >= fvg_bottom AND close <= fvg_top`. Correctly detects "price is inside an active FVG zone." `require_fvg` default changed to False — opposite-side imbalance is primary gate. CI running. |
 | 2026-02-28 | 0.29.0 results | **99 trades, 24.2% WR, -19.16%**: TSL exits reduced 55→36 (imbalance filter worked). Still losing due to poor R:R (avg win +0.57% vs avg TSL loss -1.61%). Fixed in v0.30.0. |
-| 2026-02-28 | 0.30.0 | **Mandatory OB confluence + wider ROI targets**: Two-pronged fix: (1) `require_ob=True` — only enter inside active Order Block zone (institutional demand/supply); expected WR 35-50%. (2) ROI widened (5%/3.5%/2%/1.2%/0.5%) to push avg win from 0.57% to 1.5%+. CI triggered on push. |
+| 2026-02-28 | 0.30.0 | **Mandatory OB confluence + wider ROI targets**: Two-pronged fix: (1) `require_ob=True` — only enter inside active Order Block zone (institutional demand/supply); expected WR 35-50%. (2) ROI widened (5%/3.5%/2%/1.2%/0.5%) to push avg win from 0.57% to 1.5%+. CI triggered on push. **RESULT: 0 trades — OB zone detection bug (exact price-in-box never true).** |
+| 2026-02-28 | 0.31.0 | **Fix OB detection bug**: Replace `in_bullish_ob` (price inside narrow ffill box) with rolling(20).max() on ob==1/ob==-1. Checks "was a bullish/bearish OB formed in last 20 candles?" — correct SMC recency interpretation. OB box is the OB candle's body; price is rarely inside it at entry — the signal is that institutional money WAS present recently. Wider ROI from v0.30.0 retained. CI running. |
