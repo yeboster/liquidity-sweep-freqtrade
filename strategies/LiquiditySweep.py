@@ -14,9 +14,17 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.30.0
+Version: 0.31.0
 
 Changelog:
+- v0.31.0 (2026-02-28): Fix OB detection bug (0 trades in v0.30.0). Replace
+  "price inside exact OB box" check with "recent OB formed within N candles"
+  (rolling window). The precise OB box (top/bottom ffill) is too narrow —
+  price rarely sits inside the exact OB candle range at entry time. The correct
+  SMC interpretation: an OB nearby (within 20 candles) signals institutional
+  interest at this price level. Entry at OB + sweep + ChoCH is still high
+  confluence. Wider ROI targets from v0.30.0 retained.
+
 - v0.30.0 (2026-02-28): Mandatory Order Block confluence + wider ROI targets.
   Analysis of v0.29.0 (99 trades, 24.2% WR, -19.16%):
   - TSL exits reduced from 55→36 (imbalance filter worked), but still too many.
@@ -136,7 +144,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.30.0"
+    STRATEGY_VERSION = "0.31.0"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -362,17 +370,33 @@ class LiquiditySweep(IStrategy):
         dataframe['ob_bottom'] = ob_data['Bottom']
         dataframe['ob_volume'] = ob_data.get('OBVolume', 0)
         
-        # Track if price is in an active order block zone
-        # Bullish OB: price near OB zone (within the block for longs)
+        # v0.31.0 FIX: OB zone detection.
+        # The previous approach (price inside exact OB box via ffill) produced 0
+        # trades because the OB candle range is too narrow — price rarely sits
+        # precisely inside a historical candle's body at entry time.
+        #
+        # Correct SMC interpretation: an Order Block formed RECENTLY (within the
+        # last 20 candles) signals that institutional money was active at this
+        # price level. The OB doesn't need to be "open" — it needs to be nearby
+        # in time. Entry is still high confluence: OB (institutional interest
+        # recently) + sweep + ChoCH (confirmation of reversal).
+        #
+        # Rolling window: 20 candles (~20h on 1h TF). A bullish OB formed within
+        # the last 20 candles confirms institutional buying pressure is recent.
+        ob_window = 20
         dataframe['in_bullish_ob'] = (
-            (dataframe['close'] >= dataframe['ob_bottom'].ffill()) &
-            (dataframe['close'] <= dataframe['ob_top'].ffill()) &
-            (dataframe['ob'].ffill() == 1)
+            dataframe['ob']
+            .eq(1)
+            .rolling(window=ob_window, min_periods=1)
+            .max()
+            .astype(bool)
         )
         dataframe['in_bearish_ob'] = (
-            (dataframe['close'] >= dataframe['ob_bottom'].ffill()) &
-            (dataframe['close'] <= dataframe['ob_top'].ffill()) &
-            (dataframe['ob'].ffill() == -1)
+            dataframe['ob']
+            .eq(-1)
+            .rolling(window=ob_window, min_periods=1)
+            .max()
+            .astype(bool)
         )
         
         # 5. Liquidity Detection
