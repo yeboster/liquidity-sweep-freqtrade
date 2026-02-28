@@ -8,14 +8,31 @@ Core Logic:
 2. Wait for price to retrace into OTE (optional)
 3. Detect liquidity sweep (price takes out swing high/low cluster)
 4. Enter on confirmation (close beyond triggering swing)
-5. Optional: Order Block confluence for higher probability entries
+5. Optional: Order Block / FVG confluence for higher probability entries
+6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.28.0)
 
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.27.0
+Version: 0.28.0
 
 Changelog:
+- v0.28.0 (2026-02-28): FVG confluence + opposite-side imbalance filter.
+  Problem: v0.27.0 results identical to v0.26.0 (128 trades, 21.1% WR, -27.03%).
+  Analysis: 55/128 trades hit trailing_stop_loss in avg 1h04m. Even trend-aligned
+  entries get stopped out immediately — this is an ENTRY QUALITY problem, not a
+  trend-alignment problem. The ATR SL is being hit because price is attracted to
+  unmitigated FVGs beyond the stop loss (liquidity magnets, stop-hunt risk).
+  Fixes:
+  (1) require_fvg=True by default: Only enter when price is inside an active
+      unmitigated FVG zone. This ensures we enter where market structure supports
+      a reversal (imbalance needs to be filled).
+  (2) Opposite-side imbalance check: Skip trade if there's an unmitigated FVG
+      on the other side of the stop loss. Key concept (Marco's SMC rule):
+      "Is there an obvious imbalance on the opposite side of where my stop would
+      go? If YES → Skip (price will be attracted there). If NO → Take trade."
+  (3) min_rr default raised to 1.5 (was 1.0) — require better setups only.
+  Expected: Fewer trades, higher quality, WR target 45-55%.
 - v0.27.0 (2026-02-27): Restore HTF trend alignment filter.
   Root cause of v0.26.0's 21.7% win rate found: the HTF trend column was computed 
   in populate_indicators but the `htf_trend_col` variable in populate_entry_trend was 
@@ -89,7 +106,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.27.0"
+    STRATEGY_VERSION = "0.28.0"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -156,8 +173,8 @@ class LiquiditySweep(IStrategy):
     atr_period = IntParameter(10, 20, default=14, space="buy", optimize=False)
     
     # Entry filters
-    min_rr = DecimalParameter(0.5, 4.0, default=1.0, space="buy", optimize=True)
-    require_fvg = CategoricalParameter([True, False], default=False, space="buy", optimize=True)
+    min_rr = DecimalParameter(0.5, 4.0, default=1.5, space="buy", optimize=True)
+    require_fvg = CategoricalParameter([True, False], default=True, space="buy", optimize=True)
     require_ob = CategoricalParameter([True, False], default=False, space="buy", optimize=True)
     
     # Liquidity detection
@@ -246,7 +263,7 @@ class LiquiditySweep(IStrategy):
         dataframe['fvg_bottom'] = fvg_data['Bottom']
         dataframe['fvg_mitigated'] = fvg_data['MitigatedIndex']
         
-        # Track if there's an active (unmitigated) FVG
+        # Track if there's an active (unmitigated) FVG on the current candle
         dataframe['active_bearish_fvg'] = (
             (dataframe['fvg'] == -1) & 
             (dataframe['fvg_mitigated'].isna())
@@ -255,6 +272,23 @@ class LiquiditySweep(IStrategy):
             (dataframe['fvg'] == 1) & 
             (dataframe['fvg_mitigated'].isna())
         ).ffill().fillna(False)
+        
+        # v0.28.0: Opposite-side imbalance check (Marco's SMC rule)
+        # Track the most recent FVG bottom and top levels for zone-based filtering
+        # These are used in populate_entry_trend to check if an unmitigated
+        # imbalance exists BELOW the swing low (for longs) or ABOVE swing high (for shorts)
+        # Bearish FVG bottom below price = danger zone for long stop
+        dataframe['bearish_fvg_bottom'] = np.where(
+            (dataframe['fvg'] == -1) & (dataframe['fvg_mitigated'].isna()),
+            dataframe['fvg_bottom'], np.nan
+        )
+        dataframe['bearish_fvg_bottom'] = dataframe['bearish_fvg_bottom'].ffill()
+        # Bullish FVG top above price = danger zone for short stop
+        dataframe['bullish_fvg_top'] = np.where(
+            (dataframe['fvg'] == 1) & (dataframe['fvg_mitigated'].isna()),
+            dataframe['fvg_top'], np.nan
+        )
+        dataframe['bullish_fvg_top'] = dataframe['bullish_fvg_top'].ffill()
         
         # 4. Order Blocks
         ob_data = smc.ob(ohlc, swing_data, close_mitigation=False)
@@ -430,6 +464,28 @@ class LiquiditySweep(IStrategy):
         htf_bearish = dataframe[htf_trend_col] == -1 if htf_trend_col in dataframe.columns else True
         htf_bullish = dataframe[htf_trend_col] == 1 if htf_trend_col in dataframe.columns else True
 
+        # ── Opposite-Side Imbalance Filter (v0.28.0) ─────────────────────────
+        # Marco's SMC rule: "Is there an obvious imbalance on the opposite side
+        # of where my stop would go? If YES → Skip (liquidity magnet, stop-hunt
+        # risk). If NO → Proceed (liquidity was already taken, safer entry)."
+        #
+        # For LONGS: SL is below swing_low_level. Skip if there's an unmitigated
+        # bearish FVG bottom BELOW the swing low (price attracted downward).
+        # For SHORTS: SL is above swing_high_level. Skip if there's an unmitigated
+        # bullish FVG top ABOVE the swing high (price attracted upward).
+        sl_buffer = self.buffer_pips.value
+        long_sl_level = dataframe['swing_low_level'] - sl_buffer
+        short_sl_level = dataframe['swing_high_level'] + sl_buffer
+
+        safe_long = ~(
+            dataframe['bearish_fvg_bottom'].notna() &
+            (dataframe['bearish_fvg_bottom'] < long_sl_level)
+        )
+        safe_short = ~(
+            dataframe['bullish_fvg_top'].notna() &
+            (dataframe['bullish_fvg_top'] > short_sl_level)
+        )
+
         # ── Short Entry ───────────────────────────────────────────────────────
         # Sweep of buy-side liquidity (highs) → price reverses down
         # Confirmation: Bearish Change of Character (ChoCH) + bearish HTF trend
@@ -438,9 +494,10 @@ class LiquiditySweep(IStrategy):
             (dataframe['recent_sweep_high']) &                       # Liquidity swept above recently
             (dataframe['choch'] == -1) &                             # Confirmation break
             (ote_check) &                                            # OTE (if required)
-            (fvg_check_short) &                                      # FVG (if required)
+            (fvg_check_short) &                                      # FVG confluence (v0.28.0 default=True)
             (ob_check_short) &                                       # Order Block (if required)
-            (dataframe['rr_short'] >= self.min_rr.value),           # Min R:R
+            (safe_short) &                                           # No imbalance magnet beyond SL (v0.28.0)
+            (dataframe['rr_short'] >= self.min_rr.value),           # Min R:R (v0.28.0 default=1.5)
             'enter_short'
         ] = 1
         
@@ -452,9 +509,10 @@ class LiquiditySweep(IStrategy):
             (dataframe['recent_sweep_low']) &                        # Liquidity swept below recently
             (dataframe['choch'] == 1) &                              # Confirmation break
             (ote_check) &                                            # OTE (if required)
-            (fvg_check_long) &                                       # FVG (if required)
+            (fvg_check_long) &                                       # FVG confluence (v0.28.0 default=True)
             (ob_check_long) &                                        # Order Block (if required)
-            (dataframe['rr_long'] >= self.min_rr.value),            # Min R:R
+            (safe_long) &                                            # No imbalance magnet beyond SL (v0.28.0)
+            (dataframe['rr_long'] >= self.min_rr.value),            # Min R:R (v0.28.0 default=1.5)
             'enter_long'
         ] = 1
         

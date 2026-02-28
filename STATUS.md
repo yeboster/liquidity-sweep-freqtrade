@@ -6,13 +6,36 @@
 
 ## Current State
 
-- **Version:** 0.27.0 (Restored HTF trend alignment filter — critical bug fix)
-- **Status:** Fixed dead variable bug where HTF trend was computed but never used in entry conditions. CI triggered on push.
+- **Version:** 0.28.0 (FVG confluence + opposite-side imbalance filter)
+- **Status:** Implemented two quality filters to address 55/128 trailing_stop_loss exits at avg -1.58% in v0.27.0. CI triggered on push.
 - **Branch:** `main`
 
 ---
 
-## Latest Backtest Results (v0.26.0)
+## Latest Backtest Results (v0.27.0)
+
+| Metric | Value | Notes |
+|--------|-------|-------|
+| Timerange | 2024-03-01 → 2026-02-27 | |
+| Total Trades | 128 | Nearly identical to v0.26.0 (129) |
+| Win Rate | 21.1% (27W / 101L) | No improvement vs v0.26.0 |
+| Profit Total | -27.03% | No improvement |
+| Avg Duration | 2h 28m | |
+
+### Exit Reason Breakdown
+| Exit Reason | Trades | Avg Profit | Wins |
+|-------------|--------|-----------|------|
+| **roi** | 25 | +0.55% | 100% |
+| **target_liquidity_reached** | 1 | 0.0% | 100% |
+| **time_exit_6h** | 11 | -0.26% | 9.1% |
+| **time_exit_4h** | 15 | -0.50% | 0% |
+| **trailing_stop_loss** | 55 | -1.58% | 0% |
+
+*Root cause analysis: v0.27.0 results identical to v0.26.0. The HTF trend filter had little impact because the 2024-2026 backtest period is heavily bullish (trend_1h==1 most of the time, entries were already mostly long-aligned). The 55 TSL exits at avg 1h04m are a ENTRY QUALITY problem: price is attracted to unmitigated FVGs beyond the stop loss (stop-hunt magnets). Fixed in v0.28.0.*
+
+---
+
+## Previous Backtest Results (v0.26.0)
 
 | Metric | Value | Change vs v0.20.0 |
 |--------|-------|-------------------|
@@ -81,7 +104,8 @@ Full rewrite of the indicator logic using the `smartmoneyconcepts` library:
 - [x] **OTE filter tightened to 30-70%** — done in v0.23.0 (was 20-90%, now clean Fib zone)
 - [x] **v0.26.0: Decouple sweep from confirmation** — Fixed same-candle logic bug. 5-candle rolling sweep window + ChoCH signal. CI running.
 - [x] **Analyze v0.26.0 backtest results** — 129 trades, 21.7% WR, -26.66%. Root cause: HTF trend dead variable (see v0.27.0).
-- [ ] **Analyze v0.27.0 backtest results** — expect fewer trades but significantly higher WR (50%+ target). If WR recovers, trigger hyperopt.
+- [x] **Analyze v0.27.0 backtest results** — 128 trades, 21.1% WR, -27.03%. Identical to v0.26.0. HTF trend filter ineffective in 2024-2026 bull period. Root cause: entry quality (imbalance magnets).
+- [ ] **Analyze v0.28.0 backtest results** — expect 30-80 trades (quality filter will reduce volume), WR target 45-55%. If profitable, run hyperopt.
 
 ---
 
@@ -118,3 +142,4 @@ Full rewrite of the indicator logic using the `smartmoneyconcepts` library:
 | 2026-02-27 | 0.25.0 | **Per-pair overrides**: Implemented a dictionary-based `custom_pair_params` configuration to override strategy parameters (like `atr_multiplier` and `require_ote`) explicitly per pair (e.g., BTC vs. ADA) to address highly variable win-rates. |
 | 2026-02-27 | 0.26.0 | **Decouple sweep from ChoCH**: Fixed core logic bug from v0.21.0 — sweep + structure break were required on the *same candle*, which killed trade volume. Now: `recent_sweep_high/low` tracks sweeps over last 5 candles (1h15m window), and entry fires when a proper ChoCH follows. Matches real ICT/SMC logic. |
 | 2026-02-28 | 0.27.0 | **Restore HTF trend alignment**: Found critical dead-variable bug — `htf_trend_col` was declared in `populate_entry_trend` but never used in filter conditions. Result: entries fired against 1H trend, causing 55/129 trades to trail-stop immediately (avg -1.58%, 1h04m). Fix: longs now require `trend_1h == 1`, shorts require `trend_1h == -1`. |
+| 2026-02-28 | 0.28.0 | **FVG confluence + opposite-side imbalance filter**: v0.27.0 results identical to v0.26.0 — HTF trend filter had no impact (2024-2026 is heavily bullish, most entries were already long-aligned). Root cause of 55 TSL exits is ENTRY QUALITY: price attracted to unmitigated FVGs beyond SL. Fix: (1) `require_fvg=True` — only enter inside active unmitigated FVG zone; (2) Opposite-side imbalance check — skip if bearish FVG below long SL or bullish FVG above short SL; (3) `min_rr` raised to 1.5. |
