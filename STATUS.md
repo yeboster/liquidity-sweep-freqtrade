@@ -6,13 +6,36 @@
 
 ## Current State
 
-- **Version:** 0.26.0 (Decoupled sweep from ChoCH confirmation)
-- **Status:** Fixed core logic bug where sweep+ChoCH had to fire on same candle. Now uses 5-candle rolling window for sweeps. CI triggered on push.
+- **Version:** 0.27.0 (Restored HTF trend alignment filter — critical bug fix)
+- **Status:** Fixed dead variable bug where HTF trend was computed but never used in entry conditions. CI triggered on push.
 - **Branch:** `main`
 
 ---
 
-## Latest Backtest Results (v0.20.0)
+## Latest Backtest Results (v0.26.0)
+
+| Metric | Value | Change vs v0.20.0 |
+|--------|-------|-------------------|
+| Timerange | 2024-02-29 → 2026-02-27 | |
+| Total Trades | 129 | 📉 -301 (was 430) |
+| Win Rate | 21.7% (28W / 101L) | 📉 -21.3% |
+| Profit Total | -26.66% | 📈 +11.52% |
+| Max Drawdown | 27.22% | 📈 Better (was 38.2%) |
+| Avg Duration | 2h 27m | 🚀 Faster |
+
+### Exit Reason Breakdown
+| Exit Reason | Trades | Avg Profit | Wins |
+|-------------|--------|-----------|------|
+| **roi** | 26 | +0.59% | 100% |
+| **trailing_stop_loss** | 55 | -1.58% | 0% |
+| **time_exit_4h** | 15 | -0.50% | 0% |
+| **time_exit_6h** | 11 | -0.26% | 9.1% |
+
+*Root cause: 55 trailing_stop_loss exits at avg -1.58% = entries fired against 1H trend (dead variable bug, fixed in v0.27.0).*
+
+---
+
+## Previous Backtest Results (v0.20.0)
 
 | Metric | Value | Change vs v0.19.0 |
 |--------|-------|-------------------|
@@ -57,7 +80,8 @@ Full rewrite of the indicator logic using the `smartmoneyconcepts` library:
 - [x] **ATR-based dynamic SL** — implemented in v0.22.0
 - [x] **OTE filter tightened to 30-70%** — done in v0.23.0 (was 20-90%, now clean Fib zone)
 - [x] **v0.26.0: Decouple sweep from confirmation** — Fixed same-candle logic bug. 5-candle rolling sweep window + ChoCH signal. CI running.
-- [ ] **Analyze v0.26.0 backtest results** — check trade volume recovery (should be much higher), win rate, profit
+- [x] **Analyze v0.26.0 backtest results** — 129 trades, 21.7% WR, -26.66%. Root cause: HTF trend dead variable (see v0.27.0).
+- [ ] **Analyze v0.27.0 backtest results** — expect fewer trades but significantly higher WR (50%+ target). If WR recovers, trigger hyperopt.
 
 ---
 
@@ -93,3 +117,4 @@ Full rewrite of the indicator logic using the `smartmoneyconcepts` library:
 | 2026-02-27 | 0.24.0 | **Time Exit Optimization**: Replaced fixed 4h and 6h time exits with hyperoptable integer and decimal parameters within `sell` space, letting the optimizer determine best parameters for duration and profitability threshold. |
 | 2026-02-27 | 0.25.0 | **Per-pair overrides**: Implemented a dictionary-based `custom_pair_params` configuration to override strategy parameters (like `atr_multiplier` and `require_ote`) explicitly per pair (e.g., BTC vs. ADA) to address highly variable win-rates. |
 | 2026-02-27 | 0.26.0 | **Decouple sweep from ChoCH**: Fixed core logic bug from v0.21.0 — sweep + structure break were required on the *same candle*, which killed trade volume. Now: `recent_sweep_high/low` tracks sweeps over last 5 candles (1h15m window), and entry fires when a proper ChoCH follows. Matches real ICT/SMC logic. |
+| 2026-02-28 | 0.27.0 | **Restore HTF trend alignment**: Found critical dead-variable bug — `htf_trend_col` was declared in `populate_entry_trend` but never used in filter conditions. Result: entries fired against 1H trend, causing 55/129 trades to trail-stop immediately (avg -1.58%, 1h04m). Fix: longs now require `trend_1h == 1`, shorts require `trend_1h == -1`. |
