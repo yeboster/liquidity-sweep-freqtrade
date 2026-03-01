@@ -6,8 +6,8 @@
 
 ## Current State
 
-- **Version:** 0.34.0 (Remove OB filter, ATR SL -> 2.0x, min_rr -> 1.0)
-- **Status:** CI triggered. v0.32.0 (with expanded OB window) produced 2 trades across all pairs in 2 years. Decision: Drop `require_ob` globally. v0.34.0 uses `require_fvg=True` + opposite-side imbalance as primary gate, with expanded ATR SL (2.0x) to allow institutional reversals room to breathe.
+- **Version:** 0.35.0 (Fix FVG active zone detection — same class of bug as OB window)
+- **Status:** CI triggered (push). v0.33.0 and v0.34.0 both produced 0 trades due to a backtesting bug: `fvg_mitigated.isna()` was supposed to filter for unmitigated FVGs, but the smc library marks MitigatedIndex for virtually all historical FVGs during backtesting (it has full future data). Zone forward-fills were essentially empty → `active_bullish_fvg` always False → 0 trades. Fix: rolling window approach (30 candles, ~7.5h) — same fix as OB detection in v0.31.0. 
 - **Branch:** `main`
 
 ---
@@ -166,7 +166,9 @@ Full rewrite of the indicator logic using the `smartmoneyconcepts` library:
 - [x] **Analyze v0.30.0 backtest results** — ❌ 0 trades. OB zone detection bug (same class as v0.28.0). Fixed in v0.31.0.
 - [x] **Analyze v0.31.0 backtest results** — ❌ 0 trades. ob_window=20 too small for sparse OBs. Fixed in v0.32.0 (100-candle window).
 - [x] **Analyze v0.32.0 backtest results** — expect 40-80 trades (OB recency filter now 25h). WR target 30-45%. With wider ROI from v0.30.0, avg win should approach 1.5%+. If still 0 trades → set require_ob=False and iterate on entry quality differently.
-- [ ] **Analyze v0.33.0 backtest results** — expect trades to return to healthy levels (around 90+) while leveraging `require_fvg=True` + wider ROI filters to improve the win-loss calculus.
+- [x] **Analyze v0.33.0 backtest results** — ❌ 0 trades. Root cause: `fvg_mitigated.isna()` = backtesting bug (library marks all historical FVGs as eventually mitigated). Fixed in v0.35.0.
+- [x] **Analyze v0.34.0 backtest results** — ❌ 0 trades. Same root cause as v0.33.0. Fixed in v0.35.0.
+- [ ] **Analyze v0.35.0 backtest results** — expect 90+ trades (FVG quality gate now actually works via rolling window). WR target: 25-35%. With wider ROI (v0.30.0) and 2x ATR SL (v0.34.0), avg win should push toward 1%+. If R:R improves, this could be first profitable version.
 
 ---
 
@@ -209,4 +211,6 @@ Full rewrite of the indicator logic using the `smartmoneyconcepts` library:
 | 2026-02-28 | 0.30.0 | **Mandatory OB confluence + wider ROI targets**: Two-pronged fix: (1) `require_ob=True` — only enter inside active Order Block zone (institutional demand/supply); expected WR 35-50%. (2) ROI widened (5%/3.5%/2%/1.2%/0.5%) to push avg win from 0.57% to 1.5%+. CI triggered on push. **RESULT: 0 trades — OB zone detection bug (exact price-in-box never true).** |
 | 2026-02-28 | 0.31.0 | **Fix OB detection bug**: Replace `in_bullish_ob` (price inside narrow ffill box) with rolling(20).max() on ob==1/ob==-1. Checks "was a bullish/bearish OB formed in last 20 candles?" — correct SMC recency interpretation. OB box is the OB candle's body; price is rarely inside it at entry — the signal is that institutional money WAS present recently. Wider ROI from v0.30.0 retained. CI running. **RESULT: 0 trades — ob_window=20 too small.** |
 | 2026-02-28 | 0.32.0 | **Expand OB recency window 20 → 100 candles**: smc.ob() produces sparse OBs (~1 per 50-200 candles). A 20-candle window (~5h) rarely contains an OB → in_bullish_ob almost always False → 0 trades. Fix: expand ob_window to 100 candles (~25h). "Was institutional demand/supply present in the last day?" is the correct SMC recency interpretation. 100 candles ensures the flag is True for the majority of candles following an OB, giving ChoCH+sweep signals a chance to fire. CI running. |
-| 2026-03-01 | 0.33.0 | **Remove OB filter entirely**: v0.32.0 still produced only 2 trades across all pairs (smc.ob() is too sparse to build reliable confluence). Strategy now relies on `require_fvg=True` (active imbalance zone) and the opposite-side imbalance checker to act as the primary quality gate. Wider ROI targets maintained. |
+| 2026-03-01 | 0.33.0 | **Remove OB filter entirely**: v0.32.0 still produced only 2 trades across all pairs (smc.ob() is too sparse to build reliable confluence). Strategy now relies on `require_fvg=True` (active imbalance zone) and the opposite-side imbalance checker to act as the primary quality gate. Wider ROI targets maintained. **RESULT: 0 trades — FVG active zone detection bug.** |
+| 2026-03-01 | 0.34.0 | **ATR SL 2.0x + min_rr 1.0**: Increased ATR multiplier 1.5x → 2.0x (give reversals room to breathe vs avg -1.61% TSL in v0.29.0). Reduced min_rr 1.5 → 1.0 (allow standard SMC setups). **RESULT: 0 trades — same FVG detection bug as v0.33.0.** |
+| 2026-03-01 | 0.35.0 | **Fix FVG active zone detection**: Root cause of 0-trade bug in v0.33.0/v0.34.0: `fvg_mitigated.isna()` was supposed to filter for unmitigated FVGs, but the smc library has full future data in backtesting and sets `MitigatedIndex` for virtually ALL historical FVGs. Zone forward-fills were nearly empty → `active_bullish_fvg` always False → 0 trades. Same class of bug as OB detection (v0.31.0). Fix: Rolling window (30 candles ≈ 7.5h at 15m) — "Was a bullish/bearish FVG formed within the last 30 candles?" CI triggered on push. |
