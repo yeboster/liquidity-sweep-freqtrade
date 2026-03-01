@@ -8,15 +8,26 @@ Core Logic:
 2. Wait for price to retrace into OTE (optional)
 3. Detect liquidity sweep (price takes out swing high/low cluster)
 4. Enter on confirmation (close beyond triggering swing)
-5. Require Order Block confluence — enter only inside structural demand/supply zones
+5. Require recent FVG confluence — a bullish/bearish FVG formed within N candles
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.32.0
+Version: 0.35.0
 
 Changelog:
+- v0.35.0 (2026-03-01): Fix FVG active zone detection — same class of bug as OB window (v0.31.0).
+  ROOT CAUSE: `fvg_mitigated.isna()` was supposed to isolate "unmitigated" FVGs.
+  But during backtesting the smc library has full future data and sets MitigatedIndex
+  for EVERY FVG that is eventually mitigated (nearly all of them). So `fvg_mitigated.isna()`
+  was True only for the very last candles → zone forward-fills were essentially empty →
+  `active_bullish_fvg` was always False → 0 trades in v0.33.0 and v0.34.0.
+  FIX: Rolling window (30 candles, ~7.5h at 15m): "Was a bullish/bearish FVG formed
+  within the last 30 candles?" — sensible SMC recency check, analagous to OB fix.
+  Also simplified opposite-side imbalance filter to use same rolling zone levels.
+  Expected: Restores trade flow to 90+ (similar to v0.27.0/v0.29.0) while keeping
+  FVG recency as a quality gate.
 - v0.32.0 (2026-02-28): Fix OB recency window — increase from 20 to 100 candles.
   Root cause of v0.31.0 0-trade bug: smc.ob() produces sparse OB candles (one
   every ~50-200 candles). A 20-candle window (~5h at 15m) misses most OBs.
@@ -166,7 +177,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.34.0"
+    STRATEGY_VERSION = "0.35.0"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -333,60 +344,51 @@ class LiquiditySweep(IStrategy):
         dataframe['fvg_bottom'] = fvg_data['Bottom']
         dataframe['fvg_mitigated'] = fvg_data['MitigatedIndex']
         
-        # v0.29.0 FIX: Track active FVG zone levels (not candle flags).
-        # Problem: v0.28.0 checked if the current candle IS an FVG candle (sparse,
-        # almost always False). We need "is price currently INSIDE an unmitigated FVG zone?"
-        # Solution: Forward-fill the top/bottom levels of the latest unmitigated FVG,
-        # then check if close is within [bottom, top].
-        dataframe['bullish_fvg_zone_top'] = np.where(
-            (dataframe['fvg'] == 1) & (dataframe['fvg_mitigated'].isna()),
-            dataframe['fvg_top'], np.nan
-        )
-        dataframe['bullish_fvg_zone_bottom'] = np.where(
-            (dataframe['fvg'] == 1) & (dataframe['fvg_mitigated'].isna()),
-            dataframe['fvg_bottom'], np.nan
-        )
-        dataframe['bearish_fvg_zone_top'] = np.where(
-            (dataframe['fvg'] == -1) & (dataframe['fvg_mitigated'].isna()),
-            dataframe['fvg_top'], np.nan
-        )
-        dataframe['bearish_fvg_zone_bottom'] = np.where(
-            (dataframe['fvg'] == -1) & (dataframe['fvg_mitigated'].isna()),
-            dataframe['fvg_bottom'], np.nan
-        )
-        # Forward-fill: carry the most recent unmitigated FVG zone levels forward
-        dataframe['bullish_fvg_zone_top'] = dataframe['bullish_fvg_zone_top'].ffill()
-        dataframe['bullish_fvg_zone_bottom'] = dataframe['bullish_fvg_zone_bottom'].ffill()
-        dataframe['bearish_fvg_zone_top'] = dataframe['bearish_fvg_zone_top'].ffill()
-        dataframe['bearish_fvg_zone_bottom'] = dataframe['bearish_fvg_zone_bottom'].ffill()
-        # Active FVG zone: price is inside the most recent unmitigated FVG range
+        # v0.35.0 FIX: FVG "active zone" detection was broken in all prior versions.
+        #
+        # ROOT CAUSE (v0.29.0 → v0.34.0):
+        # The condition `fvg_mitigated.isna()` was used to identify "unmitigated" FVGs.
+        # During backtesting, the smartmoneyconcepts library has access to the full dataset
+        # and marks the MitigatedIndex for EVERY FVG that eventually gets mitigated.
+        # Since nearly all historical FVGs are eventually mitigated, `fvg_mitigated.isna()`
+        # is almost always False. The resulting zone forward-fills had near-zero coverage,
+        # making `active_bullish_fvg` essentially always False → 0 trades.
+        # This is the same class of bug as the OB window issue (v0.31.0/v0.32.0):
+        # point-in-time signals used in a way that makes them always False.
+        #
+        # FIX (v0.35.0): Use a rolling window approach (identical to OB fix in v0.31.0).
+        # "Was a bullish/bearish FVG formed within the last N candles?"
+        # FVG window of 30 candles (~7.5h at 15m): recent imbalance signal.
+        # This is sensible SMC: an FVG formed today is still an active imbalance zone
+        # worth trading from — mitigation (price touching it) is EXPECTED on the return move.
+        fvg_window = 30  # ~7.5h at 15m — "Was imbalance created recently?"
         dataframe['active_bullish_fvg'] = (
-            dataframe['bullish_fvg_zone_top'].notna() &
-            (dataframe['close'] >= dataframe['bullish_fvg_zone_bottom']) &
-            (dataframe['close'] <= dataframe['bullish_fvg_zone_top'])
+            dataframe['fvg']
+            .eq(1)
+            .rolling(window=fvg_window, min_periods=1)
+            .max()
+            .astype(bool)
         )
         dataframe['active_bearish_fvg'] = (
-            dataframe['bearish_fvg_zone_top'].notna() &
-            (dataframe['close'] >= dataframe['bearish_fvg_zone_bottom']) &
-            (dataframe['close'] <= dataframe['bearish_fvg_zone_top'])
+            dataframe['fvg']
+            .eq(-1)
+            .rolling(window=fvg_window, min_periods=1)
+            .max()
+            .astype(bool)
         )
         
+        # Keep zone level tracking for opposite-side imbalance filter
+        # (These use the raw fvg_top/bottom columns, not mitigation-dependent)
+        dataframe['bullish_fvg_zone_top'] = dataframe['fvg_top'].where(dataframe['fvg'] == 1).ffill()
+        dataframe['bullish_fvg_zone_bottom'] = dataframe['fvg_bottom'].where(dataframe['fvg'] == 1).ffill()
+        dataframe['bearish_fvg_zone_top'] = dataframe['fvg_top'].where(dataframe['fvg'] == -1).ffill()
+        dataframe['bearish_fvg_zone_bottom'] = dataframe['fvg_bottom'].where(dataframe['fvg'] == -1).ffill()
+        
         # v0.28.0: Opposite-side imbalance check (Marco's SMC rule)
-        # Track the most recent FVG bottom and top levels for zone-based filtering
-        # These are used in populate_entry_trend to check if an unmitigated
-        # imbalance exists BELOW the swing low (for longs) or ABOVE swing high (for shorts)
-        # Bearish FVG bottom below price = danger zone for long stop
-        dataframe['bearish_fvg_bottom'] = np.where(
-            (dataframe['fvg'] == -1) & (dataframe['fvg_mitigated'].isna()),
-            dataframe['fvg_bottom'], np.nan
-        )
-        dataframe['bearish_fvg_bottom'] = dataframe['bearish_fvg_bottom'].ffill()
-        # Bullish FVG top above price = danger zone for short stop
-        dataframe['bullish_fvg_top'] = np.where(
-            (dataframe['fvg'] == 1) & (dataframe['fvg_mitigated'].isna()),
-            dataframe['fvg_top'], np.nan
-        )
-        dataframe['bullish_fvg_top'] = dataframe['bullish_fvg_top'].ffill()
+        # v0.35.0: simplified — use the already-computed zone level columns
+        # (no longer gated on mitigation status, same fix as active_fvg above)
+        dataframe['bearish_fvg_bottom'] = dataframe['bearish_fvg_zone_bottom']
+        dataframe['bullish_fvg_top'] = dataframe['bullish_fvg_zone_top']
         
         # 4. Order Blocks
         ob_data = smc.ob(ohlc, swing_data, close_mitigation=False)
