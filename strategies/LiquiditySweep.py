@@ -177,7 +177,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.35.0"
+    STRATEGY_VERSION = "0.36.0"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -210,9 +210,9 @@ class LiquiditySweep(IStrategy):
         "0": 0.05,      # 5% immediately (wide for impulsive OB-driven moves)
         "30": 0.035,    # 3.5% after 30 min
         "60": 0.02,     # 2.0% after 1h
-        "120": 0.012,   # 1.2% after 2h
-        "240": 0.005,   # 0.5% after 4h
-        "480": -0.005   # -0.5% after 8h (stale trade exit, unchanged)
+        "120": 0.015,   # 1.5% after 2h (v0.36: slightly tighter)
+        "480": 0.005,   # 0.5% after 8h (v0.36: delayed stale exit)
+        "720": 0        # Exit after 12h
     }
     
     # Absolute backstop required by Freqtrade — custom_stoploss will use ATR, this is fallback
@@ -552,8 +552,22 @@ class LiquiditySweep(IStrategy):
         req_ob = self.get_param('require_ob', pair, self.require_ob.value)
         
         ote_check = dataframe['in_ote'] if req_ote else True
-        fvg_check_short = dataframe['active_bearish_fvg'] if req_fvg else True
-        fvg_check_long = dataframe['active_bullish_fvg'] if req_fvg else True
+        
+        # v0.36.0: Enhanced FVG confluence (Price inside/near the zone)
+        # Instead of just "an FVG formed recently", we ensure price is actually 
+        # testing the imbalance.
+        fvg_check_short = (
+            dataframe['active_bearish_fvg'] & 
+            (dataframe['close'] >= dataframe['bearish_fvg_zone_bottom']) & 
+            (dataframe['close'] <= dataframe['bearish_fvg_zone_top'])
+        ) if req_fvg else True
+        
+        fvg_check_long = (
+            dataframe['active_bullish_fvg'] & 
+            (dataframe['close'] <= dataframe['bullish_fvg_zone_top']) & 
+            (dataframe['close'] >= dataframe['bullish_fvg_zone_bottom'])
+        ) if req_fvg else True
+        
         ob_check_short = dataframe['in_bearish_ob'] if req_ob else True
         ob_check_long = dataframe['in_bullish_ob'] if req_ob else True
         
@@ -588,21 +602,20 @@ class LiquiditySweep(IStrategy):
         # of where my stop would go? If YES → Skip (liquidity magnet, stop-hunt
         # risk). If NO → Proceed (liquidity was already taken, safer entry)."
         #
-        # For LONGS: SL is below swing_low_level. Skip if there's an unmitigated
-        # bearish FVG bottom BELOW the swing low (price attracted downward).
-        # For SHORTS: SL is above swing_high_level. Skip if there's an unmitigated
-        # bullish FVG top ABOVE the swing high (price attracted upward).
+        # v0.36.0 FIX: Logic was inverted since v0.28.0. 
+        # For LONGS: SL is below. Magnet is a BULLISH FVG (support) even deeper.
+        # For SHORTS: SL is above. Magnet is a BEARISH FVG (resistance) even higher.
         sl_buffer = self.buffer_pips.value
         long_sl_level = dataframe['swing_low_level'] - sl_buffer
         short_sl_level = dataframe['swing_high_level'] + sl_buffer
 
         safe_long = ~(
-            dataframe['bearish_fvg_bottom'].notna() &
-            (dataframe['bearish_fvg_bottom'] < long_sl_level)
+            dataframe['bullish_fvg_zone_top'].notna() &
+            (dataframe['bullish_fvg_zone_top'] < long_sl_level)
         )
         safe_short = ~(
-            dataframe['bullish_fvg_top'].notna() &
-            (dataframe['bullish_fvg_top'] > short_sl_level)
+            dataframe['bearish_fvg_zone_bottom'].notna() &
+            (dataframe['bearish_fvg_zone_bottom'] > short_sl_level)
         )
 
         # ── Short Entry ───────────────────────────────────────────────────────
