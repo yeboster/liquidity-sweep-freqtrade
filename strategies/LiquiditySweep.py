@@ -27,6 +27,14 @@ Changelog:
   still acts as demand. 100 candles ensures the flag is True for the majority of
   candles following an OB formation, giving ChoCH+sweep signals a chance to fire.
   All other settings unchanged from v0.31.0 (wider ROI, safe_long/short filter).
+- v0.33.0 (2026-03-01): Remove OB filter entirely, rely on FVG/Imbalance.
+  Problem: v0.32.0 (Even with expanded 100-candle OB recency window) yielded
+  only 2 trades across all pairs in 2 years. The `smc.ob()` filter is far too
+  restrictive/sparse.
+  Fix: Set `require_ob=False` entirely. Rely on `require_fvg=True` + opposite-side
+  imbalance filter to ensure entry quality, coupled with the wider ROI targets
+  introduced in v0.30.0.
+
 
 - v0.31.0 (2026-02-28): Fix OB detection bug (0 trades in v0.30.0). Replace
   "price inside exact OB box" check with "recent OB formed within N candles"
@@ -155,7 +163,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.32.0"
+    STRATEGY_VERSION = "0.33.0"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -226,12 +234,12 @@ class LiquiditySweep(IStrategy):
     
     # Entry filters
     min_rr = DecimalParameter(0.5, 4.0, default=1.5, space="buy", optimize=True)
-    require_fvg = CategoricalParameter([True, False], default=False, space="buy", optimize=True)
+    require_fvg = CategoricalParameter([True, False], default=True, space="buy", optimize=True)
     # v0.30.0: Order Block now mandatory by default (was False).
     # OB = structural demand/supply zone created by institutional move. Entering
     # at OB + sweep + ChoCH = max confluence ICT setup. Expected to cut TSL exits
     # dramatically (price at OB has structural support, less likely to continue against us).
-    require_ob = CategoricalParameter([True, False], default=True, space="buy", optimize=True)
+    require_ob = CategoricalParameter([True, False], default=False, space="buy", optimize=True)
     
     # Liquidity detection
     liquidity_range_pct = DecimalParameter(0.005, 0.03, default=0.01, space="buy", optimize=True)

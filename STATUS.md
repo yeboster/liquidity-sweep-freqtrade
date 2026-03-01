@@ -6,23 +6,24 @@
 
 ## Current State
 
-- **Version:** 0.32.0 (Expand OB recency window 20 → 100 candles)
-- **Status:** CI triggered on push. v0.31.0 still produced 0 trades — root cause: OB window too small (20 candles = 5h). smc.ob() produces sparse OBs (~1 per 50-200 candles). Fix: 100-candle window (~25h).
+- **Version:** 0.33.0 (Remove OB filter, rely on FVG + wider ROI)
+- **Status:** CI triggered. v0.32.0 (with expanded OB window) produced 2 trades across all pairs in 2 years. Decision: Drop `require_ob` entirely, use `require_fvg=True` to gate entry quality instead.
 - **Branch:** `main`
 
 ---
 
-## Latest Backtest Results (v0.31.0)
+## Latest Backtest Results (v0.32.0)
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Total Trades | **0** | ❌ Bug — ob_window=20 (~5h) too narrow. smc.ob() marks OBs sparsely. in_bullish_ob almost always False. |
-| Root Cause | Rolling window too small | OBs appear ~every 50-200 candles. A 20-candle window almost never contains one. Same symptom as v0.28.0/v0.30.0 (0 trades). |
+| Total Trades | **2** | ❌ Bug/Tuning — `smc.ob()` is still too sparse, even with a 100-candle window. |
+| Root Cause | Strict OB criteria | Order blocks are rarely identified by the library in a way that aligns with sweeps and ChoCH. Drops volume to near-zero. |
 
-*Fixed in v0.32.0: ob_window expanded to 100 candles (~25h). "Was institutional demand present in the last day?" — sensible SMC recency interpretation.*
+*Fixed in v0.33.0: `require_ob` set to False. Entry filtering now relies on `require_fvg=True` (active imbalance zone) and the opposite-side imbalance checker.*
 
 ---
 
+## Previous Backtest Results (v0.31.0)
 ## Previous Latest Backtest Results (v0.30.0)
 
 | Metric | Value | Notes |
@@ -164,7 +165,8 @@ Full rewrite of the indicator logic using the `smartmoneyconcepts` library:
 - [x] **Analyze v0.29.0 backtest results** — 99 trades, 24.2% WR, -19.16%. Improvement over v0.27.0 (+3.1% WR, +7.87% profit). TSL exits reduced 55→36. Still not profitable. Root cause: avg win +0.57% vs avg loss -1.61% = terrible R:R. Fixed in v0.30.0.
 - [x] **Analyze v0.30.0 backtest results** — ❌ 0 trades. OB zone detection bug (same class as v0.28.0). Fixed in v0.31.0.
 - [x] **Analyze v0.31.0 backtest results** — ❌ 0 trades. ob_window=20 too small for sparse OBs. Fixed in v0.32.0 (100-candle window).
-- [ ] **Analyze v0.32.0 backtest results** — expect 40-80 trades (OB recency filter now 25h). WR target 30-45%. With wider ROI from v0.30.0, avg win should approach 1.5%+. If still 0 trades → set require_ob=False and iterate on entry quality differently.
+- [x] **Analyze v0.32.0 backtest results** — expect 40-80 trades (OB recency filter now 25h). WR target 30-45%. With wider ROI from v0.30.0, avg win should approach 1.5%+. If still 0 trades → set require_ob=False and iterate on entry quality differently.
+- [ ] **Analyze v0.33.0 backtest results** — expect trades to return to healthy levels (around 90+) while leveraging `require_fvg=True` + wider ROI filters to improve the win-loss calculus.
 
 ---
 
@@ -207,3 +209,4 @@ Full rewrite of the indicator logic using the `smartmoneyconcepts` library:
 | 2026-02-28 | 0.30.0 | **Mandatory OB confluence + wider ROI targets**: Two-pronged fix: (1) `require_ob=True` — only enter inside active Order Block zone (institutional demand/supply); expected WR 35-50%. (2) ROI widened (5%/3.5%/2%/1.2%/0.5%) to push avg win from 0.57% to 1.5%+. CI triggered on push. **RESULT: 0 trades — OB zone detection bug (exact price-in-box never true).** |
 | 2026-02-28 | 0.31.0 | **Fix OB detection bug**: Replace `in_bullish_ob` (price inside narrow ffill box) with rolling(20).max() on ob==1/ob==-1. Checks "was a bullish/bearish OB formed in last 20 candles?" — correct SMC recency interpretation. OB box is the OB candle's body; price is rarely inside it at entry — the signal is that institutional money WAS present recently. Wider ROI from v0.30.0 retained. CI running. **RESULT: 0 trades — ob_window=20 too small.** |
 | 2026-02-28 | 0.32.0 | **Expand OB recency window 20 → 100 candles**: smc.ob() produces sparse OBs (~1 per 50-200 candles). A 20-candle window (~5h) rarely contains an OB → in_bullish_ob almost always False → 0 trades. Fix: expand ob_window to 100 candles (~25h). "Was institutional demand/supply present in the last day?" is the correct SMC recency interpretation. 100 candles ensures the flag is True for the majority of candles following an OB, giving ChoCH+sweep signals a chance to fire. CI running. |
+| 2026-03-01 | 0.33.0 | **Remove OB filter entirely**: v0.32.0 still produced only 2 trades across all pairs (smc.ob() is too sparse to build reliable confluence). Strategy now relies on `require_fvg=True` (active imbalance zone) and the opposite-side imbalance checker to act as the primary quality gate. Wider ROI targets maintained. |
