@@ -6,8 +6,8 @@
 
 ## Current State
 
-- **Version:** 0.33.0 (Remove OB filter, rely on FVG + wider ROI)
-- **Status:** CI triggered. v0.32.0 (with expanded OB window) produced 2 trades across all pairs in 2 years. Decision: Drop `require_ob` entirely, use `require_fvg=True` to gate entry quality instead.
+- **Version:** 0.34.0 (Remove OB filter, ATR SL -> 2.0x, min_rr -> 1.0)
+- **Status:** CI triggered. v0.32.0 (with expanded OB window) produced 2 trades across all pairs in 2 years. Decision: Drop `require_ob` globally. v0.34.0 uses `require_fvg=True` + opposite-side imbalance as primary gate, with expanded ATR SL (2.0x) to allow institutional reversals room to breathe.
 - **Branch:** `main`
 
 ---

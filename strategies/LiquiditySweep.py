@@ -26,14 +26,17 @@ Changelog:
   last down-candle before a bullish BOS may have been printed hours ago and it
   still acts as demand. 100 candles ensures the flag is True for the majority of
   candles following an OB formation, giving ChoCH+sweep signals a chance to fire.
-  All other settings unchanged from v0.31.0 (wider ROI, safe_long/short filter).
-- v0.33.0 (2026-03-01): Remove OB filter entirely, rely on FVG/Imbalance.
-  Problem: v0.32.0 (Even with expanded 100-candle OB recency window) yielded
-  only 2 trades across all pairs in 2 years. The `smc.ob()` filter is far too
-  restrictive/sparse.
-  Fix: Set `require_ob=False` entirely. Rely on `require_fvg=True` + opposite-side
-  imbalance filter to ensure entry quality, coupled with the wider ROI targets
-  introduced in v0.30.0.
+  All other settings unchanged from v0.29.0 (wider ROI, safe_long/short filter).
+- v0.34.0 (2026-03-01): Quality Gate Shift + Risk Expansion.
+  Problem (v0.32): 2 trades in 2 years. The `smc.ob()` (Order Block) library
+  is far too sparse for reliable confluence across the board.
+  Fix: Set `require_ob=False` globally.
+  Problem (v0.29): TSL avg loss (-1.61%) vs avg ROI win (+0.57%) math is
+  inverted. TSL hits occur too early before impulsive reversals.
+  Fix: Widen ATR SL from 1.5x -> 2.0x ATR to give ICT reversals room.
+  Fix: min_rr reduced 1.5 -> 1.0 (allow standard SMC setups).
+  Primary Quality Gate: `require_fvg=True` (active imbalance zone) +
+  opposite-side imbalance filter (safe_long/short).
 
 
 - v0.31.0 (2026-02-28): Fix OB detection bug (0 trades in v0.30.0). Replace
@@ -163,7 +166,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.33.0"
+    STRATEGY_VERSION = "0.34.0"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -229,11 +232,14 @@ class LiquiditySweep(IStrategy):
     require_ote = CategoricalParameter([True, False], default=True, space="buy", optimize=True)
     
     # ATR-based SL — new in v0.22.0
-    atr_multiplier = DecimalParameter(1.0, 2.5, default=1.5, space="buy", optimize=True)
+    # v0.34.0: ATR Multiplier increase to 2.0x (from 1.5x)
+    # The avg TSL loss in v0.29.0 was -1.61% vs avg win +0.57%. Loosening SL
+    # gives institutional reversals room to breathe.
+    atr_multiplier = DecimalParameter(1.0, 3.0, default=2.0, space="buy", optimize=True)
     atr_period = IntParameter(10, 20, default=14, space="buy", optimize=False)
     
     # Entry filters
-    min_rr = DecimalParameter(0.5, 4.0, default=1.5, space="buy", optimize=True)
+    min_rr = DecimalParameter(0.5, 4.0, default=1.0, space="buy", optimize=True)
     require_fvg = CategoricalParameter([True, False], default=True, space="buy", optimize=True)
     # v0.30.0: Order Block now mandatory by default (was False).
     # OB = structural demand/supply zone created by institutional move. Entering
