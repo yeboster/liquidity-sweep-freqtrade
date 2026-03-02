@@ -177,7 +177,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.36.0"
+    STRATEGY_VERSION = "0.37.0"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -238,8 +238,9 @@ class LiquiditySweep(IStrategy):
     htf_swing_length = IntParameter(5, 20, default=10, space="buy", optimize=True)
     
     # OTE zone — tightened in v0.23.0 to 30-70% (quality filter, avoids extremes)
+    # v0.37.0: Re-expanded for hyperopt (30-85%)
     ote_lower = DecimalParameter(0.30, 0.50, default=0.30, space="buy", optimize=True)
-    ote_upper = DecimalParameter(0.55, 0.70, default=0.70, space="buy", optimize=True)
+    ote_upper = DecimalParameter(0.55, 0.85, default=0.70, space="buy", optimize=True)
     require_ote = CategoricalParameter([True, False], default=True, space="buy", optimize=True)
     
     # ATR-based SL — new in v0.22.0
