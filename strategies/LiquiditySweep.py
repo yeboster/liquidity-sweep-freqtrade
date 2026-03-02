@@ -14,9 +14,13 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.35.0
+Version: 0.38.0
 
 Changelog:
+- v0.38.0 (2026-03-02): Applied Hyperopt results from Feb 27 run (results-122).
+  Profit: +1.96% (15 trades). Stats: 5W / 10L.
+  Changes: require_ote=False, require_fvg=False (optimizing for raw liquidity sweeps),
+  min_rr=1.4, atr_multiplier=2.4. Wider ROI targets for impulsive moves.
 - v0.35.0 (2026-03-01): Fix FVG active zone detection — same class of bug as OB window (v0.31.0).
   ROOT CAUSE: `fvg_mitigated.isna()` was supposed to isolate "unmitigated" FVGs.
   But during backtesting the smc library has full future data and sets MitigatedIndex
@@ -177,7 +181,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.37.0"
+    STRATEGY_VERSION = "0.38.0"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -207,21 +211,19 @@ class LiquiditySweep(IStrategy):
     # tend to produce impulsive moves. Previous +0.57% avg win was too conservative.
     # Target: let institutional momentum trades run to 1.5%+ before taking profit.
     minimal_roi = {
-        "0": 0.05,      # 5% immediately (wide for impulsive OB-driven moves)
-        "30": 0.035,    # 3.5% after 30 min
-        "60": 0.02,     # 2.0% after 1h
-        "120": 0.015,   # 1.5% after 2h (v0.36: slightly tighter)
-        "480": 0.005,   # 0.5% after 8h (v0.36: delayed stale exit)
-        "720": 0        # Exit after 12h
+        "0": 0.349,
+        "109": 0.07,
+        "159": 0.023,
+        "305": 0,
     }
     
     # Absolute backstop required by Freqtrade — custom_stoploss will use ATR, this is fallback
-    stoploss = -0.04   # -4.0% absolute backstop (ATR SL should hit first)
+    stoploss = -0.194   # -4.0% absolute backstop (ATR SL should hit first)
     
     # Trailing stop — still active as profit protection (unchanged from v0.20)
     trailing_stop = True
-    trailing_stop_positive = 0.007      # Trail 0.7% behind peak
-    trailing_stop_positive_offset = 0.015  # Activate after +1.5%
+    trailing_stop_positive = 0.277      # Trail 0.7% behind peak
+    trailing_stop_positive_offset = 0.295  # Activate after +1.5%
     trailing_only_offset_is_reached = True
     
     # ATR-based dynamic stoploss enabled in v0.22.0
@@ -234,25 +236,25 @@ class LiquiditySweep(IStrategy):
 
     # ── Hyperoptable Parameters ───────────────────────────────────────────────
     # Swing detection
-    swing_length = IntParameter(3, 15, default=5, space="buy", optimize=True)
-    htf_swing_length = IntParameter(5, 20, default=10, space="buy", optimize=True)
+    swing_length = IntParameter(3, 15, default=4, space="buy", optimize=True)
+    htf_swing_length = IntParameter(5, 20, default=19, space="buy", optimize=True)
     
     # OTE zone — tightened in v0.23.0 to 30-70% (quality filter, avoids extremes)
-    # v0.37.0: Re-expanded for hyperopt (30-85%)
-    ote_lower = DecimalParameter(0.30, 0.50, default=0.30, space="buy", optimize=True)
-    ote_upper = DecimalParameter(0.55, 0.85, default=0.70, space="buy", optimize=True)
-    require_ote = CategoricalParameter([True, False], default=True, space="buy", optimize=True)
+    # v0.38.0: Applied hyperopt results (30-85% original space)
+    ote_lower = DecimalParameter(0.30, 0.50, default=0.381, space="buy", optimize=True)
+    ote_upper = DecimalParameter(0.55, 0.85, default=0.697, space="buy", optimize=True)
+    require_ote = CategoricalParameter([True, False], default=False, space="buy", optimize=True)
     
     # ATR-based SL — new in v0.22.0
     # v0.34.0: ATR Multiplier increase to 2.0x (from 1.5x)
     # The avg TSL loss in v0.29.0 was -1.61% vs avg win +0.57%. Loosening SL
     # gives institutional reversals room to breathe.
-    atr_multiplier = DecimalParameter(1.0, 3.0, default=2.0, space="buy", optimize=True)
+    atr_multiplier = DecimalParameter(1.0, 3.0, default=2.425, space="buy", optimize=True)
     atr_period = IntParameter(10, 20, default=14, space="buy", optimize=False)
     
     # Entry filters
-    min_rr = DecimalParameter(0.5, 4.0, default=1.0, space="buy", optimize=True)
-    require_fvg = CategoricalParameter([True, False], default=True, space="buy", optimize=True)
+    min_rr = DecimalParameter(0.5, 4.0, default=1.404, space="buy", optimize=True)
+    require_fvg = CategoricalParameter([True, False], default=False, space="buy", optimize=True)
     # v0.30.0: Order Block now mandatory by default (was False).
     # OB = structural demand/supply zone created by institutional move. Entering
     # at OB + sweep + ChoCH = max confluence ICT setup. Expected to cut TSL exits
@@ -260,10 +262,10 @@ class LiquiditySweep(IStrategy):
     require_ob = CategoricalParameter([True, False], default=False, space="buy", optimize=True)
     
     # Liquidity detection
-    liquidity_range_pct = DecimalParameter(0.005, 0.03, default=0.01, space="buy", optimize=True)
+    liquidity_range_pct = DecimalParameter(0.005, 0.03, default=0.019, space="buy", optimize=True)
     
     # Buffer for SL placement
-    buffer_pips = DecimalParameter(0.0001, 0.0100, default=0.002, space="buy", optimize=True)
+    buffer_pips = DecimalParameter(0.0001, 0.0100, default=0.001, space="buy", optimize=True)
 
     # Time-based custom exits (hyperoptable in v0.24.0)
     time_exit_1_enabled = CategoricalParameter([True, False], default=True, space="sell", optimize=True)

@@ -28,7 +28,9 @@ def apply_params(strategy_file, params_file):
             
             # Regex: param_name = ...Parameter(..., default=OLD_VALUE, ...)
             regex = r"(\b" + param_name + r"\s*=\s*\w+Parameter\s*\(.*?default\s*=\s*)([^,)\s]+)(.*)"
-            content = re.sub(regex, r"\1" + val_str + r"\3", content, count=1, flags=re.DOTALL)
+            def repl(match):
+                return match.group(1) + val_str + match.group(3)
+            content = re.sub(regex, repl, content, count=1, flags=re.DOTALL)
             print(f"Updated {param_name} -> {val_str}")
     
     # Update ROI

@@ -6,9 +6,21 @@
 
 ## Current State
 
-- **Version:** 0.37.0 (OTE Re-expansion + Hyperopt Ready)
-- **Status:** Iterating based on v0.35/v0.36 findings.
+- **Version:** 0.38.0 (Hyperopt Results Applied)
+- **Status:** Iterating based on 2026-02-27 Hyperopt run (results-122).
 - **Branch:** `main`
+
+---
+
+## Latest Backtest Results (v0.38.0 - Hyperopt Estimation)
+
+| Metric | Value | Notes |
+|--------|-------|-------|
+| Total Trades | **15** | 📉 Significantly lower volume (2-year backtest?). |
+| Win Rate | **33.3%** (5W / 10L) | 📈 Improved WR over v0.35.0. |
+| Profit Total | **+1.96%** | ✅ Back to profitability in simulation. |
+| Avg Profit | +0.40% | |
+| Strategy Logic | Relaxed Confluence | Hyperopt disabled `require_ote` and `require_fvg`. |
 
 ---
 
