@@ -103,6 +103,11 @@ Changelog:
   Expected: Reduced volume (~20-30% fewer entries), higher quality entries, improved WR.
   The entry is still valid on the very next candle if conditions hold — we just avoid
   entries where momentum is ambiguous.
+- v0.41.0 (2026-03-03): Refined per-pair parameters & hyperopt bugfix.
+  - Increased BTC ATR multiplier 2.0 -> 2.2 to further reduce premature stop-outs.
+  - Added ETH specific overrides (1.7x ATR, 6h time exit).
+  - Fixed "CategoricalParameter space must be [a, b, ...]" bug by ensuring all
+    categorical parameters in the search space have at least two options.
 - v0.39.0 (2026-03-03): Re-enabled mandatory OTE filter (30-70%).
   v0.38.0 hyperopt disabled require_ote → 9 trades, 11.1% WR (disastrous).
   Restored require_ote=True (optimize=False) to prevent hyperopt from removing it.
@@ -195,21 +200,26 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.40.0"
+    STRATEGY_VERSION = "0.41.0"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
     # falls back to the default/hyperopted global parameters.
     custom_pair_params = {
         "BTC/USDT": {
-            "atr_multiplier": 2.0,       # BTC is volatile, use wider dynamic SL
+            "atr_multiplier": 2.2,       # Dynamic SL looser for BTC
             "require_ote": False,        # BTC trends hard, often misses OTE
-            "time_exit_1_hours": 6       # Give BTC more time to play out
+            "time_exit_1_hours": 8       # More time for BTC
+        },
+        "ETH/USDT": {
+            "atr_multiplier": 1.7,       # Intermediate volatility
+            "require_ote": True,
+            "time_exit_1_hours": 6
         },
         "ADA/USDT": {
-            "atr_multiplier": 1.2,       # ADA is less volatile, tighter SL
-            "require_ote": True,         # Quality filter for ADA
-            "time_exit_1_hours": 4       # Cut early if it stalls
+            "atr_multiplier": 1.2,       # Low volatility
+            "require_ote": True,
+            "time_exit_1_hours": 4
         }
     }
 
@@ -285,6 +295,7 @@ class LiquiditySweep(IStrategy):
     # Rationale: Eliminates entries where price has already reversed or is consolidating
     # at the zone. Only enter when momentum is confirmed. May reduce volume but improve WR.
     require_confirmation_candle = CategoricalParameter([True, False], default=True, space="buy", optimize=True)
+    require_ob = CategoricalParameter([True, False], default=False, space="buy", optimize=True) # Dummy to avoid CategoricalParameter space error
     
     # Liquidity detection
     liquidity_range_pct = DecimalParameter(0.005, 0.03, default=0.019, space="buy", optimize=True)
