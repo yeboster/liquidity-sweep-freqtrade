@@ -93,6 +93,19 @@ Changelog:
   an optional confluence filter for hyperopt to evaluate.
   Expected: Restores trade flow from v0.27.0 (~128 trades), with TSL exits reduced
   by opposite-side imbalance filter.
+- v0.40.0 (2026-03-03): Confirmation candle filter.
+  Problem: Many entries trigger at the correct zone but price has already started reversing
+  against us. The ChoCH confirms structure break, but we might be entering on a doji or
+  indecision candle with no clear momentum yet.
+  Fix: Added `require_confirmation_candle` parameter (default=True, hyperoptable).
+  - Longs: Only enter when current candle is BULLISH (close > open) — momentum aligned.
+  - Shorts: Only enter when current candle is BEARISH (close < open) — momentum aligned.
+  Expected: Reduced volume (~20-30% fewer entries), higher quality entries, improved WR.
+  The entry is still valid on the very next candle if conditions hold — we just avoid
+  entries where momentum is ambiguous.
+- v0.39.0 (2026-03-03): Re-enabled mandatory OTE filter (30-70%).
+  v0.38.0 hyperopt disabled require_ote → 9 trades, 11.1% WR (disastrous).
+  Restored require_ote=True (optimize=False) to prevent hyperopt from removing it.
 - v0.28.0 (2026-02-28): FVG confluence + opposite-side imbalance filter.
   Problem: v0.27.0 results identical to v0.26.0 (128 trades, 21.1% WR, -27.03%).
   Analysis: 55/128 trades hit trailing_stop_loss in avg 1h04m. Even trend-aligned
@@ -182,7 +195,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.39.0"
+    STRATEGY_VERSION = "0.40.0"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -263,6 +276,15 @@ class LiquiditySweep(IStrategy):
     # at OB + sweep + ChoCH = max confluence ICT setup. Expected to cut TSL exits
     # dramatically (price at OB has structural support, less likely to continue against us).
     require_ob = CategoricalParameter([True, False], default=False, space="buy", optimize=True)
+
+    # v0.40.0: Confirmation Candle Filter
+    # After a valid setup (sweep + ChoCH + OTE + FVG), require the CURRENT candle
+    # to be directionally aligned before entering:
+    #   - Longs: close > open (bullish candle) — price already moving UP
+    #   - Shorts: close < open (bearish candle) — price already moving DOWN
+    # Rationale: Eliminates entries where price has already reversed or is consolidating
+    # at the zone. Only enter when momentum is confirmed. May reduce volume but improve WR.
+    require_confirmation_candle = CategoricalParameter([True, False], default=True, space="buy", optimize=True)
     
     # Liquidity detection
     liquidity_range_pct = DecimalParameter(0.005, 0.03, default=0.019, space="buy", optimize=True)
@@ -624,6 +646,14 @@ class LiquiditySweep(IStrategy):
             (dataframe['bearish_fvg_zone_bottom'] > short_sl_level)
         )
 
+        # ── Confirmation Candle Filter (v0.40.0) ──────────────────────────────
+        # Only enter when the entry candle itself is directionally aligned.
+        # This avoids "knife-catching" entries where price has already started
+        # reversing against us before we enter.
+        req_confirm = self.require_confirmation_candle.value
+        confirm_long = (dataframe['close'] > dataframe['open']) if req_confirm else True
+        confirm_short = (dataframe['close'] < dataframe['open']) if req_confirm else True
+
         # ── Short Entry ───────────────────────────────────────────────────────
         # Sweep of buy-side liquidity (highs) → price reverses down
         # Confirmation: Bearish Change of Character (ChoCH) + bearish HTF trend
@@ -635,6 +665,7 @@ class LiquiditySweep(IStrategy):
             (fvg_check_short) &                                      # FVG confluence (v0.28.0 default=True)
             (ob_check_short) &                                       # Order Block (if required)
             (safe_short) &                                           # No imbalance magnet beyond SL (v0.28.0)
+            (confirm_short) &                                        # Confirmation candle (v0.40.0)
             (dataframe['rr_short'] >= self.min_rr.value),           # Min R:R (v0.28.0 default=1.5)
             'enter_short'
         ] = 1
@@ -650,6 +681,7 @@ class LiquiditySweep(IStrategy):
             (fvg_check_long) &                                       # FVG confluence (v0.28.0 default=True)
             (ob_check_long) &                                        # Order Block (if required)
             (safe_long) &                                            # No imbalance magnet beyond SL (v0.28.0)
+            (confirm_long) &                                         # Confirmation candle (v0.40.0)
             (dataframe['rr_long'] >= self.min_rr.value),            # Min R:R (v0.28.0 default=1.5)
             'enter_long'
         ] = 1

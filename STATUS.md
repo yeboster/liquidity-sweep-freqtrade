@@ -6,8 +6,8 @@
 
 ## Current State
 
-- **Version:** 0.39.0 (Recovery Iteration)
-- **Status:** Re-enabling OTE filter (30-70%) after v0.38.0 hyperopt-disabled logic failed (11.1% WR).
+- **Version:** 0.40.0 (Confirmation Candle Filter)
+- **Status:** Added `require_confirmation_candle` parameter (default=True, hyperoptable). Requires entry candle to be directionally aligned before entering. OTE 30-70% remains mandatory.
 - **Branch:** `main`
 
 ---
@@ -71,9 +71,10 @@
 
 ## Pending / Next Steps
 
-- [ ] **Run hyperopt on v0.39.0** — focus on `atr_multiplier` and `swing_length` while keeping OTE 30-70% fixed.
+- [ ] **Run hyperopt on v0.40.0** — `require_confirmation_candle` is now hyperoptable. Let optimizer decide if it helps.
+- [ ] **Analyze trade volume** — if confirmation candle drops trades <30, disable it or loosen to allow doji entries.
 - [ ] **Migrate Hyperopt to Docker-based CI** — eliminate silent failures and dependencies mismatch on host.
-- [ ] **Consider trailing entry** — Wait for price to start moving in our direction after hitting the FVG zone before entering.
+- [x] ~~**Consider trailing entry**~~ → Implemented as `require_confirmation_candle` in v0.40.0.
 
 ---
 
@@ -81,5 +82,6 @@
 
 | Date | Version | What Changed |
 |------|---------|--------------|
+| 2026-03-03 | 0.40.0 | Added confirmation candle filter: entry candle must be directionally aligned (bullish for longs, bearish for shorts). Hyperoptable. Expected: fewer but higher-quality entries. |
 | 2026-03-03 | 0.39.0 | Recovery Iteration: Re-enabled mandatory OTE filter (30-70%) after v0.38.0 hyperopt-disabled logic failed (11.1% WR). |
 | 2026-03-02 | 0.38.0 | Applied Hyperopt results from Feb 27 run (results-122). Resulted in disastrous 11.1% WR. |
