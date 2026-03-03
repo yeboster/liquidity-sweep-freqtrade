@@ -6,21 +6,21 @@
 
 ## Current State
 
-- **Version:** 0.38.0 (Hyperopt Results Applied)
-- **Status:** Iterating based on 2026-02-27 Hyperopt run (results-122).
+- **Version:** 0.39.0 (Recovery Iteration)
+- **Status:** Re-enabling OTE filter (30-70%) after v0.38.0 hyperopt-disabled logic failed (11.1% WR).
 - **Branch:** `main`
 
 ---
 
-## Latest Backtest Results (v0.38.0 - Hyperopt Estimation)
+## Latest Backtest Results (v0.38.0 - Reality)
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Total Trades | **15** | 📉 Significantly lower volume (2-year backtest?). |
-| Win Rate | **33.3%** (5W / 10L) | 📈 Improved WR over v0.35.0. |
-| Profit Total | **+1.96%** | ✅ Back to profitability in simulation. |
-| Avg Profit | +0.40% | |
-| Strategy Logic | Relaxed Confluence | Hyperopt disabled `require_ote` and `require_fvg`. |
+| Total Trades | **9** | 📉 Volume ultra-low. |
+| Win Rate | **11.1%** (1W / 8L) | ❌ Disastrous quality without OTE/FVG confluence. |
+| Profit Total | **-2.61%** | ❌ Back to losses. |
+| Avg Profit | -0.89% | |
+| Strategy Logic | No Confluence | Hyperopt disabled `require_ote` and `require_fvg`. |
 
 ---
 
@@ -71,8 +71,8 @@
 
 ## Pending / Next Steps
 
-- [ ] **Analyze v0.36.0 backtest results** — expect 60-100 trades with improved quality. Magnet logic fix should significantly reduce stop-outs at liquidity magnets. Enhanced FVG check should improve entry timing.
-- [ ] **Run hyperopt on v0.37.0 space** — focus on `atr_multiplier` (1.5-3.0) and `ote_lower/upper` (30-85).
+- [ ] **Run hyperopt on v0.39.0** — focus on `atr_multiplier` and `swing_length` while keeping OTE 30-70% fixed.
+- [ ] **Migrate Hyperopt to Docker-based CI** — eliminate silent failures and dependencies mismatch on host.
 - [ ] **Consider trailing entry** — Wait for price to start moving in our direction after hitting the FVG zone before entering.
 
 ---
@@ -81,6 +81,5 @@
 
 | Date | Version | What Changed |
 |------|---------|--------------|
-| 2026-03-01 | 0.35.0 | Fixed FVG active zone detection bug. Volume recovered to 116 trades. |
-| 2026-03-01 | 0.36.0 | Fixed Magnet Filter (inverted logic since v0.28). Enhanced FVG confluence (Price inside zone). Delayed ROI stale exits to improve avg win. |
-| 2026-03-02 | 0.37.0 | Re-expanded OTE hyperopt bounds (30-85%) and ATR multiplier (1.0-3.0) to allow optimizer more room. |
+| 2026-03-03 | 0.39.0 | Recovery Iteration: Re-enabled mandatory OTE filter (30-70%) after v0.38.0 hyperopt-disabled logic failed (11.1% WR). |
+| 2026-03-02 | 0.38.0 | Applied Hyperopt results from Feb 27 run (results-122). Resulted in disastrous 11.1% WR. |

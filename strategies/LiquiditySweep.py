@@ -14,13 +14,14 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.38.0
+Version: 0.39.0
 
 Changelog:
+- v0.39.0 (2026-03-03): Recovery Iteration.
+  Re-enabled mandatory OTE filter (30-70%) as v0.38.0 hyperopt-disabled logic
+  produced only 9 trades with 11.1% WR. OTE is a core SMC requirement for
+  high-probability setups (entering in the "discount" or "premium" zone).
 - v0.38.0 (2026-03-02): Applied Hyperopt results from Feb 27 run (results-122).
-  Profit: +1.96% (15 trades). Stats: 5W / 10L.
-  Changes: require_ote=False, require_fvg=False (optimizing for raw liquidity sweeps),
-  min_rr=1.4, atr_multiplier=2.4. Wider ROI targets for impulsive moves.
 - v0.35.0 (2026-03-01): Fix FVG active zone detection — same class of bug as OB window (v0.31.0).
   ROOT CAUSE: `fvg_mitigated.isna()` was supposed to isolate "unmitigated" FVGs.
   But during backtesting the smc library has full future data and sets MitigatedIndex
@@ -181,7 +182,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.38.0"
+    STRATEGY_VERSION = "0.39.0"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -240,10 +241,12 @@ class LiquiditySweep(IStrategy):
     htf_swing_length = IntParameter(5, 20, default=19, space="buy", optimize=True)
     
     # OTE zone — tightened in v0.23.0 to 30-70% (quality filter, avoids extremes)
-    # v0.38.0: Applied hyperopt results (30-85% original space)
-    ote_lower = DecimalParameter(0.30, 0.50, default=0.381, space="buy", optimize=True)
-    ote_upper = DecimalParameter(0.55, 0.85, default=0.697, space="buy", optimize=True)
-    require_ote = CategoricalParameter([True, False], default=False, space="buy", optimize=True)
+    # v0.39.0: Re-introduced OTE 30-70% as mandatory filter.
+    # Hyperopt v0.38.0 disabled it, but results were poor (9 trades, 11% WR).
+    # SMC theory suggests OTE is critical for high-probability setups.
+    ote_lower = DecimalParameter(0.30, 0.50, default=0.30, space="buy", optimize=True)
+    ote_upper = DecimalParameter(0.55, 0.85, default=0.70, space="buy", optimize=True)
+    require_ote = CategoricalParameter([True], default=True, space="buy", optimize=False)
     
     # ATR-based SL — new in v0.22.0
     # v0.34.0: ATR Multiplier increase to 2.0x (from 1.5x)
