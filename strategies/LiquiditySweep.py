@@ -106,7 +106,7 @@ Changelog:
 - v0.41.0 (2026-03-03): Refined per-pair parameters & hyperopt bugfix.
   - Increased BTC ATR multiplier 2.0 -> 2.2 to further reduce premature stop-outs.
   - Added ETH specific overrides (1.7x ATR, 6h time exit).
-  - Fixed "CategoricalParameter space must be [a, b, ...]" bug by ensuring all
+  - Fixed "CategoricalParameter space must be [a, b, ...]" bug - require_ote now has [True, False]
     categorical parameters in the search space have at least two options.
 - v0.39.0 (2026-03-03): Re-enabled mandatory OTE filter (30-70%).
   v0.38.0 hyperopt disabled require_ote → 9 trades, 11.1% WR (disastrous).
@@ -269,7 +269,7 @@ class LiquiditySweep(IStrategy):
     # SMC theory suggests OTE is critical for high-probability setups.
     ote_lower = DecimalParameter(0.30, 0.50, default=0.30, space="buy", optimize=True)
     ote_upper = DecimalParameter(0.55, 0.85, default=0.70, space="buy", optimize=True)
-    require_ote = CategoricalParameter([True], default=True, space="buy", optimize=False)
+    require_ote = CategoricalParameter([True, False], default=True, space="buy", optimize=True)
     
     # ATR-based SL — new in v0.22.0
     # v0.34.0: ATR Multiplier increase to 2.0x (from 1.5x)
@@ -295,7 +295,6 @@ class LiquiditySweep(IStrategy):
     # Rationale: Eliminates entries where price has already reversed or is consolidating
     # at the zone. Only enter when momentum is confirmed. May reduce volume but improve WR.
     require_confirmation_candle = CategoricalParameter([True, False], default=True, space="buy", optimize=True)
-    require_ob = CategoricalParameter([True, False], default=False, space="buy", optimize=True) # Dummy to avoid CategoricalParameter space error
     
     # Liquidity detection
     liquidity_range_pct = DecimalParameter(0.005, 0.03, default=0.019, space="buy", optimize=True)
