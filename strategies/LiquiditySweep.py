@@ -14,7 +14,15 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.39.0
+Version: 0.42.0
+
+Changelog:
+- v0.42.0 (2026-03-18): Fix trailing stop formula.
+  Problem: trailing_stop_positive was 0.277 (27.7%!) instead of 0.005 (0.5%).
+  Also trailing_stop_positive_offset was 0.295 (29.5%) instead of 0.015 (1.5%).
+  This caused the trailing stop to activate way too late and trail way too far.
+  Fixed: trailing_stop_positive=0.005, trailing_stop_positive_offset=0.015.
+  Expected: Much fewer trailing_stop_loss exits, more ROI exits captured.
 
 Changelog:
 - v0.39.0 (2026-03-03): Recovery Iteration.
@@ -244,10 +252,11 @@ class LiquiditySweep(IStrategy):
     # Absolute backstop required by Freqtrade — custom_stoploss will use ATR, this is fallback
     stoploss = -0.194   # -4.0% absolute backstop (ATR SL should hit first)
     
-    # Trailing stop — still active as profit protection (unchanged from v0.20)
+    # Trailing stop — fixed from broken values (v0.42.0)
+    # Previous values: 0.277 (27.7%!) and 0.295 (29.5%) — completely wrong
     trailing_stop = True
-    trailing_stop_positive = 0.277      # Trail 0.7% behind peak
-    trailing_stop_positive_offset = 0.295  # Activate after +1.5%
+    trailing_stop_positive = 0.005     # Trail 0.5% behind peak
+    trailing_stop_positive_offset = 0.015  # Activate after +1.5%
     trailing_only_offset_is_reached = True
     
     # ATR-based dynamic stoploss enabled in v0.22.0
