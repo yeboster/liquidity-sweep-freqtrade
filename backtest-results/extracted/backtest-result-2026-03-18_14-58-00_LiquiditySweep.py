@@ -14,14 +14,9 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.45.0
+Version: 0.44.0
 
 Changelog:
-- v0.45.0 (2026-03-18): Disable session filter — too aggressive, only 19 trades, 10.5% WR.
-  The NY/London filter (08:00-11:00, 13:30-16:00 UTC) was cutting too many trades
-  (19 vs hundreds previously) and win rate dropped to 10.5% with -19.48% profit.
-  Reverting to disabled by default. Will revisit with looser session window.
-
 - v0.44.0 (2026-03-18): Add session filter (NY/London only).
   Problem: Strategy runs 24/7 including low-volume Asian session, diluting
   entry quality. ICT Silver Bullet methodology specifically targets NY and London
@@ -328,10 +323,11 @@ class LiquiditySweep(IStrategy):
     # at the zone. Only enter when momentum is confirmed. May reduce volume but improve WR.
     require_confirmation_candle = CategoricalParameter([True, False], default=True, space="buy", optimize=True)
 
-    # v0.45.0 (2026-03-18): Disable session filter — too aggressive, only 19 trades, 10.5% WR.
-# The NY/London filter was reducing trades too much (19 vs hundreds previously).
-# Reverting to disabled by default. Will revisit with looser hours (e.g., 07:00-17:00).
-    require_session_filter = CategoricalParameter([True, False], default=False, space="buy", optimize=False)
+    # v0.44.0: Session Filter (NY/London only)
+    # ICT Silver Bullet methodology: entries during high-volume sessions only.
+    # London: 08:00-11:00 UTC | NY: 13:30-16:00 UTC
+    # Asian/low-volume sessions produce lower-quality liquidity sweeps.
+    require_session_filter = CategoricalParameter([True, False], default=True, space="buy", optimize=False)
     
     # Liquidity detection
     liquidity_range_pct = DecimalParameter(0.005, 0.03, default=0.019, space="buy", optimize=True)
@@ -555,7 +551,7 @@ class LiquiditySweep(IStrategy):
         # Normalize ATR as % of close for cross-asset comparison
         dataframe['atr_pct'] = dataframe['atr'] / dataframe['close']
 
-        # 8. Session Filter (v0.45.0) — Disabled by default, was too aggressive
+        # 8. Session Filter (v0.44.0) — ICT methodology: NY/London only
         # Freqtrade 'date' column is a UTC DatetimeIndex — use .dt accessor
         # London: 08:00-11:00 UTC | NY: 13:30-16:00 UTC
         dataframe['in_london_session'] = (
@@ -641,7 +637,7 @@ class LiquiditySweep(IStrategy):
 
         ote_check = dataframe['in_ote'] if req_ote else True
 
-        # v0.45.0: Session Filter — disabled by default (was too aggressive)
+        # v0.44.0: Session Filter — only trade during premium sessions
         session_check = dataframe['in_premium_session'] if self.require_session_filter.value else True
         
         # v0.36.0: Enhanced FVG confluence (Price inside/near the zone)
@@ -730,7 +726,7 @@ class LiquiditySweep(IStrategy):
             (safe_short) &                                           # No imbalance magnet beyond SL (v0.28.0)
             (confirm_short) &                                        # Confirmation candle (v0.40.0)
             (dataframe['rr_short'] >= self.min_rr.value) &          # Min R:R (v0.28.0 default=1.5)
-            (session_check),                                          # Session filter — v0.45.0 disabled by default
+            (session_check),                                          # Session filter — NY/London only (v0.44.0)
             'enter_short'
         ] = 1
         
@@ -747,7 +743,7 @@ class LiquiditySweep(IStrategy):
             (safe_long) &                                            # No imbalance magnet beyond SL (v0.28.0)
             (confirm_long) &                                         # Confirmation candle (v0.40.0)
             (dataframe['rr_long'] >= self.min_rr.value) &           # Min R:R (v0.28.0 default=1.5)
-            (session_check),                                          # Session filter — v0.45.0 disabled by default
+            (session_check),                                          # Session filter — NY/London only (v0.44.0)
             'enter_long'
         ] = 1
         
