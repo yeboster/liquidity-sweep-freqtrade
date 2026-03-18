@@ -1,7 +1,7 @@
 # Liquidity Sweep Strategy - Research & Roadmap
 
 > Updated: 2026-03-18
-> Version: v0.42.0 (just fixed)
+> Version: v0.46.0 tested
 
 ---
 
@@ -10,6 +10,27 @@
 **Root Cause Found:** Trailing stop was completely broken!
 - `trailing_stop_positive = 0.277` → **27.7%** trailing (should be 0.5%)
 - `trailing_stop_positive_offset = 0.295` → **29.5%** activation (should be 1.5%)
+
+This explains why 46% of trades exited via trailing_stop_loss at -1.61% avg loss — the trailing stop was activating WAY too late and trailing WAY too far.
+
+---
+
+## v0.46.0 Test Results (2026-03-18)
+
+**Fix Applied:** Early profit exit at +0.8% (after 45min) + wider stoploss floor -8%
+
+| Metric | v0.45.0 | v0.46.0 | Change |
+|--------|---------|---------|--------|
+| Total Trades | 63 | 63 | — |
+| Win Rate | 20.6% | 22.2% | +1.6pp |
+| Profit % | -13.04% | -12.94% | +0.1pp |
+| TSL exits | 30 (47.6%, -1.27%) | 29 (46.0%, -1.35%) | Slightly worse loss |
+| Early profit | 0 | 6 (9.5%, +0.96%) | NEW: working but offset by TSL |
+| ROI exits | 9 (14.3%, +0.63%) | 6 (9.5%, +0.46%) | Fewer |
+
+**Analysis:** Early profit exit fires on 6 trades (+0.96% avg) but TSL losses increased slightly (-1.27% → -1.35%). Widen floor to -8% didn't help. Core issue: 9 winning trades averaging +0.79% vs 54 losing trades at -1.35% is mathematically unsustainable without major entry quality overhaul.
+
+**Verdict:** v0.46.0 marginally better (+0.1pp profit). Need fundamentally different approach — entry quality gate or market regime filter.
 
 This explains why 46% of trades exited via trailing_stop_loss at -1.61% avg loss — the trailing stop was activating WAY too late and trailing WAY too far.
 
@@ -109,27 +130,37 @@ freqtrade backtesting -c config.json -s LiquiditySweep -l DEBUG
 | Task | Status | Result |
 |------|--------|--------|
 | **0.1** | ✅ DONE | Fixed trailing stop formula (v0.42.0) |
-| **0.2** | ⏳ Next | Widen SL to 3x ATR |
-| **0.3** | ⏳ Next | Add session filter (NY/London only) |
+| **0.2** | ✅ DONE | Widen SL to 3x ATR (v0.43.0) |
+| **0.3** | ✅ DONE | Add session filter (v0.44.0), disabled (v0.45.0) — too aggressive |
 
-**Version:** v0.42.0 - Trailing stop fix
+### Phase 1: Risk Management (PARTIAL ✅)
 
-### Phase 1: Risk Management
+| Task | Status | Result |
+|------|--------|--------|
+| **1.1** | ✅ DONE | Widen SL to 3x ATR (v0.43.0) |
+| **1.2** | ❌ SKIP | Position sizing (freqtrade handles this) |
+| **1.3** | ⚠️ TESTED | Partial profit taking at +0.8% (v0.46.0) — marginal gain |
+| **1.4** | ✅ DONE | Session filter tested, disabled (too aggressive) |
 
-| Task | Description | Expected Impact |
-|------|-------------|-----------------|
-| **1.1** | Widen SL to 3x ATR | Fewer premature stops |
-| **1.2** | Position sizing: 1-2% risk/trade | Consistent risk |
-| **1.3** | Partial profit taking: 50% at 1.5R | Breakeven + rides |
-| **1.4** | Add session filter (NY/London) | Quality over quantity |
+### Phase 2: Entry Quality (STALEMATE)
 
-### Phase 2: Entry Quality
+| Task | Status | Result |
+|------|--------|--------|
+| **2.1** | ❌ FAILED | Session filter cut too many trades (19 vs 63, WR 10.5%) |
+| **2.2** | ⏳ Next | Double confirmation: sweep + BOS |
+| **2.3** | ⏳ Next | Weekend filter (no Sat/Sun) |
 
-| Task | Description | Expected Impact |
-|------|-------------|-----------------|
-| **2.1** | Session filter: NY (13:30-16:00 UTC) | Higher volatility |
-| **2.2** | Double confirmation: sweep + BOS | Quality gate |
-| **2.3** | Weekend filter (no Sat/Sun) | Avoid low volume |
+### Core Problem (UNSOLVED)
+
+**Win rate too low + avg win too small = mathematically unsalvageable with exits alone**
+
+- Win rate: 20-22% (need 67%+ to break even with current R:R)
+- Avg win: +0.63% | Avg loss: -1.35% (ratio 1:2.1)
+- TSL exits 46% of trades at avg -1.35% loss
+- ROI exits only 9.5% of trades
+- Even with TSL fix, exit-based optimization cannot overcome poor entries
+
+**Next recommended action:** Add OTE (Originating Trend Engine) zone filter — only take sweeps in the 38-78% retracement zone. This is the core ICT Silver Bullet concept.
 
 ---
 
@@ -137,10 +168,11 @@ freqtrade backtesting -c config.json -s LiquiditySweep -l DEBUG
 
 | Version | Focus | Key Changes |
 |---------|-------|-------------|
+| v0.46.0 | ⚠️ MARGINAL | Early profit exit + wider floor (-8%) — marginal improvement (+0.1pp). TSL still dominant. |
+| v0.45.0 | ✅ DONE | Disable session filter (was too aggressive) |
+| v0.44.0 | ✅ DONE | Session filter NY/London (v0.44.0), disabled in v0.45.0 |
+| v0.43.0 | ✅ DONE | Widen ATR stoploss to 3x |
 | v0.42.0 | ✅ DONE | Fixed trailing stop formula (0.277→0.005) |
-| v0.43.0 | ⏳ Next | Widen SL to 3x ATR |
-| v0.44.0 | ⏳ Next | Session filter NY/London |
-| v0.45.0 | ⏳ Next | Entry quality improvements |
 
 ### Phase 4: Hyperopt & Fine-Tuning (Ongoing)
 
