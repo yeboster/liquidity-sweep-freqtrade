@@ -14,7 +14,7 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.47.0
+Version: 0.48.0
 
 Changelog:
 - v0.47.0 (2026-03-18): Double confirmation — use BOS instead of ChoCh.
@@ -24,6 +24,12 @@ Changelog:
   structure breakdown vs a minor pullback (which would be ChoCh).
   Fix: Replace `choch==-1` with `bos==-1` for shorts, `choch==1` with `bos==1` for longs.
   Expected: Fewer but higher-quality entries, improved win rate.
+
+- v0.48.0 (2026-03-18): Weekend filter (roadmap 2.3).
+  Problem: Weekends (Sat/Sun) have low volume and choppy price action, diluting entry quality.
+  ICT Silver Bullet setups are designed for high-liquidity sessions (NY/London).
+  Fix: Add `require_weekend_filter` parameter (default=False). When enabled, skip entries
+  where `dayofweek in [5, 6]` (Saturday, Sunday).
 
 - v0.46.0 (2026-03-18): Early profit exit + wider stoploss floor.
   Problem: TSL exits 47.6% of trades at avg -1.27%. Custom stop also tight (floor -6%).
@@ -244,7 +250,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.47.0"
+    STRATEGY_VERSION = "0.48.0"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -345,6 +351,11 @@ class LiquiditySweep(IStrategy):
 # The NY/London filter was reducing trades too much (19 vs hundreds previously).
 # Reverting to disabled by default. Will revisit with looser hours (e.g., 07:00-17:00).
     require_session_filter = CategoricalParameter([True, False], default=False, space="buy", optimize=False)
+
+    # v0.48.0: Weekend filter (roadmap 2.3).
+    # Skip entries on Saturday (dayofweek=5) and Sunday (dayofweek=6).
+    # ICT Silver Bullet setups require high-liquidity sessions — weekends are choppy/low-volume.
+    require_weekend_filter = CategoricalParameter([True, False], default=False, space="buy", optimize=False)
     
     # Liquidity detection
     liquidity_range_pct = DecimalParameter(0.005, 0.03, default=0.019, space="buy", optimize=True)
@@ -581,6 +592,9 @@ class LiquiditySweep(IStrategy):
             dataframe['in_london_session'] | dataframe['in_ny_session']
         )
         
+        # v0.48.0: Weekend filter — flag Sat (dayofweek=5) and Sun (dayofweek=6)
+        dataframe['is_weekend'] = dataframe['date'].dt.dayofweek.isin([5, 6])
+        
         return dataframe
 
     def _add_htf_indicators(self, dataframe: DataFrame) -> DataFrame:
@@ -656,6 +670,9 @@ class LiquiditySweep(IStrategy):
 
         # v0.45.0: Session Filter — disabled by default (was too aggressive)
         session_check = dataframe['in_premium_session'] if self.require_session_filter.value else True
+        
+        # v0.48.0: Weekend Filter — skip Sat/Sun (low volume, choppy markets)
+        weekend_check = ~dataframe['is_weekend'] if self.require_weekend_filter.value else True
         
         # v0.36.0: Enhanced FVG confluence (Price inside/near the zone)
         # Instead of just "an FVG formed recently", we ensure price is actually 
@@ -745,7 +762,8 @@ class LiquiditySweep(IStrategy):
             (safe_short) &                                           # No imbalance magnet beyond SL (v0.28.0)
             (confirm_short) &                                        # Confirmation candle (v0.40.0)
             (dataframe['rr_short'] >= self.min_rr.value) &           # Min R:R (v0.28.0 default=1.5)
-            (session_check),                                          # Session filter — v0.45.0 disabled by default
+            (session_check) &                                         # Session filter — v0.45.0 disabled by default
+            (weekend_check),                                         # Weekend filter — v0.48.0 disabled by default
             'enter_short'
         ] = 1
         
@@ -762,7 +780,8 @@ class LiquiditySweep(IStrategy):
             (safe_long) &                                            # No imbalance magnet beyond SL (v0.28.0)
             (confirm_long) &                                         # Confirmation candle (v0.40.0)
             (dataframe['rr_long'] >= self.min_rr.value) &           # Min R:R (v0.28.0 default=1.5)
-            (session_check),                                          # Session filter — v0.45.0 disabled by default
+            (session_check) &                                         # Session filter — v0.45.0 disabled by default
+            (weekend_check),                                         # Weekend filter — v0.48.0 disabled by default
             'enter_long'
         ] = 1
         
