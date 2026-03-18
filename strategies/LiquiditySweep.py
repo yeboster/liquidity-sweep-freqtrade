@@ -552,14 +552,13 @@ class LiquiditySweep(IStrategy):
         dataframe['atr_pct'] = dataframe['atr'] / dataframe['close']
 
         # 8. Session Filter (v0.44.0) — ICT methodology: NY/London only
-        # Freqtrade 'date' column is Unix timestamp in milliseconds
-        dataframe['session_hour'] = (dataframe['date'] // 1000 // 3600) % 24
+        # Freqtrade 'date' column is a UTC DatetimeIndex — use .dt accessor
         # London: 08:00-11:00 UTC | NY: 13:30-16:00 UTC
         dataframe['in_london_session'] = (
-            (dataframe['session_hour'] >= 8) & (dataframe['session_hour'] < 11)
+            (dataframe['date'].dt.hour >= 8) & (dataframe['date'].dt.hour < 11)
         )
         dataframe['in_ny_session'] = (
-            (dataframe['session_hour'] >= 13) & (dataframe['session_hour'] < 16)
+            (dataframe['date'].dt.hour >= 13) & (dataframe['date'].dt.hour < 16)
         )
         dataframe['in_premium_session'] = (
             dataframe['in_london_session'] | dataframe['in_ny_session']
