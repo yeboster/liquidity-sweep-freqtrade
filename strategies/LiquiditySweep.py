@@ -14,9 +14,17 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.42.0
+Version: 0.43.0
 
 Changelog:
+- v0.43.0 (2026-03-18): Widen ATR stoploss to 3x.
+  Problem: 54% of trades hit trailing_stop_loss at avg -1.18%. ATR floor was -4%
+  which was too tight for volatile assets (BTC ATR% ~2-3% → -4% is only ~2 ATR).
+  ADA's ceiling was -1.5% which is basically noise.
+  Fix: (1) Custom stoploss floor -4% → -6%. (2) ATR mult range 1.0-3.0 → 1.0-4.0,
+  default 2.425 → 3.0. (3) BTC 2.2→3.0, ETH 1.7→2.5, ADA 1.2→2.0.
+  Expected: Fewer premature stop-outs, more room for ICT reversals.
+
 - v0.42.0 (2026-03-18): Fix trailing stop formula.
   Problem: trailing_stop_positive was 0.277 (27.7%!) instead of 0.005 (0.5%).
   Also trailing_stop_positive_offset was 0.295 (29.5%) instead of 0.015 (1.5%).
@@ -208,24 +216,24 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.41.0"
+    STRATEGY_VERSION = "0.43.0"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
     # falls back to the default/hyperopted global parameters.
     custom_pair_params = {
         "BTC/USDT": {
-            "atr_multiplier": 2.2,       # Dynamic SL looser for BTC
+            "atr_multiplier": 3.0,       # Dynamic SL 3x ATR for BTC
             "require_ote": False,        # BTC trends hard, often misses OTE
             "time_exit_1_hours": 8       # More time for BTC
         },
         "ETH/USDT": {
-            "atr_multiplier": 1.7,       # Intermediate volatility
+            "atr_multiplier": 2.5,       # Intermediate volatility
             "require_ote": True,
             "time_exit_1_hours": 6
         },
         "ADA/USDT": {
-            "atr_multiplier": 1.2,       # Low volatility
+            "atr_multiplier": 2.0,       # Low volatility (v0.43.0: was 1.2, too tight)
             "require_ote": True,
             "time_exit_1_hours": 4
         }
@@ -284,7 +292,7 @@ class LiquiditySweep(IStrategy):
     # v0.34.0: ATR Multiplier increase to 2.0x (from 1.5x)
     # The avg TSL loss in v0.29.0 was -1.61% vs avg win +0.57%. Loosening SL
     # gives institutional reversals room to breathe.
-    atr_multiplier = DecimalParameter(1.0, 3.0, default=2.425, space="buy", optimize=True)
+    atr_multiplier = DecimalParameter(1.0, 4.0, default=3.0, space="buy", optimize=True)
     atr_period = IntParameter(10, 20, default=14, space="buy", optimize=False)
     
     # Entry filters
@@ -765,7 +773,7 @@ class LiquiditySweep(IStrategy):
         dynamic_sl = -(atr_mult * entry_atr_pct)
         
         # Apply floor and ceiling
-        dynamic_sl = max(dynamic_sl, -0.04)   # No worse than -4%
+        dynamic_sl = max(dynamic_sl, -0.06)   # No worse than -6% (v0.43.0: was -4%)
         dynamic_sl = min(dynamic_sl, -0.015)  # No tighter than -1.5%
         
         # Return as ratio from current_rate perspective
