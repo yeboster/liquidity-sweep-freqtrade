@@ -14,10 +14,15 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.45.0
+Version: 0.46.0
 
 Changelog:
-- v0.45.0 (2026-03-18): Disable session filter — too aggressive, only 19 trades, 10.5% WR.
+- v0.46.0 (2026-03-18): Early profit exit + wider stoploss floor.
+  Problem: TSL exits 47.6% of trades at avg -1.27%. Custom stop also tight (floor -6%).
+  Fix: (1) Add early profit exit at +0.8% to secure wins before TSL kicks in.
+       (2) Widen dynamic stoploss floor from -6% to -8%.
+
+- v0.45.0 (2026-03-18): Disable session filter — was too aggressive (19 trades, 10.5% WR)
   The NY/London filter (08:00-11:00, 13:30-16:00 UTC) was cutting too many trades
   (19 vs hundreds previously) and win rate dropped to 10.5% with -19.48% profit.
   Reverting to disabled by default. Will revisit with looser session window.
@@ -811,7 +816,7 @@ class LiquiditySweep(IStrategy):
         dynamic_sl = -(atr_mult * entry_atr_pct)
         
         # Apply floor and ceiling
-        dynamic_sl = max(dynamic_sl, -0.06)   # No worse than -6% (v0.43.0: was -4%)
+        dynamic_sl = max(dynamic_sl, -0.08)   # No worse than -8% (v0.46.0: was -6%)
         dynamic_sl = min(dynamic_sl, -0.015)  # No tighter than -1.5%
         
         # Return as ratio from current_rate perspective
@@ -828,8 +833,9 @@ class LiquiditySweep(IStrategy):
                     current_profit: float, **kwargs):
         """
         Custom exit logic:
-        1. Time-based exit: cut stale trades (v0.20.0)
-        2. Target liquidity reached
+        1. Early profit exit at +0.8%: secure wins before TSL activates (v0.46.0)
+        2. Time-based exit: cut stale trades
+        3. Target liquidity reached
         """
         dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
         if len(dataframe) == 0:
@@ -837,8 +843,13 @@ class LiquiditySweep(IStrategy):
             
         last_candle = dataframe.iloc[-1]
         
-        # Time-based exit
+        # 1. Early profit exit — lock in wins before TSL activates at +1.5% (v0.46.0)
+        # Require at least 45min hold to avoid gap-based false exits
         trade_duration = (current_time - trade.open_date_utc).total_seconds() / 3600
+        if trade_duration >= 0.75 and current_profit >= 0.008:
+            return "early_profit_take"
+        
+        # Time-based exit
         
         # Fetch custom exits for pair
         te1_enabled = self.get_param('time_exit_1_enabled', pair, self.time_exit_1_enabled.value)
