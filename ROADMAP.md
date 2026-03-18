@@ -1,7 +1,7 @@
 # Liquidity Sweep Strategy - Research & Roadmap
 
 > Updated: 2026-03-18
-> Version: v0.46.0 tested
+> Version: v0.47.0 tested
 
 ---
 
@@ -12,6 +12,34 @@
 - `trailing_stop_positive_offset = 0.295` → **29.5%** activation (should be 1.5%)
 
 This explains why 46% of trades exited via trailing_stop_loss at -1.61% avg loss — the trailing stop was activating WAY too late and trailing WAY too far.
+
+---
+
+## v0.47.0 Test Results (2026-03-18)
+
+**Fix Applied:** Double confirmation — replace ChoCh with BOS for entry validation (roadmap 2.2).
+- ChoCh can fire on minor structure breaks
+- BOS confirms true market structure breakdown — more robust for ICT Silver Bullet entries
+
+| Metric | v0.46.0 | v0.47.0 | Change |
+|--------|---------|---------|--------|
+| Total Trades | 63 | 52 | -17% |
+| Win Rate | 22.2% | **36.5%** | **+14.3pp** 🚀 |
+| Profit % | -12.94% | **+0.05%** | **+12.99pp** ✅ |
+| TSL exits | 29 (46%, -1.35%) | 3 (5.8%, -1.97%) | Huge reduction |
+| Early profit | 6 (9.5%, +0.98%) | 10 (19.2%, +0.98%) | More wins captured |
+| ROI exits | 6 (9.5%, +0.46%) | 8 (15.4%, +0.05%) | Slight improvement |
+| exit_signal | — | 21 (40.4%, -0.52%) | New dominant exit |
+| Drawdown | — | 1.64% | Much improved |
+
+**Analysis:** BOS confirmation dramatically improved win rate (22% → 36.5%) and turned profit positive (+0.05%). TSL exits reduced from 46% to 5.8%. New dominant exit is `exit_signal` (40.4%) at -0.52% avg — this is the HTF trend reversal exit, working as intended.
+
+**Remaining Issues:**
+- exit_signal exits (21 trades, -0.52% avg) are cutting winners short via HTF trend reversal
+- TSL still problematic on remaining 3 exits (-1.97% avg)
+- Profit is barely positive (0.05%) — needs further refinement
+
+**Verdict:** Major breakthrough in win rate. Entry quality improvement via BOS > ChoCh confirmed.
 
 ---
 
@@ -142,12 +170,12 @@ freqtrade backtesting -c config.json -s LiquiditySweep -l DEBUG
 | **1.3** | ⚠️ TESTED | Partial profit taking at +0.8% (v0.46.0) — marginal gain |
 | **1.4** | ✅ DONE | Session filter tested, disabled (too aggressive) |
 
-### Phase 2: Entry Quality (STALEMATE)
+### Phase 2: Entry Quality (STALEMATE → IMPROVED)
 
 | Task | Status | Result |
 |------|--------|--------|
 | **2.1** | ❌ FAILED | Session filter cut too many trades (19 vs 63, WR 10.5%) |
-| **2.2** | ⏳ Next | Double confirmation: sweep + BOS |
+| **2.2** | ✅ DONE | Double confirmation: sweep + BOS (v0.47.0) — **MAJOR IMPROVEMENT** |
 | **2.3** | ⏳ Next | Weekend filter (no Sat/Sun) |
 
 ### Core Problem (UNSOLVED)
@@ -168,6 +196,7 @@ freqtrade backtesting -c config.json -s LiquiditySweep -l DEBUG
 
 | Version | Focus | Key Changes |
 |---------|-------|-------------|
+| v0.47.0 | 🚀 BREAKTHROUGH | BOS double-confirmation — WR 22%→36.5%, profit -12.9%→+0.05%, drawdown 1.64% |
 | v0.46.0 | ⚠️ MARGINAL | Early profit exit + wider floor (-8%) — marginal improvement (+0.1pp). TSL still dominant. |
 | v0.45.0 | ✅ DONE | Disable session filter (was too aggressive) |
 | v0.44.0 | ✅ DONE | Session filter NY/London (v0.44.0), disabled in v0.45.0 |
