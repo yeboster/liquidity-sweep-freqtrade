@@ -14,9 +14,19 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.43.0
+Version: 0.44.0
 
 Changelog:
+- v0.44.0 (2026-03-18): Add session filter (NY/London only).
+  Problem: Strategy runs 24/7 including low-volume Asian session, diluting
+  entry quality. ICT Silver Bullet methodology specifically targets NY and London
+  sessions for highest liquidity/vatility.
+  Fix: Session filter — only allow entries during:
+    - London: 08:00-11:00 UTC
+    - NY: 13:30-16:00 UTC
+  All other times: skip entry (no filtering of existing positions).
+  Expected: ~50% fewer trades, higher quality, improved WR.
+
 - v0.43.0 (2026-03-18): Widen ATR stoploss to 3x.
   Problem: 54% of trades hit trailing_stop_loss at avg -1.18%. ATR floor was -4%
   which was too tight for volatile assets (BTC ATR% ~2-3% → -4% is only ~2 ATR).
@@ -312,6 +322,12 @@ class LiquiditySweep(IStrategy):
     # Rationale: Eliminates entries where price has already reversed or is consolidating
     # at the zone. Only enter when momentum is confirmed. May reduce volume but improve WR.
     require_confirmation_candle = CategoricalParameter([True, False], default=True, space="buy", optimize=True)
+
+    # v0.44.0: Session Filter (NY/London only)
+    # ICT Silver Bullet methodology: entries during high-volume sessions only.
+    # London: 08:00-11:00 UTC | NY: 13:30-16:00 UTC
+    # Asian/low-volume sessions produce lower-quality liquidity sweeps.
+    require_session_filter = CategoricalParameter([True, False], default=True, space="buy", optimize=False)
     
     # Liquidity detection
     liquidity_range_pct = DecimalParameter(0.005, 0.03, default=0.019, space="buy", optimize=True)
@@ -534,6 +550,20 @@ class LiquiditySweep(IStrategy):
         dataframe['atr'] = ta.ATR(dataframe, timeperiod=self.atr_period.value)
         # Normalize ATR as % of close for cross-asset comparison
         dataframe['atr_pct'] = dataframe['atr'] / dataframe['close']
+
+        # 8. Session Filter (v0.44.0) — ICT methodology: NY/London only
+        # Freqtrade 'date' column is Unix timestamp in milliseconds
+        dataframe['session_hour'] = (dataframe['date'] // 1000 // 3600) % 24
+        # London: 08:00-11:00 UTC | NY: 13:30-16:00 UTC
+        dataframe['in_london_session'] = (
+            (dataframe['session_hour'] >= 8) & (dataframe['session_hour'] < 11)
+        )
+        dataframe['in_ny_session'] = (
+            (dataframe['session_hour'] >= 13) & (dataframe['session_hour'] < 16)
+        )
+        dataframe['in_premium_session'] = (
+            dataframe['in_london_session'] | dataframe['in_ny_session']
+        )
         
         return dataframe
 
@@ -605,8 +635,11 @@ class LiquiditySweep(IStrategy):
         req_ote = self.get_param('require_ote', pair, self.require_ote.value)
         req_fvg = self.get_param('require_fvg', pair, self.require_fvg.value)
         req_ob = self.get_param('require_ob', pair, self.require_ob.value)
-        
+
         ote_check = dataframe['in_ote'] if req_ote else True
+
+        # v0.44.0: Session Filter — only trade during premium sessions
+        session_check = dataframe['in_premium_session'] if self.require_session_filter.value else True
         
         # v0.36.0: Enhanced FVG confluence (Price inside/near the zone)
         # Instead of just "an FVG formed recently", we ensure price is actually 
@@ -693,7 +726,8 @@ class LiquiditySweep(IStrategy):
             (ob_check_short) &                                       # Order Block (if required)
             (safe_short) &                                           # No imbalance magnet beyond SL (v0.28.0)
             (confirm_short) &                                        # Confirmation candle (v0.40.0)
-            (dataframe['rr_short'] >= self.min_rr.value),           # Min R:R (v0.28.0 default=1.5)
+            (dataframe['rr_short'] >= self.min_rr.value) &          # Min R:R (v0.28.0 default=1.5)
+            (session_check),                                          # Session filter — NY/London only (v0.44.0)
             'enter_short'
         ] = 1
         
@@ -709,7 +743,8 @@ class LiquiditySweep(IStrategy):
             (ob_check_long) &                                        # Order Block (if required)
             (safe_long) &                                            # No imbalance magnet beyond SL (v0.28.0)
             (confirm_long) &                                         # Confirmation candle (v0.40.0)
-            (dataframe['rr_long'] >= self.min_rr.value),            # Min R:R (v0.28.0 default=1.5)
+            (dataframe['rr_long'] >= self.min_rr.value) &           # Min R:R (v0.28.0 default=1.5)
+            (session_check),                                          # Session filter — NY/London only (v0.44.0)
             'enter_long'
         ] = 1
         
