@@ -14,9 +14,17 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.46.0
+Version: 0.47.0
 
 Changelog:
+- v0.47.0 (2026-03-18): Double confirmation — use BOS instead of ChoCh.
+  Problem (roadmap 2.2): ChoCh can fire on minor structure breaks, reducing entry quality.
+  The ICT Silver Bullet requires BOTH a liquidity sweep AND a Break of Structure in the
+  direction of the trade as confirmation. BOS is a more robust signal of true market
+  structure breakdown vs a minor pullback (which would be ChoCh).
+  Fix: Replace `choch==-1` with `bos==-1` for shorts, `choch==1` with `bos==1` for longs.
+  Expected: Fewer but higher-quality entries, improved win rate.
+
 - v0.46.0 (2026-03-18): Early profit exit + wider stoploss floor.
   Problem: TSL exits 47.6% of trades at avg -1.27%. Custom stop also tight (floor -6%).
   Fix: (1) Add early profit exit at +0.8% to secure wins before TSL kicks in.
@@ -236,7 +244,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.43.0"
+    STRATEGY_VERSION = "0.47.0"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -723,29 +731,31 @@ class LiquiditySweep(IStrategy):
         confirm_short = (dataframe['close'] < dataframe['open']) if req_confirm else True
 
         # ── Short Entry ───────────────────────────────────────────────────────
-        # Sweep of buy-side liquidity (highs) → price reverses down
-        # Confirmation: Bearish Change of Character (ChoCH) + bearish HTF trend
+        # Double confirmation: (1) Liquidity sweep above highs, (2) Bearish BOS confirms structure broken.
+        # BOS is more reliable than ChoCH for entry confirmation — it confirms the trend structure
+        # is broken in the direction we want to trade. ChoCH can fire on minor struktur breaks.
+        # v0.47.0: Changed from choch==-1 to bos==-1 for stricter confirmation.
         dataframe.loc[
             (htf_bearish) &                                          # HTF trend alignment (v0.27.0)
             (dataframe['recent_sweep_high']) &                       # Liquidity swept above recently
-            (dataframe['choch'] == -1) &                             # Confirmation break
+            (dataframe['bos'] == -1) &                               # Bearish BOS confirms structure broken (v0.47.0)
             (ote_check) &                                            # OTE (if required)
             (fvg_check_short) &                                      # FVG confluence (v0.28.0 default=True)
             (ob_check_short) &                                       # Order Block (if required)
             (safe_short) &                                           # No imbalance magnet beyond SL (v0.28.0)
             (confirm_short) &                                        # Confirmation candle (v0.40.0)
-            (dataframe['rr_short'] >= self.min_rr.value) &          # Min R:R (v0.28.0 default=1.5)
+            (dataframe['rr_short'] >= self.min_rr.value) &           # Min R:R (v0.28.0 default=1.5)
             (session_check),                                          # Session filter — v0.45.0 disabled by default
             'enter_short'
         ] = 1
         
         # ── Long Entry ────────────────────────────────────────────────────────
-        # Sweep of sell-side liquidity (lows) → price reverses up
-        # Confirmation: Bullish Change of Character (ChoCH) + bullish HTF trend
+        # Double confirmation: (1) Liquidity sweep below lows, (2) Bullish BOS confirms structure broken.
+        # v0.47.0: Changed from choch==1 to bos==1 for stricter confirmation.
         dataframe.loc[
             (htf_bullish) &                                          # HTF trend alignment (v0.27.0)
             (dataframe['recent_sweep_low']) &                        # Liquidity swept below recently
-            (dataframe['choch'] == 1) &                              # Confirmation break
+            (dataframe['bos'] == 1) &                                # Bullish BOS confirms structure broken (v0.47.0)
             (ote_check) &                                            # OTE (if required)
             (fvg_check_long) &                                       # FVG confluence (v0.28.0 default=True)
             (ob_check_long) &                                        # Order Block (if required)
