@@ -28,7 +28,7 @@ Problem (v0.52.0): The candle confirmation filter (choch==-1 AND close<open) was
 
 **Key Observation:** exit_signal (ChoCH exits) avg -0.76% — these are underwater exits locking in losses. early_profit_take captures +0.99% on 25% of trades. The ChoCH profit guard (v0.54.0) targets these underwater exits.
 
-**Verdict:** v0.53.0 = revert confirmed, restored 2.02% profit. ChoCH-only exits = correct. Next: ChoCH profit guard to block underwater exits.
+**Verdict:** v0.53.0 = revert confirmed, restored 2.02% profit. ChoCH-only exits = correct. The agent should read the roadmap results and decide the next task dynamically.
 
 **⚠️ Note:** The exit_signal avg (-0.76%) is the main remaining problem — 11 trades cutting into profits. ChoCH fires directionally correctly but often when the trade is still at a loss.
 

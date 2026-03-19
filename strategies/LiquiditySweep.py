@@ -14,10 +14,26 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.54.0
+Version: 0.55.0
 
 Changelog:
+- v0.55.0 (2026-03-19): Per-pair parameter optimization — extended to SOL, BNB, XRP, DOT, AVAX.
+  Prior versions only had custom params for BTC, ETH, ADA. 5 of 8 pairs used global defaults.
+  Key insight: SOL behaves like BTC (high-beta, trends hard → require_ote=False, time_exit=8h).
+  XRP mean-reverts (lower vol → tighter ATR). DOT/AVAX high-vol → 6h exits.
+  Results TBD after backtest.
+
 - v0.54.0 (2026-03-19): ChoCH profit guard — block exits when trade is underwater.
+  Problem (v0.53.0): exit_signal exits (30.6% of trades) avg -0.76%. ChoCH fires when
+  15m structure breaks, but the trade is often still at a loss when it fires. Fix:
+  in custom_exit, check if choch_signal AND current_profit < 0 → block exit (return None).
+  The trade continues: either recovers to hit early_profit/trailing_stop, or eventually
+  hits the dynamic stoploss. This prevents locking in losses when structure changes are
+  just temporary retracements.
+
+  Result: NO IMPROVEMENT. ChoCH guard didn't reduce exit_signal losses (-0.51% avg, 11 trades).
+  The guard causes trades to fall through to time_exit instead. ROI dropped (7→5 trades).
+  ChoCH exits remain problematic — directionally correct but timing is off.
   Problem (v0.53.0): exit_signal exits (30.6% of trades) avg -0.76%. ChoCH fires when
   15m structure breaks, but the trade is often still at a loss when it fires. Fix:
   in custom_exit, check if choch_signal AND current_profit < 0 → block exit (return None).
@@ -276,11 +292,13 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.54.0"
+    STRATEGY_VERSION = "0.55.0"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
     # falls back to the default/hyperopted global parameters.
+    # v0.55.0: Added SOL, BNB, XRP, DOT, AVAX per-pair overrides.
+    # Prior: only BTC, ETH, ADA had custom params. 5 pairs used global defaults.
     custom_pair_params = {
         "BTC/USDT": {
             "atr_multiplier": 3.0,       # Dynamic SL 3x ATR for BTC
@@ -296,6 +314,32 @@ class LiquiditySweep(IStrategy):
             "atr_multiplier": 2.0,       # Low volatility (v0.43.0: was 1.2, too tight)
             "require_ote": True,
             "time_exit_1_hours": 4
+        },
+        # v0.55.0: Per-pair optimization — SOL/BNB trend like BTC, XRP mean-reverts
+        "SOL/USDT": {
+            "atr_multiplier": 3.0,       # High-beta like BTC, needs room
+            "require_ote": False,        # SOL trends hard, often misses OTE
+            "time_exit_1_hours": 8       # SOL needs time like BTC
+        },
+        "BNB/USDT": {
+            "atr_multiplier": 2.5,       # Binance ecosystem, similar to ETH
+            "require_ote": True,
+            "time_exit_1_hours": 6
+        },
+        "XRP/USDT": {
+            "atr_multiplier": 2.0,       # Lower volatility, tighter range
+            "require_ote": True,
+            "time_exit_1_hours": 4
+        },
+        "DOT/USDT": {
+            "atr_multiplier": 3.0,       # High volatility like BTC
+            "require_ote": True,
+            "time_exit_1_hours": 6
+        },
+        "AVAX/USDT": {
+            "atr_multiplier": 3.0,       # High volatility
+            "require_ote": True,
+            "time_exit_1_hours": 6
         }
     }
 
