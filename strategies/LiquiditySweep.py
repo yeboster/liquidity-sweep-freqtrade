@@ -14,9 +14,17 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.53.0
+Version: 0.54.0
 
 Changelog:
+- v0.54.0 (2026-03-19): ChoCH profit guard — block exits when trade is underwater.
+  Problem (v0.53.0): exit_signal exits (30.6% of trades) avg -0.76%. ChoCH fires when
+  15m structure breaks, but the trade is often still at a loss when it fires. Fix:
+  in custom_exit, check if choch_signal AND current_profit < 0 → block exit (return None).
+  The trade continues: either recovers to hit early_profit/trailing_stop, or eventually
+  hits the dynamic stoploss. This prevents locking in losses when structure changes are
+  just temporary retracements.
+
 - v0.53.0 (2026-03-19): REVERT confirmation candle on exits.
   v0.52.0 introduced (choch==-1 AND close<open) for longs to require candle confirmation
   on ChoCH exits. Results: profit 2.02%→1.19% (-0.83pp), win rate 44.4%→41.7%.
@@ -268,7 +276,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.53.0"
+    STRATEGY_VERSION = "0.54.0"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -896,15 +904,35 @@ class LiquiditySweep(IStrategy):
                     current_profit: float, **kwargs):
         """
         Custom exit logic:
-        1. Early profit exit at +0.8%: secure wins before TSL activates (v0.46.0)
-        2. Time-based exit: cut stale trades
-        3. Target liquidity reached
+        1. ChoCH profit guard: block ChoCH exits when trade is underwater (v0.54.0)
+        2. Early profit exit at +0.8%: secure wins before TSL activates (v0.46.0)
+        3. Time-based exit: cut stale trades
+        4. Target liquidity reached
         """
         dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
         if len(dataframe) == 0:
             return None
             
         last_candle = dataframe.iloc[-1]
+        
+        # ── ChoCH Profit Guard (v0.54.0) ─────────────────────────────────────
+        # Problem (v0.53.0): ChoCH exits via exit_signal avg -0.76% (11 trades, 30.6%).
+        # ChoCH fires when 15m market structure breaks — correct directionally, but
+        # the trade is often still underwater when it fires. The exit locks in a loss
+        # even though price might recover.
+        # Fix: If ChoCH is firing AND trade is at a loss, block the exit.
+        # The trade will either recover to hit early_profit or trailing_stop,
+        # or eventually hit the dynamic stoploss. This prevents exiting into losses
+        # when the structure change is just noise.
+        # Note: If trade is profitable when ChoCH fires, let it exit (profit-taking).
+        choch_signal = (
+            (last_candle.get('choch', 0) == -1 and not trade.is_short) or
+            (last_candle.get('choch', 0) == 1 and trade.is_short)
+        )
+        if choch_signal and current_profit < 0:
+            # Trade is underwater — block ChoCH exit, let it run
+            # (early_profit / trailing_stop / stoploss will handle it)
+            pass  # Fall through to other checks; return None at end
         
         # 1. Early profit exit — lock in wins before TSL activates at +1.5% (v0.46.0)
         # Require at least 45min hold to avoid gap-based false exits

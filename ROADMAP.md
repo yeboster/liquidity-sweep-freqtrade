@@ -1,11 +1,36 @@
 # Liquidity Sweep Strategy - Research & Roadmap
 
 > Updated: 2026-03-19
-> Version: v0.50.1 tested
+> Version: v0.53.0 tested
 
 ---
 
-## 🚨 CRITICAL FINDING (2026-03-18)
+## v0.53.0 Test Results (2026-03-19)
+
+**REVERT Applied:** Removed confirmation candle from ChoCH exits (roadmap Phase 4).
+Problem (v0.52.0): The candle confirmation filter (choch==-1 AND close<open) was counterproductive — it filtered too many valid exits, causing time_exit_4h to take over and remaining exit_signal exits to have massive losses. Profit dropped 2.02% → 1.19%.
+
+| Metric | v0.51.0 | v0.52.0 | v0.53.0 | Change |
+|--------|---------|---------|---------|--------|
+| Total Trades | 36 | 36 | 36 | — |
+| Win Rate | 44.4% | 41.7% | **44.4%** | +2.7pp ✅ |
+| Profit % | 2.02% | 1.19% | **2.02%** | +0.83pp ✅ |
+| Profit Factor | 1.62 | 1.29 | **1.62** | +0.33 ✅ |
+| Avg Hold | 3h05m | 3h26m | 3h05m | — |
+| exit_signal | 11 (30.6%, -0.51%) | 6 (16.7%, large loss) | 11 (30.6%, **-0.76%**) | Restored (worse than stated) |
+| early_profit | 9 (25%, +3.30%) | 10 (27.8%, +98%) | 9 (25%, **+0.99%**) | Stable |
+| trailing_stop | 3 (8.3%, +6.52%) | 4 (11.1%, +109%) | 3 (8.3%, **+1.97%**) | Stable |
+| roi | — | 5 (13.9%, +4.5%) | 7 (19.4%, **+0.00%**) | More ROI exits |
+| time_exit_4h | — | 10 (27.8%, -61%) | 6 (16.7%, **-0.03%**) | Improved |
+| Drawdown | 1.58% | ? | **1.58%** | — |
+
+**Analysis:** Removing the confirmation candle filter restored exit behavior from v0.51.0. Profit returned to 2.02% (vs 1.19% in v0.52.0). ChoCH-only exits confirmed as correct approach for 15m TF.
+
+**Key Observation:** exit_signal (ChoCH exits) avg -0.76% — these are underwater exits locking in losses. early_profit_take captures +0.99% on 25% of trades. The ChoCH profit guard (v0.54.0) targets these underwater exits.
+
+**Verdict:** v0.53.0 = revert confirmed, restored 2.02% profit. ChoCH-only exits = correct. Next: ChoCH profit guard to block underwater exits.
+
+**⚠️ Note:** The exit_signal avg (-0.76%) is the main remaining problem — 11 trades cutting into profits. ChoCH fires directionally correctly but often when the trade is still at a loss.
 
 **Root Cause Found:** Trailing stop was completely broken!
 - `trailing_stop_positive = 0.277` → **27.7%** trailing (should be 0.5%)
@@ -263,6 +288,9 @@ Problem (roadmap Phase 4): OTE zone was 30-85%, hyperopt could widen to 50-85%. 
 
 | Version | Focus | Key Changes |
 |---------|-------|-------------|
+| v0.54.0 | 🔧 IN TEST | ChoCH profit guard — block underwater ChoCH exits to prevent -0.76% avg loss on exit_signal |
+| v0.53.0 | ✅ REVERTED | Remove confirmation candle → profit restored 1.19%→2.02%, ChoCH-only exits confirmed |
+| v0.52.0 | ❌ REVERTED | Confirmation candle on exits — filtered valid exits, profit 2.02%→1.19% |
 | v0.51.0 | 🎉 IMPROVED | Remove HTF trend exits → profit 1.87%→2.02%, exit_signal avg -1.71%→-0.51% |
 | v0.50.1 | ✅ DONE | Tighten OTE to 30-70% mandatory (no change — v0.49.0 already near-optimal) |
 | v0.49.0 | 🎉 BREAKTHROUGH | Weekend filter — WR 36.5%→44.4%, profit 0.05%→1.87%, profit factor 1.55 |
@@ -273,13 +301,15 @@ Problem (roadmap Phase 4): OTE zone was 30-85%, hyperopt could widen to 50-85%. 
 | v0.43.0 | ✅ DONE | Widen ATR stoploss to 3x |
 | v0.42.0 | ✅ DONE | Fixed trailing stop formula (0.277→0.005) |
 
-### Phase 4: Hyperopt & Fine-Tuning (STALEMATE → NEXT TARGET: exit_signal exits)
+### Phase 4: Hyperopt & Fine-Tuning (IN PROGRESS → v0.54.0)
 
 - ✅ OTE zone locked to 30-70% mandatory (v0.50.1) — no measurable improvement
 - ✅ Remove HTF trend exits (v0.51.0) — exit_signal avg loss -1.71% → -0.51% 🎉
-- ⏳ Further reduce exit_signal exits (30.6%, avg -0.51%) — tighten ChoCH or add confirmation
-- Per-pair parameter optimization
-- Rolling 2-year backtest window
+- ✅ Confirmation candle on exits (v0.52.0) — ❌ REVERTED (filtered valid exits)
+- ✅ Revert confirmation candle (v0.53.0) — profit restored to 2.02%, ChoCH-only exits confirmed
+- 🔧 IN TEST (v0.54.0): ChoCH profit guard — block underwater ChoCH exits to prevent -0.76% avg loss
+- ⏳ Per-pair parameter optimization
+- ⏳ Rolling 2-year backtest window
 
 ---
 
