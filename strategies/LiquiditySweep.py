@@ -14,22 +14,17 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.48.0
+Version: 0.49.0
 
 Changelog:
+- v0.49.0 (2026-03-19): Test weekend filter with default=True (roadmap 2.3).
+  v0.48.0 implemented the filter but left it disabled (default=False), giving same results as v0.47.0.
+  This version tests with filter ENABLED to measure actual weekend impact.
+
 - v0.47.0 (2026-03-18): Double confirmation — use BOS instead of ChoCh.
   Problem (roadmap 2.2): ChoCh can fire on minor structure breaks, reducing entry quality.
-  The ICT Silver Bullet requires BOTH a liquidity sweep AND a Break of Structure in the
-  direction of the trade as confirmation. BOS is a more robust signal of true market
-  structure breakdown vs a minor pullback (which would be ChoCh).
   Fix: Replace `choch==-1` with `bos==-1` for shorts, `choch==1` with `bos==1` for longs.
-  Expected: Fewer but higher-quality entries, improved win rate.
-
-- v0.48.0 (2026-03-18): Weekend filter (roadmap 2.3).
-  Problem: Weekends (Sat/Sun) have low volume and choppy price action, diluting entry quality.
-  ICT Silver Bullet setups are designed for high-liquidity sessions (NY/London).
-  Fix: Add `require_weekend_filter` parameter (default=False). When enabled, skip entries
-  where `dayofweek in [5, 6]` (Saturday, Sunday).
+  Result: WR 22%→36.5%, profit -12.9%→+0.05%, drawdown 1.64%.
 
 - v0.46.0 (2026-03-18): Early profit exit + wider stoploss floor.
   Problem: TSL exits 47.6% of trades at avg -1.27%. Custom stop also tight (floor -6%).
@@ -250,7 +245,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.48.0"
+    STRATEGY_VERSION = "0.49.0"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -352,10 +347,11 @@ class LiquiditySweep(IStrategy):
 # Reverting to disabled by default. Will revisit with looser hours (e.g., 07:00-17:00).
     require_session_filter = CategoricalParameter([True, False], default=False, space="buy", optimize=False)
 
-    # v0.48.0: Weekend filter (roadmap 2.3).
+    # v0.48.0 / v0.49.0: Weekend filter (roadmap 2.3).
     # Skip entries on Saturday (dayofweek=5) and Sunday (dayofweek=6).
     # ICT Silver Bullet setups require high-liquidity sessions — weekends are choppy/low-volume.
-    require_weekend_filter = CategoricalParameter([True, False], default=False, space="buy", optimize=False)
+    # v0.49.0: Testing with filter ENABLED (was disabled in v0.48.0).
+    require_weekend_filter = CategoricalParameter([True, False], default=True, space="buy", optimize=False)
     
     # Liquidity detection
     liquidity_range_pct = DecimalParameter(0.005, 0.03, default=0.019, space="buy", optimize=True)
