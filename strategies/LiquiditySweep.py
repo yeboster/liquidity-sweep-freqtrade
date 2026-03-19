@@ -14,9 +14,18 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.57.0
+Version: 0.58.0
 
 Changelog:
+- v0.58.0 (2026-03-19): Disable ChoCH exits entirely.
+  Problem (v0.57.0): exit_signal (ChoCH) was 17/43 trades at -0.63% avg, totaling
+  -35.87 USDT — destroying all profit from the other 26 trades (+65.53 USDT).
+  ChoCH exit win rate was only 11.8%. Meanwhile early_profit, trailing_stop, and ROI
+  exits were ALL 100% WR. Fix: disable populate_exit_trend entirely. Let mechanical
+  exits (early_profit_take at +0.8%, trailing_stop at +1.5%, ROI table, time_exit,
+  ATR stoploss) handle all exits. ChoCH was prematurely killing trades that would
+  have been profitable if allowed to run to their natural exit.
+
 - v0.57.0 (2026-03-19): Restore 8-pair list + XRP-specific stop loss fix.
   Problem (v0.56.0): Removing XRP AND losing DOT/DOGE/ADA caused regression — 39→21 trades,
   46.2%→38.1% WR, 2.25%→0.74% profit. RIP. Restoring all 8 pairs.
@@ -298,7 +307,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.55.0"
+    STRATEGY_VERSION = "0.58.0"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -876,29 +885,35 @@ class LiquiditySweep(IStrategy):
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        """Exit on ChoCH reversal on entry timeframe (strongest local signal).
+        """Exit signal generation.
         
-        v0.53.0 REVERT: Removed confirmation candle from ChoCH exits.
-        v0.52.0 introduced (choch==-1 AND close<open) for longs, etc. This was
-        counterproductive — it filtered too many valid exits, causing winners to
-        become losers (+3.3% avg → +98% USDT but fewer exits, bigger losses on
-        remaining). ChoCH alone is sufficient for exit decisions on 15m TF.
+        v0.58.0: DISABLED all ChoCH exits.
+        Problem (v0.57.0): exit_signal was 17/43 trades (39.5%) at -0.63% avg,
+        totaling -35.87 USDT — destroying ALL profit from the other 26 winning trades
+        (+65.53 USDT). ChoCH fires when 15m structure breaks, but the trade is usually
+        still underwater. Win rate on exit_signal was only 11.8%.
         
-        v0.51.0 CHANGE: Removed HTF trend reversal exits.
-        Problem: HTF trend (1h) exits were too aggressive — firing whenever 1H trend flipped,
-        cutting winners short at -1.71% avg (33.3% of trades). ChoCH on entry TF (15m) is
-        more responsive and appropriate for exit decisions without prematurely stopping out.
+        With ChoCH exits disabled, trades will run to:
+        - early_profit_take (+0.8% after 45min) — 100% WR in v0.57.0
+        - trailing_stop_loss (after +1.5%) — 100% WR in v0.57.0
+        - ROI table — 100% WR in v0.57.0
+        - time_exit (4h/6h) — catches stale trades
+        - dynamic stoploss (ATR-based) — catches losing trades
+        
+        These exits already handle all profitable scenarios. ChoCH was only
+        prematurely killing trades that would have been profitable if left alone.
+        
+        History:
+        - v0.51.0: Removed HTF trend exits (too aggressive)
+        - v0.53.0: Reverted confirmation candle on ChoCH exits
+        - v0.54.0: Added ChoCH profit guard (blocked underwater ChoCH exits)
+        - v0.58.0: Disabled ChoCH exits entirely — let mechanical exits handle it
         """
         dataframe.loc[:, 'exit_long'] = 0
         dataframe.loc[:, 'exit_short'] = 0
         
-        # v0.51.0: ChoCH-only exits (HTF trend exits removed)
-        # v0.53.0: Removed confirmation candle requirement (was counterproductive)
-        long_exit = dataframe['choch'] == -1
-        short_exit = dataframe['choch'] == 1
-        
-        dataframe.loc[long_exit, 'exit_long'] = 1
-        dataframe.loc[short_exit, 'exit_short'] = 1
+        # v0.58.0: No exit signals — rely entirely on:
+        # early_profit_take, trailing_stop, ROI, time_exit, dynamic stoploss
         
         return dataframe
 
@@ -971,24 +986,8 @@ class LiquiditySweep(IStrategy):
             
         last_candle = dataframe.iloc[-1]
         
-        # ── ChoCH Profit Guard (v0.54.0) ─────────────────────────────────────
-        # Problem (v0.53.0): ChoCH exits via exit_signal avg -0.76% (11 trades, 30.6%).
-        # ChoCH fires when 15m market structure breaks — correct directionally, but
-        # the trade is often still underwater when it fires. The exit locks in a loss
-        # even though price might recover.
-        # Fix: If ChoCH is firing AND trade is at a loss, block the exit.
-        # The trade will either recover to hit early_profit or trailing_stop,
-        # or eventually hit the dynamic stoploss. This prevents exiting into losses
-        # when the structure change is just noise.
-        # Note: If trade is profitable when ChoCH fires, let it exit (profit-taking).
-        choch_signal = (
-            (last_candle.get('choch', 0) == -1 and not trade.is_short) or
-            (last_candle.get('choch', 0) == 1 and trade.is_short)
-        )
-        if choch_signal and current_profit < 0:
-            # Trade is underwater — block ChoCH exit, let it run
-            # (early_profit / trailing_stop / stoploss will handle it)
-            pass  # Fall through to other checks; return None at end
+        # v0.58.0: ChoCH profit guard removed — ChoCH exits fully disabled in populate_exit_trend.
+        # All exits now handled by: early_profit_take, trailing_stop, ROI, time_exit, stoploss.
         
         # 1. Early profit exit — lock in wins before TSL activates at +1.5% (v0.46.0)
         # Require at least 45min hold to avoid gap-based false exits
