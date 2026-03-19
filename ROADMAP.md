@@ -1,11 +1,50 @@
 # Liquidity Sweep Strategy - Research & Roadmap
 
 > Updated: 2026-03-19
-> Version: v0.59.0 tested
+> Version: v0.60.0 tested
 
 ---
 
-## v0.59.0 Test Results (2026-03-19) — 🏆 CURRENT ATH
+## v0.60.0 Test Results (2026-03-19) — 🏆 CURRENT ATH
+
+**Fix Applied:** Remove SOL/USDT from pair whitelist (7 trades, 0.43 WR, -4.68 USDT in v0.59.0).
+
+| Metric | v0.59.0 | **v0.60.0** | Change |
+|--------|---------|---------|--------|
+| Total Trades | 41 | **34** | -7 |
+| Win Rate | 51.2% | **52.9%** | +1.7pp ✅ |
+| Profit % | 4.31% | **4.76%** | +0.45pp ✅ |
+| Profit Factor | 2.26 | **3.10** | +0.84 ✅ |
+| SQN | 1.87 | **2.27** | +0.40 ✅ |
+| Drawdown | 0.89% | **0.88%** | -0.01pp |
+| DD Duration | 20.8 days | **20.8 days** | — |
+
+**Exit Breakdown:**
+| Exit | Trades | Avg Profit | Total USDT | WR |
+|------|--------|-----------|------------|-----|
+| early_profit_take | 10 | +1.0% | +34.64 | 100% |
+| trailing_stop_loss | 6 | +0.67% | +15.07 | 66.7% |
+| roi | 12 | +0.23% | +10.54 | 33.3% |
+| time_exit_4h | 2 | -0.25% | -1.71 | 0% |
+| time_exit_6h | 4 | -0.73% | -10.90 | 0% |
+
+**Per-Pair Performance (all positive!):**
+| Pair | Trades | WR | Profit USDT |
+|------|--------|----|-------------|
+| BTC/USDT | 9 | 55.6% | +18.00 |
+| DOGE/USDT | 5 | 60.0% | +9.88 |
+| DOT/USDT | 5 | 60.0% | +8.09 |
+| XRP/USDT | 9 | 55.6% | +5.90 |
+| ETH/USDT | 3 | 33.3% | +2.99 |
+| ADA/USDT | 3 | 33.3% | +2.77 |
+
+**Analysis:** Removing SOL improved everything — fewer trades but higher quality. All 6 remaining
+pairs are profitable. early_profit 100% WR, trailing_stop 66.7% WR. time_exit_6h still the only drag
+(4 trades, -10.90 USDT, 0% WR) — stale trades that need a smarter exit.
+
+---
+
+## v0.59.0 Test Results (2026-03-19) — Previous ATH
 
 **Fix Applied:** Remove BNB/USDT from pair whitelist (0% WR, -5.10 USDT in v0.58.0).
 
@@ -464,8 +503,8 @@ Problem (roadmap Phase 4): OTE zone was 30-85%, hyperopt could widen to 50-85%. 
 
 | Version | Focus | Key Changes |
 |---------|-------|-------------|
-| v0.59.0 | 🏆 **ATH** | **Remove BNB + SOL pairlists — 41 trades, 51.2% WR, +4.31% profit, PF 2.26, DD 0.89%** |
-| v0.58.0 | ✅ Previous | Disable ChoCH exits — 43 trades, 48.8% WR, +3.80% profit, PF 1.97, DD 0.85% |
+| v0.60.0 | 🏆 **ATH** | **Remove SOL — 34 trades, 52.9% WR, +4.76% profit, PF 3.10, SQN 2.27, DD 0.88%** |
+| v0.59.0 | ✅ Previous | Remove BNB + pairlist cleanup — 41 trades, 51.2% WR, +4.31% profit, PF 2.26 |
 | v0.57.0 | ✅ IMPROVED | Restore 8 pairs + XRP fix — 43 trades, 46.5% WR, +2.93% profit, PF 1.75 |
 | v0.56.0 | ❌ REGRESSED | XRP removal — 21 trades, 38.1% WR, +0.74% profit, PF 1.413 (WORSE than v0.55.0) |
 | v0.55.0 | ✅ DONE | Per-pair optimization — 39 trades, 46.2% WR, +2.25% profit, PF 1.689 |
@@ -490,8 +529,8 @@ Problem (roadmap Phase 4): OTE zone was 30-85%, hyperopt could widen to 50-85%. 
 - ✅ ChoCH profit guard (v0.54.0) — exit_signal avg loss -0.76% → -0.53% ✅
 - ✅ Per-pair parameter optimization (v0.55.0) — 39 trades, 46.2% WR, 2.25% profit, 1.689 PF
 - ✅ Remove BNB from pairlist (v0.59.0) — 41 trades, 51.2% WR, 4.31% profit, PF 2.26 🏆 ATH
-- ✅ Remove SOL from pairlist (v0.60.0) — running backtest
-- 🔧 NEXT: Fix time_exit_6h exits (6 trades, -17.13 USDT, 0% WR — stale trades)
+- ✅ Remove SOL from pairlist (v0.60.0) — 🏆 NEW ATH: 34 trades, 52.9% WR, 4.76% profit, PF 3.10
+- 🔧 NEXT: Fix time_exit_6h exits (4 trades, -10.90 USDT, 0% WR — stale trades)
 - ⏳ Rolling 2-year backtest window
 
 ---
