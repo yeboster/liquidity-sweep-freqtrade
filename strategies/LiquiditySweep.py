@@ -14,9 +14,13 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.59.0
+Version: 0.60.0
 
 Changelog:
+- v0.60.0 (2026-03-19): Remove SOL/USDT from pair whitelist.
+  SOL was the only losing pair in v0.59.0: 7 trades, 0.43 WR, -4.68 USDT total.
+  Also improved the whitelist to top 6 performers: BTC, DOGE, DOT, XRP, ETH, ADA.
+
 - v0.59.0 (2026-03-19): Remove BNB/USDT from pair whitelist.
   BNB had 0% WR across 2 trades, -5.10 USDT total. Worst performer in v0.58.0 backtest.
   Top 5 performers kept: BTC, DOGE, DOT, XRP, ETH, ADA, SOL (7 pairs total).

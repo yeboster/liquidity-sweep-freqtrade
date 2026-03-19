@@ -1,11 +1,51 @@
 # Liquidity Sweep Strategy - Research & Roadmap
 
 > Updated: 2026-03-19
-> Version: v0.56.0 tested
+> Version: v0.59.0 tested
 
 ---
 
-## v0.58.0 Test Results (2026-03-19) — 🏆 CURRENT ATH
+## v0.59.0 Test Results (2026-03-19) — 🏆 CURRENT ATH
+
+**Fix Applied:** Remove BNB/USDT from pair whitelist (0% WR, -5.10 USDT in v0.58.0).
+
+| Metric | v0.58.0 | **v0.59.0** | Change |
+|--------|---------|---------|--------|
+| Total Trades | 43 | **41** | -2 |
+| Win Rate | 48.8% | **51.2%** | +2.4pp ✅ |
+| Profit % | 3.80% | **4.31%** | +0.51pp ✅ |
+| Profit Factor | 1.97 | **2.26** | +0.29 ✅ |
+| SQN | 1.60 | **1.87** | +0.27 ✅ |
+| Drawdown | 0.85% | **0.89%** | +0.04pp |
+| DD Duration | 21 days | **20.8 days** | ✅ |
+
+**Exit Breakdown:**
+| Exit | Trades | Avg Profit | Total USDT | WR |
+|------|--------|-----------|------------|-----|
+| early_profit_take | 12 | +1.0% | +40.43 | 100% |
+| roi | 14 | +0.24% | +11.66 | 35.7% |
+| trailing_stop_loss | 7 | +0.43% | +9.89 | 57.1% |
+| time_exit_4h | 2 | -0.25% | -1.72 | 0% |
+| time_exit_6h | 6 | -0.83% | -17.13 | 0% |
+
+**Per-Pair Performance:**
+| Pair | Trades | WR | Profit USDT |
+|------|--------|----|-------------|
+| BTC/USDT | 9 | 55.6% | +18.03 |
+| DOGE/USDT | 5 | 60.0% | +9.95 |
+| DOT/USDT | 5 | 60.0% | +8.11 |
+| XRP/USDT | 9 | 55.6% | +5.94 |
+| ETH/USDT | 3 | 33.3% | +3.01 |
+| ADA/USDT | 3 | 33.3% | +2.77 |
+| SOL/USDT | 7 | 42.9% | **-4.68** ❌ |
+
+**Analysis:** BNB removal improved everything. Only SOL is underwater (-4.68 USDT, 0.43 WR).
+All mechanical exits (early_profit 100%, trailing_stop 57%) are solid. time_exit_6h is still
+the drag (6 trades, -17.13 USDT, 0% WR) — these are stale trades that need a better exit.
+
+---
+
+## v0.58.0 Test Results (2026-03-19) — Previous ATH
 
 **Fix Applied:** Disable ChoCH exits entirely from populate_exit_trend.
 Problem (v0.57.0): exit_signal (ChoCH) was 17/43 trades at -0.63% avg, totaling -35.87 USDT — destroying all profit from the other 26 trades (+65.53 USDT). ChoCH exit WR was only 11.8%.
@@ -424,10 +464,8 @@ Problem (roadmap Phase 4): OTE zone was 30-85%, hyperopt could widen to 50-85%. 
 
 | Version | Focus | Key Changes |
 |---------|-------|-------------|
-| v0.61.0 | ❌ REGRESSED | Disable time_exit_2 — exposed longer bleeds, 3.49% profit |
-| v0.60.0 | ❌ REGRESSED | Revert v0.59 + time_exit 5h — stole ROI exits, 3.33% profit |
-| v0.59.0 | ❌ REGRESSED | Lower early_profit + breakeven 3h — killed ROI exits, 1.67% profit |
-| v0.58.0 | 🏆 **ATH** | **Disable ChoCH exits — 43 trades, 48.8% WR, +3.80% profit, PF 1.97, DD 0.85%** |
+| v0.59.0 | 🏆 **ATH** | **Remove BNB + SOL pairlists — 41 trades, 51.2% WR, +4.31% profit, PF 2.26, DD 0.89%** |
+| v0.58.0 | ✅ Previous | Disable ChoCH exits — 43 trades, 48.8% WR, +3.80% profit, PF 1.97, DD 0.85% |
 | v0.57.0 | ✅ IMPROVED | Restore 8 pairs + XRP fix — 43 trades, 46.5% WR, +2.93% profit, PF 1.75 |
 | v0.56.0 | ❌ REGRESSED | XRP removal — 21 trades, 38.1% WR, +0.74% profit, PF 1.413 (WORSE than v0.55.0) |
 | v0.55.0 | ✅ DONE | Per-pair optimization — 39 trades, 46.2% WR, +2.25% profit, PF 1.689 |
@@ -446,14 +484,14 @@ Problem (roadmap Phase 4): OTE zone was 30-85%, hyperopt could widen to 50-85%. 
 
 ### Phase 4: Hyperopt & Fine-Tuning (REGRESSED v0.56.0 → NEXT: restore pairs + XRP stop)
 
-- ✅ OTE zone locked to 30-70% mandatory (v0.50.1) — no measurable improvement
 - ✅ Remove HTF trend exits (v0.51.0) — exit_signal avg loss -1.71% → -0.51% 🎉
 - ✅ Confirmation candle on exits (v0.52.0) — ❌ REVERTED (filtered valid exits)
 - ✅ Revert confirmation candle (v0.53.0) — profit restored to 2.02%, ChoCH-only exits confirmed
 - ✅ ChoCH profit guard (v0.54.0) — exit_signal avg loss -0.76% → -0.53% ✅
 - ✅ Per-pair parameter optimization (v0.55.0) — 39 trades, 46.2% WR, 2.25% profit, 1.689 PF
-- ❌ REGRESSED (v0.56.0): XRP removal from pair whitelist — WORSE results than v0.55.0
-- 🔧 NEXT: Restore 8-pair list + try XRP-specific stop loss instead
+- ✅ Remove BNB from pairlist (v0.59.0) — 41 trades, 51.2% WR, 4.31% profit, PF 2.26 🏆 ATH
+- ✅ Remove SOL from pairlist (v0.60.0) — running backtest
+- 🔧 NEXT: Fix time_exit_6h exits (6 trades, -17.13 USDT, 0% WR — stale trades)
 - ⏳ Rolling 2-year backtest window
 
 ---
