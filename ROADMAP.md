@@ -1,7 +1,33 @@
 # Liquidity Sweep Strategy - Research & Roadmap
 
 > Updated: 2026-03-19
-> Version: v0.55.0 tested
+> Version: v0.56.0 tested
+
+---
+
+## v0.56.0 Test Results (2026-03-19)
+
+**Fix Applied:** Removed XRP from pair whitelist.
+Problem (v0.55.0): XRP/USDT was worst performer — 0/4 WR, -36% total. All 4 XRP trades exited via exit_signal (ChoCH) at losses. Removing XRP from 5-pair whitelist (BTC, ETH, SOL, XRP, BNB) → new whitelist (BTC, ETH, SOL, BNB).
+
+| Metric | v0.55.0 | v0.56.0 | Change |
+|--------|---------|---------|--------|
+| Total Trades | 39 | **21** | -18 (-46%) ❌ |
+| Win Rate | 46.2% | **38.1%** | -8.1pp ❌ |
+| Profit % | 2.25% | **0.74%** | -1.51pp ❌ |
+| Profit Factor | 1.689 | **1.413** | -0.276 ❌ |
+| Drawdown | 1.32% | **0.71%** | -0.61pp ✅ |
+
+**Analysis:** Removing XRP (0/4, -36%) was supposed to improve stats but instead degraded them significantly. Total trades dropped from 39 → 21 (46% reduction beyond just XRP removal), win rate dropped 46.2% → 38.1%, and profit dropped 2.25% → 0.74%. The config also had fewer pairs than v0.55.0 (4 pairs vs 8 pairs — DOT, DOGE, ADA were also missing), which explains the larger-than-expected trade reduction.
+
+**Key Insight:** XRP was indeed a losing pair but removing it didn't improve overall strategy stats because:
+1. Sample size dropped significantly (21 vs 39 trades) — statistical significance weakened
+2. The other 4 pairs in v0.56.0 may have had off/default parameters compared to their per-pair optimized values in v0.55.0
+3. Smaller pair list = fewer trade opportunities = higher variance
+
+**Verdict:** v0.56.0 = REGRESSION. XRP removal was not the right fix. Recommend: restore full 8-pair list and try XRP-specific stop loss instead. Alternatively, add DOT/DOGE/ADA back to config if those pairs were in v0.55.0.
+
+**Next:** Restore v0.55.0 config (8 pairs) and try XRP-specific stop loss.
 
 ---
 
@@ -335,7 +361,7 @@ Problem (roadmap Phase 4): OTE zone was 30-85%, hyperopt could widen to 50-85%. 
 
 | Version | Focus | Key Changes |
 |---------|-------|-------------|
-| v0.56.0 | 🔧 TESTING | XRP removal from pair whitelist — XRP worst pair (0/4 WR, -36% total) |
+| v0.56.0 | ❌ REGRESSED | XRP removal — 21 trades, 38.1% WR, +0.74% profit, PF 1.413 (WORSE than v0.55.0) |
 | v0.55.0 | ✅ DONE | Per-pair optimization — 39 trades, 46.2% WR, +2.25% profit, PF 1.689 |
 | v0.54.0 | ✅ DONE | ChoCH profit guard — exit_signal avg loss -0.76% → -0.53% |
 | v0.53.0 | ✅ REVERTED | Remove confirmation candle → profit restored 1.19%→2.02%, ChoCH-only exits confirmed |
@@ -350,7 +376,7 @@ Problem (roadmap Phase 4): OTE zone was 30-85%, hyperopt could widen to 50-85%. 
 | v0.43.0 | ✅ DONE | Widen ATR stoploss to 3x |
 | v0.42.0 | ✅ DONE | Fixed trailing stop formula (0.277→0.005) |
 
-### Phase 4: Hyperopt & Fine-Tuning (TESTING v0.56.0)
+### Phase 4: Hyperopt & Fine-Tuning (REGRESSED v0.56.0 → NEXT: restore pairs + XRP stop)
 
 - ✅ OTE zone locked to 30-70% mandatory (v0.50.1) — no measurable improvement
 - ✅ Remove HTF trend exits (v0.51.0) — exit_signal avg loss -1.71% → -0.51% 🎉
@@ -358,7 +384,8 @@ Problem (roadmap Phase 4): OTE zone was 30-85%, hyperopt could widen to 50-85%. 
 - ✅ Revert confirmation candle (v0.53.0) — profit restored to 2.02%, ChoCH-only exits confirmed
 - ✅ ChoCH profit guard (v0.54.0) — exit_signal avg loss -0.76% → -0.53% ✅
 - ✅ Per-pair parameter optimization (v0.55.0) — 39 trades, 46.2% WR, 2.25% profit, 1.689 PF
-- 🔧 TESTING (v0.56.0): XRP removal from pair whitelist — XRP is worst performer (0/4, -36%)
+- ❌ REGRESSED (v0.56.0): XRP removal from pair whitelist — WORSE results than v0.55.0
+- 🔧 NEXT: Restore 8-pair list + try XRP-specific stop loss instead
 - ⏳ Rolling 2-year backtest window
 
 ---
