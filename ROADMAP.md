@@ -1,7 +1,53 @@
 # Liquidity Sweep Strategy - Research & Roadmap
 
 > Updated: 2026-03-19
-> Version: v0.53.0 tested
+> Version: v0.55.0 tested
+
+---
+
+## v0.55.0 Test Results (2026-03-19)
+
+**Fix Applied:** Per-pair parameter optimization — extended custom params to all 8 pairs (was only BTC, ETH, ADA).
+- SOL: require_ote=False, time_exit=8h (high-beta like BTC)
+- XRP: tighter ATR 2.0, time_exit=4h (mean-reverting, lower vol)
+- DOT/AVAX: time_exit=6h (high-volatility pairs)
+- BNB: time_exit=6h, ATR=2.5 (ETH-like dynamics)
+
+| Metric | v0.53.0 | v0.55.0 | Change |
+|--------|---------|---------|--------|
+| Total Trades | 36 | **39** | +3 |
+| Win Rate | 44.4% | **46.2%** | +1.8pp ✅ |
+| Profit % | 2.02% | **2.25%** | +0.23pp ✅ |
+| Profit Factor | 1.62 | **1.689** | +0.069 ✅ |
+| Avg Hold | 3h05m | **3h14m** | +9min |
+| exit_signal | 11 (30.6%, -0.76%) | **13 (33.3%, -0.53%)** | More trades, less avg loss ✅ |
+| early_profit | 9 (25%, +0.99%) | 9 (23.1%, +0.99%) | Stable |
+| trailing_stop | 3 (8.3%, +1.97%) | 3 (7.7%, +1.97%) | Stable |
+| roi | 7 (19.4%, +0.00%) | 10 (25.6%, +0.09%) | More ROI exits ✅ |
+| time_exit_4h | 6 (16.7%, -0.03%) | 2 (5.1%, -0.10%) | Fewer bad exits ✅ |
+| Drawdown | 1.58% | **1.32%** | Improved ✅ |
+
+**Per-Pair Performance:**
+- DOT/USDT: 5 trades, **+78%** 🚀 (4/5 WR)
+- DOGE/USDT: 1 trade, **+114%** 🚀 (1/1 WR)
+- BTC/USDT: 9 trades, +33% (4/9 WR)
+- ETH/USDT: 3 trades, +7% (1/3 WR)
+- AVAX/USDT: 7 trades, +3% (4/7 WR)
+- ADA/USDT: 3 trades, -2% (1/3 WR)
+- SOL/USDT: 7 trades, -1% (3/7 WR)
+- **XRP/USDT: 4 trades, -36%** ⚠️ (0/4 WR — worst performer, all exits via exit_signal at loss)
+
+**Analysis:** Per-pair optimization is a marginal improvement (+0.23pp profit). Win rate improved to 46.2% (+1.8pp). Profit factor 1.689 is the best yet. Drawdown reduced to 1.32%. The ChoCH profit guard (v0.54.0) is working — exit_signal avg loss reduced from -0.76% to -0.53%. However, XRP is a disaster (0/4 WR, -36% total) and drags down the overall result. ROI exits increased (7→10) as custom time_exits helped more trades reach their profit target.
+
+**Key Issues:**
+1. **XRP/USDT** is the #1 problem: 4 trades, 0 wins, all exited via exit_signal (ChoCH) at losses. Needs either removal from pair list or XRP-specific fix.
+2. **exit_signal** still 33.3% of exits at -0.53% avg — ChoCH fires while trade is at small loss. Still the dominant loss source.
+
+**Verdict:** v0.55.0 = incremental improvement. Next focus: **XRP removal** OR XRP-specific stop loss. Rolling 2-year backtest window still pending.
+
+---
+
+## v0.53.0 Test Results (2026-03-19)
 
 ---
 
@@ -278,9 +324,10 @@ Problem (roadmap Phase 4): OTE zone was 30-85%, hyperopt could widen to 50-85%. 
 
 ### Core Problem (IMPROVING)
 
-**Win rate climbing:** 22% → 36.5% → 44.4%
-**Profit turning positive:** -12.9% → 0.05% → 1.87%
-**Next target:** 50%+ WR, 3%+ profit via OTE zone filter.
+**Win rate climbing:** 22% → 36.5% → 44.4% → 46.2%
+**Profit turning positive:** -12.9% → 0.05% → 1.87% → 2.02% → 2.25%
+**Profit factor climbing:** 1.29 → 1.55 → 1.62 → 1.689
+**Next target:** 50%+ WR, 3%+ profit via XRP fix + exit quality improvements
 
 ---
 
@@ -288,7 +335,9 @@ Problem (roadmap Phase 4): OTE zone was 30-85%, hyperopt could widen to 50-85%. 
 
 | Version | Focus | Key Changes |
 |---------|-------|-------------|
-| v0.54.0 | 🔧 IN TEST | ChoCH profit guard — block underwater ChoCH exits to prevent -0.76% avg loss on exit_signal |
+| v0.56.0 | 🔧 NEXT | XRP removal OR XRP-specific stop — XRP worst pair (0/4 WR, -36% total) |
+| v0.55.0 | ✅ DONE | Per-pair optimization — 39 trades, 46.2% WR, +2.25% profit, PF 1.689 |
+| v0.54.0 | ✅ DONE | ChoCH profit guard — exit_signal avg loss -0.76% → -0.53% |
 | v0.53.0 | ✅ REVERTED | Remove confirmation candle → profit restored 1.19%→2.02%, ChoCH-only exits confirmed |
 | v0.52.0 | ❌ REVERTED | Confirmation candle on exits — filtered valid exits, profit 2.02%→1.19% |
 | v0.51.0 | 🎉 IMPROVED | Remove HTF trend exits → profit 1.87%→2.02%, exit_signal avg -1.71%→-0.51% |
@@ -301,14 +350,15 @@ Problem (roadmap Phase 4): OTE zone was 30-85%, hyperopt could widen to 50-85%. 
 | v0.43.0 | ✅ DONE | Widen ATR stoploss to 3x |
 | v0.42.0 | ✅ DONE | Fixed trailing stop formula (0.277→0.005) |
 
-### Phase 4: Hyperopt & Fine-Tuning (IN PROGRESS → v0.54.0)
+### Phase 4: Hyperopt & Fine-Tuning (IN PROGRESS → v0.56.0)
 
 - ✅ OTE zone locked to 30-70% mandatory (v0.50.1) — no measurable improvement
 - ✅ Remove HTF trend exits (v0.51.0) — exit_signal avg loss -1.71% → -0.51% 🎉
 - ✅ Confirmation candle on exits (v0.52.0) — ❌ REVERTED (filtered valid exits)
 - ✅ Revert confirmation candle (v0.53.0) — profit restored to 2.02%, ChoCH-only exits confirmed
-- 🔧 IN TEST (v0.54.0): ChoCH profit guard — block underwater ChoCH exits to prevent -0.76% avg loss
-- ⏳ Per-pair parameter optimization
+- ✅ ChoCH profit guard (v0.54.0) — exit_signal avg loss -0.76% → -0.53% ✅
+- ✅ Per-pair parameter optimization (v0.55.0) — 39 trades, 46.2% WR, 2.25% profit, 1.689 PF
+- 🔧 NEXT (v0.56.0): XRP removal OR XRP-specific stop loss — XRP is worst performer (0/4, -36%)
 - ⏳ Rolling 2-year backtest window
 
 ---
