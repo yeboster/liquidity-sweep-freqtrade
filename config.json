@@ -42,7 +42,7 @@
             "ETH/USDT",
             "SOL/USDT",
             "XRP/USDT",
-            "DOGE/USDT"
+            "BNB/USDT"
         ],
         "pair_blacklist": []
     },
