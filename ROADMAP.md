@@ -335,7 +335,7 @@ Problem (roadmap Phase 4): OTE zone was 30-85%, hyperopt could widen to 50-85%. 
 
 | Version | Focus | Key Changes |
 |---------|-------|-------------|
-| v0.56.0 | 🔧 NEXT | XRP removal OR XRP-specific stop — XRP worst pair (0/4 WR, -36% total) |
+| v0.56.0 | 🔧 TESTING | XRP removal from pair whitelist — XRP worst pair (0/4 WR, -36% total) |
 | v0.55.0 | ✅ DONE | Per-pair optimization — 39 trades, 46.2% WR, +2.25% profit, PF 1.689 |
 | v0.54.0 | ✅ DONE | ChoCH profit guard — exit_signal avg loss -0.76% → -0.53% |
 | v0.53.0 | ✅ REVERTED | Remove confirmation candle → profit restored 1.19%→2.02%, ChoCH-only exits confirmed |
@@ -350,7 +350,7 @@ Problem (roadmap Phase 4): OTE zone was 30-85%, hyperopt could widen to 50-85%. 
 | v0.43.0 | ✅ DONE | Widen ATR stoploss to 3x |
 | v0.42.0 | ✅ DONE | Fixed trailing stop formula (0.277→0.005) |
 
-### Phase 4: Hyperopt & Fine-Tuning (IN PROGRESS → v0.56.0)
+### Phase 4: Hyperopt & Fine-Tuning (TESTING v0.56.0)
 
 - ✅ OTE zone locked to 30-70% mandatory (v0.50.1) — no measurable improvement
 - ✅ Remove HTF trend exits (v0.51.0) — exit_signal avg loss -1.71% → -0.51% 🎉
@@ -358,7 +358,7 @@ Problem (roadmap Phase 4): OTE zone was 30-85%, hyperopt could widen to 50-85%. 
 - ✅ Revert confirmation candle (v0.53.0) — profit restored to 2.02%, ChoCH-only exits confirmed
 - ✅ ChoCH profit guard (v0.54.0) — exit_signal avg loss -0.76% → -0.53% ✅
 - ✅ Per-pair parameter optimization (v0.55.0) — 39 trades, 46.2% WR, 2.25% profit, 1.689 PF
-- 🔧 NEXT (v0.56.0): XRP removal OR XRP-specific stop loss — XRP is worst performer (0/4, -36%)
+- 🔧 TESTING (v0.56.0): XRP removal from pair whitelist — XRP is worst performer (0/4, -36%)
 - ⏳ Rolling 2-year backtest window
 
 ---

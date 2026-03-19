@@ -14,9 +14,14 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.55.0
+Version: 0.56.0
 
 Changelog:
+- v0.56.0 (2026-03-19): Remove XRP from pair whitelist.
+  Problem (v0.55.0): XRP/USDT was the worst performer by far — 0/4 WR, -36% total profit.
+  All 4 XRP trades exited via exit_signal (ChoCH) at losses. Removing XRP to improve
+  overall strategy stats. Config whitelist now: BTC, ETH, SOL, BNB (was: BTC, ETH, SOL, XRP, BNB).
+
 - v0.55.0 (2026-03-19): Per-pair parameter optimization — extended to SOL, BNB, XRP, DOT, AVAX.
   Prior versions only had custom params for BTC, ETH, ADA. 5 of 8 pairs used global defaults.
   Key insight: SOL behaves like BTC (high-beta, trends hard → require_ote=False, time_exit=8h).
