@@ -14,12 +14,13 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.49.0
+Version: 0.51.0
 
 Changelog:
-- v0.49.0 (2026-03-19): Test weekend filter with default=True (roadmap 2.3).
-  v0.48.0 implemented the filter but left it disabled (default=False), giving same results as v0.47.0.
-  This version tests with filter ENABLED to measure actual weekend impact.
+- v0.51.0 (2026-03-19): Remove HTF trend exits from populate_exit_trend.
+  Problem (roadmap Phase 4): exit_signal exits (33.3% of trades, avg -1.71%) were cutting
+  winners short via 1H trend reversal. ChoCH exits on entry TF (15m) are more responsive
+  and appropriate for local exit decisions. Removing HTF trend component lets winners run.
 
 - v0.50.0 (2026-03-19): Tighten OTE zone — lock to 30-70% band, make require_ote MANDATORY.
   Problem (roadmap Phase 4): OTE zone range was 30-85% (could widen to 50-85%). Wider OTE
@@ -27,7 +28,6 @@ Changelog:
   ICT Silver Bullet: only trade discount (38-50%) and mid (50-65%) zones.
   Also: require_ote optimize=False — hyperopt CANNOT disable it (v0.38.0 disabled it → 9 trades, 11.1% WR).
   OTE bounds now hyperoptable within 25-38% (lower) and 60-75% (upper) tight band.
-  v0.48.0 implemented the filter but left it disabled (default=False), giving same results as v0.47.0.
   This version tests with filter ENABLED to measure actual weekend impact.
 
 - v0.47.0 (2026-03-18): Double confirmation — use BOS instead of ChoCh.
@@ -798,17 +798,17 @@ class LiquiditySweep(IStrategy):
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        """Exit on HTF trend reversal (ChoCH is strongest signal)."""
+        """Exit on ChoCH reversal on entry timeframe (strongest local signal).
+        
+        v0.51.0 CHANGE: Removed HTF trend reversal exits.
+        Problem: HTF trend (1h) exits were too aggressive — firing whenever 1H trend flipped,
+        cutting winners short at -1.71% avg (33.3% of trades). ChoCH on entry TF (15m) is
+        more responsive and appropriate for exit decisions without prematurely stopping out.
+        """
         dataframe.loc[:, 'exit_long'] = 0
         dataframe.loc[:, 'exit_short'] = 0
         
-        htf_trend_col = f'trend_{self.informative_timeframe}'
-        
-        if htf_trend_col in dataframe.columns:
-            dataframe.loc[dataframe[htf_trend_col] == -1, 'exit_long'] = 1
-            dataframe.loc[dataframe[htf_trend_col] == 1, 'exit_short'] = 1
-        
-        # Also exit on ChoCH on entry timeframe (stronger reversal signal)
+        # Exit on ChoCH on entry timeframe — strong local reversal signal
         dataframe.loc[dataframe['choch'] == -1, 'exit_long'] = 1
         dataframe.loc[dataframe['choch'] == 1, 'exit_short'] = 1
         
