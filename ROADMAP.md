@@ -178,6 +178,32 @@ freqtrade backtesting -c config.json -s LiquiditySweep -l DEBUG
 | **2.2** | ✅ DONE | Double confirmation: sweep + BOS (v0.47.0) — **MAJOR IMPROVEMENT** |
 | **2.3** | ✅ DONE | Weekend filter (v0.49.0) — **44.4% WR, +1.87% profit** |
 
+## v0.51.0 Test Results (2026-03-19)
+
+**Fix Applied:** Remove HTF trend exits from `populate_exit_trend` — replaced ChoCH-only exits.
+Problem (roadmap Phase 4): exit_signal exits (33.3% of trades, avg -1.71%) were cutting winners short via 1H HTF trend reversal. ChoCH on entry TF (15m) is more responsive and appropriate for local exit decisions.
+
+| Metric | v0.50.1 | v0.51.0 | Change |
+|--------|---------|---------|--------|
+| Total Trades | 36 | 36 | — |
+| Win Rate | 44.4% | 44.4% | — |
+| Profit % | 1.87% | **2.02%** | **+0.15pp** ✅ |
+| Profit Factor | 1.55 | **1.62** | +0.07 |
+| Avg Hold | 2h55m | 3h05m | +10min longer |
+| TSL exits | 3 (8.3%, +6.52%) | 3 (8.3%, +1.97%) | TSL still capturing winners |
+| exit_signal | 12 (33.3%, -1.71%) | **11 (30.6%, -0.51%)** | **+1.20pp improvement** 🎉 |
+| Early profit | 9 (25%, +3.30%) | 9 (25%, +3.30%) | — |
+| ROI exits | — | 5 (13.9%, +0.05%) | More ROI exits (trade running longer) |
+| Drawdown | 1.58% | 1.58% | Same |
+
+**Analysis:** Removing HTF trend exits improved profit from 1.87% → 2.02% (+0.15pp) with same trade count. The exit_signal avg loss dropped from -1.71% to -0.51% — a massive 1.20pp improvement on those exits. Winners are now running longer (3h05m vs 2h55m). Profit factor improved from 1.55 to 1.62.
+
+**Key Observation:** ChoCH-only exits let winners run. The 1H HTF trend was too slow/aggressive for 15m entry timeframe exits. The strategy now holds trades an extra 10 minutes on average, capturing more of the move.
+
+**Verdict:** HTF trend exit removal = incremental improvement. ChoCH-only exits confirmed. Next target: still reduce remaining exit_signal exits (now 30.6%, avg -0.51%) — could try tightening ChoCH threshold or adding confirmation before exit_signal fires.
+
+---
+
 ## v0.50.1 Test Results (2026-03-19)
 
 **Fix Applied:** Tighten OTE zone to 30-70% mandatory + make require_ote non-optimizable.
@@ -237,6 +263,7 @@ Problem (roadmap Phase 4): OTE zone was 30-85%, hyperopt could widen to 50-85%. 
 
 | Version | Focus | Key Changes |
 |---------|-------|-------------|
+| v0.51.0 | 🎉 IMPROVED | Remove HTF trend exits → profit 1.87%→2.02%, exit_signal avg -1.71%→-0.51% |
 | v0.50.1 | ✅ DONE | Tighten OTE to 30-70% mandatory (no change — v0.49.0 already near-optimal) |
 | v0.49.0 | 🎉 BREAKTHROUGH | Weekend filter — WR 36.5%→44.4%, profit 0.05%→1.87%, profit factor 1.55 |
 | v0.47.0 | 🚀 BREAKTHROUGH | BOS double-confirmation — WR 22%→36.5%, profit -12.9%→+0.05%, drawdown 1.64% |
@@ -249,7 +276,8 @@ Problem (roadmap Phase 4): OTE zone was 30-85%, hyperopt could widen to 50-85%. 
 ### Phase 4: Hyperopt & Fine-Tuning (STALEMATE → NEXT TARGET: exit_signal exits)
 
 - ✅ OTE zone locked to 30-70% mandatory (v0.50.1) — no measurable improvement
-- ⏳ Reduce exit_signal exits (33.3% of trades, avg -1.71%) — next priority
+- ✅ Remove HTF trend exits (v0.51.0) — exit_signal avg loss -1.71% → -0.51% 🎉
+- ⏳ Further reduce exit_signal exits (30.6%, avg -0.51%) — tighten ChoCH or add confirmation
 - Per-pair parameter optimization
 - Rolling 2-year backtest window
 
