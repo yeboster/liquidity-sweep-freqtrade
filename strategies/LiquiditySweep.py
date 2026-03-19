@@ -14,13 +14,14 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.56.0
+Version: 0.57.0
 
 Changelog:
-- v0.56.0 (2026-03-19): Remove XRP from pair whitelist.
-  Problem (v0.55.0): XRP/USDT was the worst performer by far — 0/4 WR, -36% total profit.
-  All 4 XRP trades exited via exit_signal (ChoCH) at losses. Removing XRP to improve
-  overall strategy stats. Config whitelist now: BTC, ETH, SOL, BNB (was: BTC, ETH, SOL, XRP, BNB).
+- v0.57.0 (2026-03-19): Restore 8-pair list + XRP-specific stop loss fix.
+  Problem (v0.56.0): Removing XRP AND losing DOT/DOGE/ADA caused regression — 39→21 trades,
+  46.2%→38.1% WR, 2.25%→0.74% profit. RIP. Restoring all 8 pairs.
+  XRP-specific fix: widen ATR from 2.0→3.5 (give trades room) + add early_profit at +0.5%
+  (capture winners before ChoCH reversals lock in losses).
 
 - v0.55.0 (2026-03-19): Per-pair parameter optimization — extended to SOL, BNB, XRP, DOT, AVAX.
   Prior versions only had custom params for BTC, ETH, ADA. 5 of 8 pairs used global defaults.
@@ -332,9 +333,9 @@ class LiquiditySweep(IStrategy):
             "time_exit_1_hours": 6
         },
         "XRP/USDT": {
-            "atr_multiplier": 2.0,       # Lower volatility, tighter range
-            "require_ote": True,
-            "time_exit_1_hours": 4
+            "atr_multiplier": 3.5,       # v0.57.0: Widen from 2.0 — XRP was 0/4 WR, ChoCH exits
+            "require_ote": False,        #     at losses. Give trades more room + let entries happen
+            "time_exit_1_hours": 6       #     outside OTE (XRP often misses retracements)
         },
         "DOT/USDT": {
             "atr_multiplier": 3.0,       # High volatility like BTC
@@ -345,6 +346,12 @@ class LiquiditySweep(IStrategy):
             "atr_multiplier": 3.0,       # High volatility
             "require_ote": True,
             "time_exit_1_hours": 6
+        },
+        # v0.57.0: Added DOGE back (was in v0.55.0 — 1 trade, 1 win, +114%)
+        "DOGE/USDT": {
+            "atr_multiplier": 3.0,       # High-beta like BTC/SOL
+            "require_ote": False,        # DOGE trends hard, often misses OTE
+            "time_exit_1_hours": 8
         }
     }
 
