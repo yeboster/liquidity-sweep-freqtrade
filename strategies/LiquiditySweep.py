@@ -14,9 +14,16 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.51.0
+Version: 0.52.0
 
 Changelog:
+- v0.52.0 (2026-03-19): Require confirmation candle for ChoCH exits (roadmap Phase 4).
+  Problem (v0.51.0): exit_signal exits (30.6% of trades, avg -1.70%) still cutting winners
+  short. ChoCH fires on structure rejection but candle direction confirms the rejection is
+  genuine. Fix: require (choch==-1 AND close<open) for longs, (choch==1 AND close>open) for
+  shorts. This is the same confirmation-candle logic from entry quality (v0.40.0) applied
+  to exits.
+
 - v0.51.0 (2026-03-19): Remove HTF trend exits from populate_exit_trend.
   Problem (roadmap Phase 4): exit_signal exits (33.3% of trades, avg -1.71%) were cutting
   winners short via 1H trend reversal. ChoCH exits on entry TF (15m) are more responsive
@@ -254,7 +261,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.50.0"
+    STRATEGY_VERSION = "0.52.0"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -800,6 +807,14 @@ class LiquiditySweep(IStrategy):
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """Exit on ChoCH reversal on entry timeframe (strongest local signal).
         
+        v0.52.0 CHANGE: Require confirmation candle for ChoCH exits.
+        Problem (v0.51.0): exit_signal exits (30.6% of trades, avg -1.70%) are still
+        cutting winners short. ChoCH on 15m fires when price rejects from a level,
+        but the candle direction confirms the rejection is genuine.
+        - Long exits: require bearish candle (close < open) + bearish ChoCH
+        - Short exits: require bullish candle (close > open) + bullish ChoCH
+        This prevents exits where price simply touches a level without real rejection.
+        
         v0.51.0 CHANGE: Removed HTF trend reversal exits.
         Problem: HTF trend (1h) exits were too aggressive — firing whenever 1H trend flipped,
         cutting winners short at -1.71% avg (33.3% of trades). ChoCH on entry TF (15m) is
@@ -808,9 +823,14 @@ class LiquiditySweep(IStrategy):
         dataframe.loc[:, 'exit_long'] = 0
         dataframe.loc[:, 'exit_short'] = 0
         
-        # Exit on ChoCH on entry timeframe — strong local reversal signal
-        dataframe.loc[dataframe['choch'] == -1, 'exit_long'] = 1
-        dataframe.loc[dataframe['choch'] == 1, 'exit_short'] = 1
+        # v0.52.0: Require confirmation candle for ChoCH exits
+        # Bearish candle for long exit: price rejected down AND candle confirms
+        # Bullish candle for short exit: price rejected up AND candle confirms
+        long_exit = (dataframe['choch'] == -1) & (dataframe['close'] < dataframe['open'])
+        short_exit = (dataframe['choch'] == 1) & (dataframe['close'] > dataframe['open'])
+        
+        dataframe.loc[long_exit, 'exit_long'] = 1
+        dataframe.loc[short_exit, 'exit_short'] = 1
         
         return dataframe
 
