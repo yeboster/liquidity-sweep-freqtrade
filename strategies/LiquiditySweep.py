@@ -329,7 +329,7 @@ class LiquiditySweep(IStrategy):
     # Keep ote_lower/ote_upper hyperoptable within the 30-70% tight band.
     ote_lower = DecimalParameter(0.25, 0.38, default=0.30, space="buy", optimize=True)
     ote_upper = DecimalParameter(0.60, 0.75, default=0.70, space="buy", optimize=True)
-    require_ote = CategoricalParameter([True], default=True, space="buy", optimize=False)  # MANDATORY — hyperopt disabled it in v0.38.0
+    require_ote = CategoricalParameter([True, False], default=True, space="buy", optimize=False)  # MANDATORY — optimize=False prevents hyperopt disabling
     
     # ATR-based SL — new in v0.22.0
     # v0.34.0: ATR Multiplier increase to 2.0x (from 1.5x)
