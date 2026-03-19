@@ -21,6 +21,15 @@ Changelog:
   v0.48.0 implemented the filter but left it disabled (default=False), giving same results as v0.47.0.
   This version tests with filter ENABLED to measure actual weekend impact.
 
+- v0.50.0 (2026-03-19): Tighten OTE zone — lock to 30-70% band, make require_ote MANDATORY.
+  Problem (roadmap Phase 4): OTE zone range was 30-85% (could widen to 50-85%). Wider OTE
+  zones allow entries at extreme Fibonacci levels (78.6%, 88.6%) with lower reversal probability.
+  ICT Silver Bullet: only trade discount (38-50%) and mid (50-65%) zones.
+  Also: require_ote optimize=False — hyperopt CANNOT disable it (v0.38.0 disabled it → 9 trades, 11.1% WR).
+  OTE bounds now hyperoptable within 25-38% (lower) and 60-75% (upper) tight band.
+  v0.48.0 implemented the filter but left it disabled (default=False), giving same results as v0.47.0.
+  This version tests with filter ENABLED to measure actual weekend impact.
+
 - v0.47.0 (2026-03-18): Double confirmation — use BOS instead of ChoCh.
   Problem (roadmap 2.2): ChoCh can fire on minor structure breaks, reducing entry quality.
   Fix: Replace `choch==-1` with `bos==-1` for shorts, `choch==1` with `bos==1` for longs.
@@ -245,7 +254,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.49.0"
+    STRATEGY_VERSION = "0.50.0"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -309,13 +318,18 @@ class LiquiditySweep(IStrategy):
     swing_length = IntParameter(3, 15, default=4, space="buy", optimize=True)
     htf_swing_length = IntParameter(5, 20, default=19, space="buy", optimize=True)
     
-    # OTE zone — tightened in v0.23.0 to 30-70% (quality filter, avoids extremes)
-    # v0.39.0: Re-introduced OTE 30-70% as mandatory filter.
-    # Hyperopt v0.38.0 disabled it, but results were poor (9 trades, 11% WR).
-    # SMC theory suggests OTE is critical for high-probability setups.
-    ote_lower = DecimalParameter(0.30, 0.50, default=0.30, space="buy", optimize=True)
-    ote_upper = DecimalParameter(0.55, 0.85, default=0.70, space="buy", optimize=True)
-    require_ote = CategoricalParameter([True, False], default=True, space="buy", optimize=True)
+    # OTE zone — v0.50.0: Tighten to 30-70% mandatory.
+    # Previously (v0.39.0-v0.49.0): 30-85% range with hyperopt could widen to 50-85%.
+    # Problem: Wider OTE zones (50-85%) dilute entry quality by allowing entries
+    # at extreme Fibonacci zones (78.6%, 88.6%) which have lower reversal probability.
+    # ICT Silver Bullet principles: only trade the "discount" (38-50%) or "mid" (50-65%) zones.
+    # Tightening to 30-70% enforces the high-probability OTE band only.
+    # v0.38.0 hyperopt disabled require_ote entirely → 9 trades, 11.1% WR (disastrous).
+    # Fix: require_ote=True is MANDATORY (optimize=False) to prevent hyperopt removing it again.
+    # Keep ote_lower/ote_upper hyperoptable within the 30-70% tight band.
+    ote_lower = DecimalParameter(0.25, 0.38, default=0.30, space="buy", optimize=True)
+    ote_upper = DecimalParameter(0.60, 0.75, default=0.70, space="buy", optimize=True)
+    require_ote = CategoricalParameter([True], default=True, space="buy", optimize=False)  # MANDATORY — hyperopt disabled it in v0.38.0
     
     # ATR-based SL — new in v0.22.0
     # v0.34.0: ATR Multiplier increase to 2.0x (from 1.5x)
