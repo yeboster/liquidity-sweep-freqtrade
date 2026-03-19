@@ -14,9 +14,13 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.58.0
+Version: 0.59.0
 
 Changelog:
+- v0.59.0 (2026-03-19): Remove BNB/USDT from pair whitelist.
+  BNB had 0% WR across 2 trades, -5.10 USDT total. Worst performer in v0.58.0 backtest.
+  Top 5 performers kept: BTC, DOGE, DOT, XRP, ETH, ADA, SOL (7 pairs total).
+
 - v0.58.0 (2026-03-19): Disable ChoCH exits entirely.
   Problem (v0.57.0): exit_signal (ChoCH) was 17/43 trades at -0.63% avg, totaling
   -35.87 USDT — destroying all profit from the other 26 trades (+65.53 USDT).

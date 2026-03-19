@@ -5,6 +5,69 @@
 
 ---
 
+## v0.58.0 Test Results (2026-03-19) — 🏆 CURRENT ATH
+
+**Fix Applied:** Disable ChoCH exits entirely from populate_exit_trend.
+Problem (v0.57.0): exit_signal (ChoCH) was 17/43 trades at -0.63% avg, totaling -35.87 USDT — destroying all profit from the other 26 trades (+65.53 USDT). ChoCH exit WR was only 11.8%.
+
+| Metric | v0.57.0 | **v0.58.0** | Change |
+|--------|---------|---------|--------|
+| Total Trades | 43 | **43** | — |
+| Win Rate | 46.5% | **48.8%** | +2.3pp ✅ |
+| Profit % | 2.93% | **3.80%** | +0.87pp ✅ |
+| Profit Factor | 1.75 | **1.97** | +0.22 ✅ |
+| SQN | 1.40 | **1.60** | ✅ |
+| Drawdown | 1.35% | **0.85%** | -0.50pp ✅ |
+| DD Duration | 98 days | **21 days** | 🚀 |
+
+**Exit Breakdown:**
+| Exit | Trades | Avg Profit | Total USDT | WR |
+|------|--------|-----------|------------|-----|
+| early_profit_take | 12 | +1.0% | +40.36 | 100% |
+| roi | 15 | +0.23% | +11.61 | 100% |
+| trailing_stop_loss | 8 | +0.19% | +4.78 | 50% |
+| time_exit_4h | 2 | -0.25% | -1.72 | 0% |
+| time_exit_6h | 6 | -0.83% | -17.05 | 0% |
+
+**Per-Pair Performance:**
+| Pair | Trades | WR | Profit USDT |
+|------|--------|----|-------------|
+| BTC/USDT | 9 | 55.6% | +18.01 |
+| DOGE/USDT | 5 | 60.0% | +9.90 |
+| DOT/USDT | 5 | 60.0% | +8.09 |
+| XRP/USDT | 9 | 55.6% | +5.95 |
+| ETH/USDT | 3 | 100% | +2.99 |
+| ADA/USDT | 3 | 33.3% | +2.77 |
+| SOL/USDT | 7 | 42.9% | -4.63 |
+| BNB/USDT | 2 | 0% | -5.10 |
+
+**Analysis:** ChoCH removal worked exactly as predicted. Trades that were dying to exit_signal now run to early_profit (+12 trades, +40.36 USDT). All mechanical exits (early_profit, ROI, trailing_stop) are 100% WR. Only drag is time_exit_6h (6 trades, -17.05 USDT) — stale trades that sit 6h going nowhere.
+
+**Follow-up iterations (v0.59-v0.61) all REGRESSED:**
+- v0.59.0: breakeven_exit_3h stole 26 trades from ROI → 1.67% profit ❌
+- v0.60.0: time_exit 5h stole 13 ROI exits → 3.33% profit ❌  
+- v0.61.0: disable time_exit_2 exposed longer bleeds → 3.49% profit ❌
+
+**Verdict:** v0.58.0 = locked ATH. Manual exit tuning hit diminishing returns. Next: hyperopt on v0.58.0 code to find globally optimal parameters.
+
+---
+
+## v0.57.0 Test Results (2026-03-19)
+
+**Fix Applied:** Restore 8-pair list + XRP-specific params (ATR 3.5x, OTE=False, 6h exit).
+
+| Metric | v0.55.0 | **v0.57.0** | Change |
+|--------|---------|---------|--------|
+| Total Trades | 39 | **43** | +4 |
+| Win Rate | 46.2% | **46.5%** | +0.3pp ✅ |
+| Profit % | 2.25% | **2.93%** | +0.68pp ✅ |
+| Profit Factor | 1.689 | **1.75** | +0.061 ✅ |
+| Drawdown | 1.32% | 1.35% | ~same |
+
+**Analysis:** XRP fix worked — went from 0/4 WR (-36%) to 4/9 WR (+1.365 USDT). Best pair DOT (100% WR). Main drag: exit_signal (ChoCH) 17 trades at -35.87 USDT.
+
+---
+
 ## v0.56.0 Test Results (2026-03-19)
 
 **Fix Applied:** Removed XRP from pair whitelist.
@@ -361,6 +424,11 @@ Problem (roadmap Phase 4): OTE zone was 30-85%, hyperopt could widen to 50-85%. 
 
 | Version | Focus | Key Changes |
 |---------|-------|-------------|
+| v0.61.0 | ❌ REGRESSED | Disable time_exit_2 — exposed longer bleeds, 3.49% profit |
+| v0.60.0 | ❌ REGRESSED | Revert v0.59 + time_exit 5h — stole ROI exits, 3.33% profit |
+| v0.59.0 | ❌ REGRESSED | Lower early_profit + breakeven 3h — killed ROI exits, 1.67% profit |
+| v0.58.0 | 🏆 **ATH** | **Disable ChoCH exits — 43 trades, 48.8% WR, +3.80% profit, PF 1.97, DD 0.85%** |
+| v0.57.0 | ✅ IMPROVED | Restore 8 pairs + XRP fix — 43 trades, 46.5% WR, +2.93% profit, PF 1.75 |
 | v0.56.0 | ❌ REGRESSED | XRP removal — 21 trades, 38.1% WR, +0.74% profit, PF 1.413 (WORSE than v0.55.0) |
 | v0.55.0 | ✅ DONE | Per-pair optimization — 39 trades, 46.2% WR, +2.25% profit, PF 1.689 |
 | v0.54.0 | ✅ DONE | ChoCH profit guard — exit_signal avg loss -0.76% → -0.53% |
