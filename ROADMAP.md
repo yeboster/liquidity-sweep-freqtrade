@@ -1,7 +1,7 @@
 # Liquidity Sweep Strategy - Research & Roadmap
 
 > Updated: 2026-03-19
-> Version: v0.49.0 tested
+> Version: v0.50.1 tested
 
 ---
 
@@ -178,6 +178,30 @@ freqtrade backtesting -c config.json -s LiquiditySweep -l DEBUG
 | **2.2** | ✅ DONE | Double confirmation: sweep + BOS (v0.47.0) — **MAJOR IMPROVEMENT** |
 | **2.3** | ✅ DONE | Weekend filter (v0.49.0) — **44.4% WR, +1.87% profit** |
 
+## v0.50.1 Test Results (2026-03-19)
+
+**Fix Applied:** Tighten OTE zone to 30-70% mandatory + make require_ote non-optimizable.
+Problem (roadmap Phase 4): OTE zone was 30-85%, hyperopt could widen to 50-85%. Extreme Fibonacci zones (78.6%, 88.6%) dilute entry quality. Also require_ote optimize=False prevents hyperopt disabling OTE (v0.38.0 disaster).
+
+| Metric | v0.49.0 | v0.50.1 | Change |
+|--------|---------|---------|--------|
+| Total Trades | 36 | 36 | — |
+| Win Rate | 44.4% | 44.4% | — |
+| Profit % | 1.87% | 1.87% | — |
+| Profit Factor | 1.55 | 1.55 | — |
+| Avg Hold | 2h55m | 2h55m | — |
+| TSL exits | — | 3 (8.3%, +6.52%) | Good — TSL capturing winners |
+| Early profit | — | 9 (25%, +3.30%) | Strong |
+| exit_signal | — | 12 (33.3%, -1.71%) | Still dominant (HTF reversal cuts winners) |
+
+**Analysis:** No improvement over v0.49.0 — identical 36 trades, 44.4% WR, 1.87% profit. Tightening OTE bounds within 30-70% had no measurable effect since v0.49.0 was already using a similar range. The OTE filter is now "locked in" which provides stability but no further gains.
+
+**Key Observation:** exit_signal exits (33.3%, avg -1.71%) are cutting winners short via HTF trend reversal. This is the next major target.
+
+**Verdict:** OTE lock-in confirmed. Next focus: reduce exit_signal exits (HTF reversal exit too aggressive). Consider widening or disabling the HTF trend exit signal.
+
+---
+
 ## v0.49.0 Test Results (2026-03-19)
 
 **Fix Applied:** Weekend filter — skip Saturday (dayofweek=5) and Sunday (dayofweek=6).
@@ -213,6 +237,7 @@ freqtrade backtesting -c config.json -s LiquiditySweep -l DEBUG
 
 | Version | Focus | Key Changes |
 |---------|-------|-------------|
+| v0.50.1 | ✅ DONE | Tighten OTE to 30-70% mandatory (no change — v0.49.0 already near-optimal) |
 | v0.49.0 | 🎉 BREAKTHROUGH | Weekend filter — WR 36.5%→44.4%, profit 0.05%→1.87%, profit factor 1.55 |
 | v0.47.0 | 🚀 BREAKTHROUGH | BOS double-confirmation — WR 22%→36.5%, profit -12.9%→+0.05%, drawdown 1.64% |
 | v0.46.0 | ⚠️ MARGINAL | Early profit exit + wider floor (-8%) — marginal improvement (+0.1pp). TSL still dominant. |
@@ -221,9 +246,10 @@ freqtrade backtesting -c config.json -s LiquiditySweep -l DEBUG
 | v0.43.0 | ✅ DONE | Widen ATR stoploss to 3x |
 | v0.42.0 | ✅ DONE | Fixed trailing stop formula (0.277→0.005) |
 
-### Phase 4: Hyperopt & Fine-Tuning (Ongoing)
+### Phase 4: Hyperopt & Fine-Tuning (STALEMATE → NEXT TARGET: exit_signal exits)
 
-- Hyperopt OTE zone (30-70%)
+- ✅ OTE zone locked to 30-70% mandatory (v0.50.1) — no measurable improvement
+- ⏳ Reduce exit_signal exits (33.3% of trades, avg -1.71%) — next priority
 - Per-pair parameter optimization
 - Rolling 2-year backtest window
 
