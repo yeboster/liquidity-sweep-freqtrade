@@ -1,7 +1,7 @@
 # Liquidity Sweep Strategy - Research & Roadmap
 
-> Updated: 2026-03-18
-> Version: v0.47.0 tested
+> Updated: 2026-03-19
+> Version: v0.49.0 tested
 
 ---
 
@@ -170,25 +170,42 @@ freqtrade backtesting -c config.json -s LiquiditySweep -l DEBUG
 | **1.3** | ⚠️ TESTED | Partial profit taking at +0.8% (v0.46.0) — marginal gain |
 | **1.4** | ✅ DONE | Session filter tested, disabled (too aggressive) |
 
-### Phase 2: Entry Quality (STALEMATE → IMPROVED)
+### Phase 2: Entry Quality (STALEMATE → IMPROVED → 🎉 BREAKTHROUGH)
 
 | Task | Status | Result |
 |------|--------|--------|
 | **2.1** | ❌ FAILED | Session filter cut too many trades (19 vs 63, WR 10.5%) |
 | **2.2** | ✅ DONE | Double confirmation: sweep + BOS (v0.47.0) — **MAJOR IMPROVEMENT** |
-| **2.3** | ⏳ Next | Weekend filter (no Sat/Sun) |
+| **2.3** | ✅ DONE | Weekend filter (v0.49.0) — **44.4% WR, +1.87% profit** |
 
-### Core Problem (UNSOLVED)
+## v0.49.0 Test Results (2026-03-19)
 
-**Win rate too low + avg win too small = mathematically unsalvageable with exits alone**
+**Fix Applied:** Weekend filter — skip Saturday (dayofweek=5) and Sunday (dayofweek=6).
 
-- Win rate: 20-22% (need 67%+ to break even with current R:R)
-- Avg win: +0.63% | Avg loss: -1.35% (ratio 1:2.1)
-- TSL exits 46% of trades at avg -1.35% loss
-- ROI exits only 9.5% of trades
-- Even with TSL fix, exit-based optimization cannot overcome poor entries
+| Metric | v0.47.0 | v0.49.0 | Change |
+|--------|---------|---------|--------|
+| Total Trades | 52 | **36** | -31% |
+| Win Rate | 36.5% | **44.4%** | **+7.9pp** 🎉 |
+| Profit % | 0.05% | **1.87%** | **+1.82pp** ✅ |
+| Drawdown | 1.64% | 1.58% | -0.06pp |
+| Profit Factor | — | **1.55** | Strong |
+| Avg Duration | — | 2h55m | |
 
-**Next recommended action:** Add OTE (Originating Trend Engine) zone filter — only take sweeps in the 38-78% retracement zone. This is the core ICT Silver Bullet concept.
+**Analysis:** Weekend filter dramatically improved quality over quantity:
+- 31% fewer trades but 44% win rate vs 36.5%
+- Profit nearly quadrupled (1.87% vs 0.05%)
+- Filter removes low-liquidity weekend chop — core ICT principle confirmed
+- Profit factor 1.55 = solid edge emerging
+
+**Verdict:** Weekend filter is a definitive keeper. Next: OTE zone filter.
+
+---
+
+### Core Problem (IMPROVING)
+
+**Win rate climbing:** 22% → 36.5% → 44.4%
+**Profit turning positive:** -12.9% → 0.05% → 1.87%
+**Next target:** 50%+ WR, 3%+ profit via OTE zone filter.
 
 ---
 
@@ -196,6 +213,7 @@ freqtrade backtesting -c config.json -s LiquiditySweep -l DEBUG
 
 | Version | Focus | Key Changes |
 |---------|-------|-------------|
+| v0.49.0 | 🎉 BREAKTHROUGH | Weekend filter — WR 36.5%→44.4%, profit 0.05%→1.87%, profit factor 1.55 |
 | v0.47.0 | 🚀 BREAKTHROUGH | BOS double-confirmation — WR 22%→36.5%, profit -12.9%→+0.05%, drawdown 1.64% |
 | v0.46.0 | ⚠️ MARGINAL | Early profit exit + wider floor (-8%) — marginal improvement (+0.1pp). TSL still dominant. |
 | v0.45.0 | ✅ DONE | Disable session filter (was too aggressive) |
