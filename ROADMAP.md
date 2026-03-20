@@ -809,3 +809,49 @@ When backtest fails:
 ---
 
 *Last Updated: 2026-03-18*
+
+---
+
+## v0.65.0 Re-run Confirmation (2026-03-20) — ✅ STABLE, MATCHES PRIOR RUN
+
+**Fix Applied:** None (no-code change re-run).
+**Goal:** Confirm v0.65.0 results are stable after prior marginal run.
+**Result:** ✅ CONFIRMED. Results identical to prior v0.65.0 run.
+
+| Metric | v0.65.0 Prior | **v0.65.0 Re-run** | Δ |
+|--------|---------|---------|--------|
+| Total Trades | 35 | **35** | — |
+| Win Rate | 57.1% | **57.1%** | — ✅ |
+| Profit USDT | 46.80 | **46.80** | — ✅ |
+| Profit % | 4.68% | **4.68%** | — ✅ |
+| Profit Factor | 2.43 | **2.43** | — ✅ |
+| SQN | 2.10 | **2.10** | — ✅ |
+| Drawdown | 0.85% | **0.85%** | — ✅ |
+| DD Duration | 20 days | **20 days** | — ✅ |
+| Avg Hold | 4h53m | **4h53m** | — ✅ |
+
+**Exit Breakdown:**
+| Exit | Prior | Re-run | Δ |
+|------|-------|--------|---|
+| early_profit_take | 14 \| +46.18 | **14** \| **+46.18** | — |
+| trailing_stop_loss | 7 \| +22.17 | 7 \| +22.17 | — |
+| time_exit_6h | 7 \| -14.12 | 7 \| -14.12 | — |
+| time_exit_8h | 4 \| -6.87 | 4 \| -6.87 | — |
+| time_exit_4h | 2 \| -1.71 | 2 \| -1.71 | — |
+| target_liquidity_reached | 1 \| +1.16 | 1 \| +1.16 | — |
+
+**Per-Pair Performance (all positive — no removals):**
+| Pair | Trades | WR | Profit USDT |
+|------|--------|----|-------------|
+| BTC/USDT | 9 | 56% | 14.05 |
+| DOGE/USDT | 5 | 80% | 11.94 |
+| DOT/USDT | 5 | 60% | 7.93 |
+| XRP/USDT | 10 | 50% | 7.30 |
+| ETH/USDT | 3 | 67% | 2.82 |
+| ADA/USDT | 3 | 33% | 2.77 |
+
+**Analysis:** Results perfectly replicated. v0.65.0 is stable. No pairs to remove. time_exit_6h/8h/4h (13 trades, -22.71 USDT, 0% WR) remain the core structural problem — but structural fix requires 2-year backtest window (currently 1-year). ROI 400 at 2% was a marginal change (+$2.11 vs v0.64.0) that doesn't alter strategy behavior.
+
+**No fix applied.** No pairs removed. v0.65.0 confirmed as current stable version.
+
+**Next:** ⏳ Rolling 2-year backtest window (structural time_exit fix still blocked by 1-year window).
