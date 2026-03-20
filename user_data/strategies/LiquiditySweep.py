@@ -284,7 +284,7 @@ class LiquiditySweep(IStrategy):
     #   - Shorts: close < open (bearish candle) — price already moving DOWN
     # Rationale: Eliminates entries where price has already reversed or is consolidating
     # at the zone. Only enter when momentum is confirmed. May reduce volume but improve WR.
-    require_confirmation_candle = CategoricalParameter([True, False], default=False, space="buy", optimize=True)
+    require_confirmation_candle = CategoricalParameter([True, False], default=False, space="buy", optimize=False)
     
     # Liquidity detection
     liquidity_range_pct = DecimalParameter(0.005, 0.03, default=0.019, space="buy", optimize=True)
