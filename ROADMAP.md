@@ -855,3 +855,46 @@ When backtest fails:
 **No fix applied.** No pairs removed. v0.65.0 confirmed as current stable version.
 
 **Next:** ⏳ Rolling 2-year backtest window (structural time_exit fix still blocked by 1-year window).
+
+---
+
+### v0.65.0 — 2-Year Window Confirmation (2026-03-20)
+**Backtest window:** 2024-03-21 → 2026-03-20 (729 days = 2 years)
+
+| Metric | Value |
+|--------|-------|
+| Total Trades | 35 |
+| Win Rate | 57.1% (20W/15L) |
+| Profit USDT | +46.80 |
+| Profit % | 4.68% |
+| Profit Factor | 2.43 |
+| SQN | 2.10 |
+| Max Drawdown | 0.85% |
+| Avg Hold | 4h53m |
+| Final Balance | $1,046.80 |
+
+**Exit Reasons:**
+| Exit | Trades | Profit | WR |
+|------|--------|--------|----|
+| early_profit_take | 14 | +46.18 | 100% |
+| trailing_stop_loss | 7 | +22.17 | 71% |
+| time_exit_6h | 7 | -14.12 | 0% |
+| time_exit_8h | 4 | -6.87 | 0% |
+| time_exit_4h | 2 | -1.71 | 0% |
+| target_liquidity_reached | 1 | +1.16 | 100% |
+
+**Per-Pair Performance (all positive — no removals):**
+| Pair | Trades | WR | Profit USDT |
+|------|--------|----|-------------|
+| BTC/USDT | 9 | 56% | 14.05 |
+| DOGE/USDT | 5 | 80% | 11.94 |
+| DOT/USDT | 5 | 60% | 7.93 |
+| XRP/USDT | 10 | 50% | 7.30 |
+| ETH/USDT | 3 | 67% | 2.82 |
+| ADA/USDT | 3 | 33% | 2.77 |
+
+**Analysis:** 2-year window perfectly replicates 1-year results. All metrics within noise. v0.65.0 confirmed as stable across full market cycle (bull late-2024, bear early-mid 2025, bull late-2025-2026). No pairs to remove. time_exit_6h/8h/4h (13 trades, -22.71 USDT, 0% WR) remain the core structural problem. Next: implement partial entry exit for time_exit to capture micro-winners before the stale timeout kills them.
+
+**No fix applied.** No pairs removed. v0.65.0 confirmed as stable across 2-year window.
+
+**Next:** ⏳ Partial exit on time_exit — split stale trades into 50% exit + 50% ride, to salvage micro-winners before the timeout kills them.
