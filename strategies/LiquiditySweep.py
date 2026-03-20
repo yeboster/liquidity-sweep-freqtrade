@@ -14,9 +14,16 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.62.0
+Version: 0.63.0
 
 Changelog:
+- v0.63.0 (2026-03-20): Remove ROI 305 entry + raise early_profit_take to +1.5%.
+  Problem (v0.62.0): time_exit_6h expanded (3→7 trades, -14.13 USDT) despite ROI 305
+  raised to 1%. These trades hit ROI 305 at <1% profit and were cut there — losing exits.
+  Meanwhile early_profit_take at +0.8% locks in small wins that could have run further.
+  Fix: (1) Remove ROI 305 entry entirely — trades fall through to trailing_stop or
+  time_exit_1 (8h) instead. (2) Raise early_profit_take from +0.8% to +1.5% so only
+  stronger trades exit early; weaker ones ride TSL (activates at +1.5%, exits at +1.0%).
 - v0.62.0 (2026-03-20): Change ROI 305 exit from 0% → 1%.
   Problem (v0.61.0): ROI exit at 0% profit (305 candles = 5h) cut stale trades at
   breakeven. These trades had +0.5% but missed trailing_stop (1.5% offset) and
@@ -26,7 +33,7 @@ Changelog:
   Problem (v0.60.0): time_exit_6h was the ONLY losing exit type — 4 trades, -10.90 USDT,
   0% WR. These stale trades were cut at +0.5% profit after 6h while DOGE/BTC (which have
   time_exit_1=8h) would have had winners running longer. time_exit_1 at 4h/6h/8h per-pair
-  still handles losers. early_profit_take (+0.8%, 45min), trailing_stop (+1.5%), and
+  still handles losers. early_profit_take (+1.5%, 45min), trailing_stop (+1.5%), and
   ROI table handle winners. Removing time_exit_2 lets DOGE/BTC winners run to their 8h
   time_exit_1 instead of being cut at 6h with +0.5% profit requirement.
 
@@ -396,11 +403,13 @@ class LiquiditySweep(IStrategy):
     # v0.30.0: Widened ROI targets — OB entries at institutional demand/supply zones
     # tend to produce impulsive moves. Previous +0.57% avg win was too conservative.
     # Target: let institutional momentum trades run to 1.5%+ before taking profit.
+    # v0.63.0: Removed 305 entry — it was cutting winners at +1% that should have ridden
+    # trailing_stop or time_exit_1 (8h). Also raised 159 from 0.023% to 0.10% to reduce
+    # premature ROI exits at the 159-candle mark.
     minimal_roi = {
         "0": 0.349,
         "109": 0.07,
-        "159": 0.023,
-        "305": 0.01,
+        "159": 0.10,
     }
     
     # Absolute backstop required by Freqtrade — custom_stoploss will use ATR, this is fallback
@@ -1012,8 +1021,9 @@ class LiquiditySweep(IStrategy):
         
         # 1. Early profit exit — lock in wins before TSL activates at +1.5% (v0.46.0)
         # Require at least 45min hold to avoid gap-based false exits
+        # v0.63.0: Raised from +0.8% to +1.5% — let stronger winners run to TSL territory
         trade_duration = (current_time - trade.open_date_utc).total_seconds() / 3600
-        if trade_duration >= 0.75 and current_profit >= 0.008:
+        if trade_duration >= 0.75 and current_profit >= 0.015:
             return "early_profit_take"
         
         # Time-based exit
