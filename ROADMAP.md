@@ -1,7 +1,53 @@
 # Liquidity Sweep Strategy - Research & Roadmap
 
 > Updated: 2026-03-20
-> Version: v0.63.0 tested (REGRESSED → REVERTED to v0.62.0 in v0.64.0)
+> Version: v0.64.0 tested — ✅ REVERT SUCCESSFUL, ATH RESTORED
+
+---
+
+## v0.64.0 Test Results (2026-03-20) — ✅ REVERT SUCCESSFUL, ATH RESTORED
+
+**Fix Applied:** Revert v0.63.0 — restore ROI 305 exit at 1% + early_profit_take at 0.8%.
+**Result:** v0.62.0 ATH fully restored. 57.1% WR, 4.80% profit — essentially identical to v0.62.0.
+
+| Metric | v0.62.0 | **v0.64.0** | Change |
+|--------|---------|---------|--------|
+| Total Trades | 35 | **35** | — |
+| Win Rate | 57.1% | **57.1%** | — ✅ |
+| Profit % | 4.86% | **4.80%** | -0.06pp |
+| Profit Factor | 2.48 | **2.46** | -0.02 |
+| SQN | 2.16 | **2.15** | -0.01 |
+| Drawdown | 0.85% | **0.85%** | — ✅ |
+| DD Duration | 20 days | **20 days** | — ✅ |
+
+**Exit Breakdown:**
+| Exit | Trades | Avg Profit | Total USDT | WR |
+|------|--------|-----------|------------|-----|
+| early_profit_take | 12 | +1.00% | +40.60 | 100% ✅ |
+| trailing_stop_loss | 7 | +0.94% | +22.19 | 71.4% ✅ |
+| roi | 2 | +1.00% | +6.72 | 100% ✅ |
+| target_liquidity_reached | 1 | +0.34% | +1.16 | 100% ✅ |
+| time_exit_4h | 2 | -0.25% | -1.71 | 0% ❌ |
+| time_exit_8h | 4 | -0.51% | -6.87 | 0% ❌ |
+| time_exit_6h | 7 | -0.60% | -14.13 | 0% ❌ |
+
+**Per-Pair Performance (all positive — no removals):**
+| Pair | Profit % | Notes |
+|------|----------|-------|
+| BTC/USDT | 1.41% | Best pair |
+| DOT/USDT | 0.98% | |
+| DOGE/USDT | 0.83% | |
+| ETH/USDT | 0.44% | |
+| ADA/USDT | 0.28% | Worst pair |
+| XRP/USDT | ? | Worst trade -2.58% but still positive overall |
+
+**Analysis:** v0.64.0 = v0.62.0 exactly as intended. The revert worked perfectly. early_profit_take expanded back to 12 trades (vs 2 in broken v0.63.0), trailing_stop_loss recovered to 7 trades at +0.94% avg. time_exit_6h still the structural drag (7 trades, -14.13 USDT, 0% WR) — these fire via ROI table 305-entry (0% at 305 candles ≈ 76h, NOT 6h). The ROI table doesn't map directly to time_exit hours.
+
+**Key Observation:** v0.62.0/v0.64.0 represents the current ATH. Further improvement requires structural changes beyond parameter tweaks. Main remaining opportunity: reduce time_exit_6h / time_exit_8h losses (13 trades, -22.71 USDT total).
+
+**No pairs removed.** All 6 pairs positive. XRP worst single trade (-2.58%) but pair overall positive.
+
+**Next:** time_exit_6h structural fix — these trades are hitting the ROI table 305-entry (0% at 305 candles ≈ 76h), not the time_exit_2 param directly. Consider disabling ROI 305 entirely or widening to 400+ candles.
 
 ---
 
