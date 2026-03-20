@@ -1,7 +1,54 @@
 # Liquidity Sweep Strategy - Research & Roadmap
 
 > Updated: 2026-03-20
-> Version: v0.64.0 tested — ✅ REVERT SUCCESSFUL, ATH RESTORED
+> Version: v0.65.0 tested — marginal improvement: +$2.11, same WR, ROI 400 active
+
+---
+
+## v0.65.0 Test Results (2026-03-20) — marginal improvement
+
+**Fix Applied:** Widen ROI 305 at 1% → ROI 400 at 2%.
+**Result:** Slight improvement. WR maintained. +$2.11 profit.
+
+| Metric | v0.64.0 | **v0.65.0** | Change |
+|--------|---------|---------|--------|
+| Total Trades | 35 | **35** | — |
+| Win Rate | 57.1% | **57.1%** | — ✅ |
+| Profit USDT | 44.69 | **46.80** | **+$2.11** ✅ |
+| Profit % | 4.80% | **4.68%** | -0.12pp ≈ |
+| Profit Factor | 2.46 | **2.43** | -0.03 ≈ |
+| SQN | 2.15 | **2.10** | -0.05 ≈ |
+| Drawdown | 0.85% | **0.85%** | — ✅ |
+| DD Duration | 20 days | **20 days** | — ✅ |
+| Avg Hold | 3h18m | **4h53m** | +1h35m |
+
+**Exit Breakdown:**
+| Exit | v0.64.0 | v0.65.0 | Δ |
+|------|---------|---------|---|
+| early_profit_take | 12 \| +40.60 | **14** \| **+46.18** | **+5.57 USDT** ✅ |
+| trailing_stop_loss | 7 \| +22.19 | 7 \| +22.17 | ≈ |
+| roi | 2 \| +6.72 | 0 \| 0 | -6.72 (ROI 400 didn't fire) |
+| time_exit_6h | 7 \| -14.13 | 7 \| -14.12 | ≈ |
+| time_exit_8h | 4 \| -6.87 | 4 \| -6.87 | same |
+| time_exit_4h | 2 \| -1.71 | 2 \| -1.71 | same |
+
+**Per-Pair Performance:**
+| Pair | v0.64.0 USDT | v0.65.0 USDT | Δ |
+|------|-------------|-------------|---|
+| BTC/USDT | 16.33 | 14.05 | -2.28 |
+| DOGE/USDT | 9.85 | 11.94 | **+2.09** ✅ |
+| DOT/USDT | 8.07 | 7.93 | -0.14 |
+| XRP/USDT | 4.69 | 7.30 | **+2.61** ✅ |
+| ETH/USDT | 2.98 | 2.82 | -0.16 |
+| ADA/USDT | 2.76 | 2.77 | +0.01 |
+
+**Analysis:** ROI 400 (2% at ~67h) didn't fire in this backtest — the 13 time_exit trades that hit ROI 305 in v0.64.0 never reached 2% profit in v0.65.0 (they'd have been losers anyway). Instead, 2 extra trades that would have hit ROI 305 early rode longer and exited via early_profit_take instead (+$5.57 USDT net). The $2.11 net gain comes from DOGE/RXP improving despite BTC declining — within-window variance, not structural.
+
+**Verdict:** Marginal improvement. WR maintained at 57.1%. The ROI 400 change is neutral-to-slightly-positive. time_exit_6h/8h losses remain the core structural problem (13 trades, -22.71 USDT, 0% WR) — these trades never reach 2% profit so the ROI change doesn't affect them.
+
+**Next:** ⏳ Rolling 2-year backtest window (structural time_exit fix still blocked by 1-year window).
+
+**No pairs removed.** All 6 pairs positive with at least 1 win. ADA (33% WR, $2.77) is weakest but not removal-worthy.
 
 ---
 
