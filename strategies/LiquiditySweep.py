@@ -14,9 +14,17 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.60.0
+Version: 0.61.0
 
 Changelog:
+- v0.61.0 (2026-03-20): Disable time_exit_2 (6h exit).
+  Problem (v0.60.0): time_exit_6h was the ONLY losing exit type — 4 trades, -10.90 USDT,
+  0% WR. These stale trades were cut at +0.5% profit after 6h while DOGE/BTC (which have
+  time_exit_1=8h) would have had winners running longer. time_exit_1 at 4h/6h/8h per-pair
+  still handles losers. early_profit_take (+0.8%, 45min), trailing_stop (+1.5%), and
+  ROI table handle winners. Removing time_exit_2 lets DOGE/BTC winners run to their 8h
+  time_exit_1 instead of being cut at 6h with +0.5% profit requirement.
+
 - v0.60.0 (2026-03-19): Remove SOL/USDT from pair whitelist.
   SOL was the only losing pair in v0.59.0: 7 trades, 0.43 WR, -4.68 USDT total.
   Also improved the whitelist to top 6 performers: BTC, DOGE, DOT, XRP, ETH, ADA.
@@ -315,7 +323,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.58.0"
+    STRATEGY_VERSION = "0.61.0"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -473,7 +481,7 @@ class LiquiditySweep(IStrategy):
     time_exit_1_hours = IntParameter(2, 6, default=4, space="sell", optimize=True)
     time_exit_1_profit = DecimalParameter(-0.02, 0.01, default=0.0, space="sell", optimize=True)
     
-    time_exit_2_enabled = CategoricalParameter([True, False], default=True, space="sell", optimize=True)
+    time_exit_2_enabled = CategoricalParameter([True, False], default=False, space="sell", optimize=True)
     time_exit_2_hours = IntParameter(5, 12, default=6, space="sell", optimize=True)
     time_exit_2_profit = DecimalParameter(0.0, 0.02, default=0.005, space="sell", optimize=True)
 
