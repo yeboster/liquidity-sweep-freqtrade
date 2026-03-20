@@ -259,7 +259,7 @@ class LiquiditySweep(IStrategy):
     # SMC theory suggests OTE is critical for high-probability setups.
     ote_lower = DecimalParameter(0.20, 0.30, default=0.20, space="buy", optimize=True)
     ote_upper = DecimalParameter(0.70, 0.90, default=0.80, space="buy", optimize=True)
-    require_ote = CategoricalParameter([True], default=True, space="buy", optimize=False)
+    require_ote = CategoricalParameter([True, False], default=True, space="buy", optimize=False)
     
     # ATR-based SL — new in v0.22.0
     # v0.34.0: ATR Multiplier increase to 2.0x (from 1.5x)
