@@ -38,7 +38,7 @@ jobs:
           docker run --rm \
             -v ${{ github.workspace }}/user_data:/freqtrade/user_data \
             -v ${{ github.workspace }}/config.json:/freqtrade/config.json \
-            -v ${{ github.workspace }}/strategies:/freqtrade/user_data/strategies \
+            -v ${{ github.workspace }}/user_data/strategies:/freqtrade/user_data/strategies \
             --entrypoint /bin/bash \
             freqtradeorg/freqtrade:stable \
             -c "pip install numba && pip install --no-deps smartmoneyconcepts && freqtrade backtesting \
@@ -46,6 +46,7 @@ jobs:
             --strategy LiquiditySweep \
             --timerange 20240213- \
             --data-format-ohlcv feather \
+            --timerange 20240213- \
             --export trades \
             --export-filename user_data/backtest_results/backtest-trades.json"
 
