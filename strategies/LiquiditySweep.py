@@ -14,9 +14,14 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.61.0
+Version: 0.62.0
 
 Changelog:
+- v0.62.0 (2026-03-20): Change ROI 305 exit from 0% → 1%.
+  Problem (v0.61.0): ROI exit at 0% profit (305 candles = 5h) cut stale trades at
+  breakeven. These trades had +0.5% but missed trailing_stop (1.5% offset) and
+  time_exit hadn't fired yet. Setting ROI 305 to 1% means trades need 1%+ for ROI
+  to exit — otherwise they ride trailing_stop or time_exit_1 (4-8h).
 - v0.61.0 (2026-03-20): Disable time_exit_2 (6h exit).
   Problem (v0.60.0): time_exit_6h was the ONLY losing exit type — 4 trades, -10.90 USDT,
   0% WR. These stale trades were cut at +0.5% profit after 6h while DOGE/BTC (which have
@@ -395,7 +400,7 @@ class LiquiditySweep(IStrategy):
         "0": 0.349,
         "109": 0.07,
         "159": 0.023,
-        "305": 0,
+        "305": 0.01,
     }
     
     # Absolute backstop required by Freqtrade — custom_stoploss will use ATR, this is fallback
