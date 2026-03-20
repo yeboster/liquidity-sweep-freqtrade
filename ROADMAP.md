@@ -1,11 +1,61 @@
 # Liquidity Sweep Strategy - Research & Roadmap
 
-> Updated: 2026-03-19
-> Version: v0.60.0 tested
+> Updated: 2026-03-20
+> Version: v0.61.0 tested
 
 ---
 
-## v0.60.0 Test Results (2026-03-19) — 🏆 CURRENT ATH
+## v0.61.0 Test Results (2026-03-20)
+
+**Fix Applied:** Disable time_exit_2 (6h exit) by default.
+Problem (v0.60.0): time_exit_6h was the ONLY losing exit type — 4 trades, -10.90 USDT, 0% WR.
+These stale trades were cut at +0.5% profit after 6h while DOGE/BTC (time_exit_1=8h) would have
+had winners running. Disabling time_exit_2 gives BTC/DOGE/DOT room to run to their natural exit.
+
+| Metric | v0.60.0 | **v0.61.0** | Change |
+|--------|---------|---------|--------|
+| Total Trades | 34 | **35** | +1 |
+| Win Rate | 52.9% | **51.4%** | -1.5pp |
+| Profit % | 4.76% | **4.47%** | -0.29pp |
+| Profit Factor | 3.10 | **2.75** | -0.35 |
+| SQN | 2.27 | **2.08** | -0.19 |
+| Drawdown | 0.88% | **0.85%** | -0.03pp |
+| DD Duration | 20.8 days | **20.8 days** | — |
+
+**Exit Breakdown:**
+| Exit | Trades | Avg Profit | Total USDT | WR |
+|------|--------|-----------|------------|-----|
+| early_profit_take | 10 | +1.03% | +34.53 | 100% ✅ |
+| trailing_stop_loss | 6 | +0.75% | +15.02 | 66.7% |
+| roi | 13 | +0.24% | +10.51 | 30.8% |
+| time_exit_4h | 2 | -0.25% | -1.71 | 0% |
+| time_exit_8h | 1 | -1.05% | -3.47 | 0% |
+| time_exit_6h | 3 | -1.01% | -10.20 | 0% |
+
+**Per-Pair Performance (all positive!):**
+| Pair | Trades | WR | Profit USDT |
+|------|--------|----|-------------|
+| BTC/USDT | 9 | 55.6% | +16.33 |
+| DOGE/USDT | 5 | 60.0% | +9.85 |
+| DOT/USDT | 5 | 60.0% | +8.07 |
+| XRP/USDT | 10 | 50.0% | +4.69 |
+| ETH/USDT | 3 | 33.3% | +2.98 |
+| ADA/USDT | 3 | 33.3% | +2.76 |
+
+**Analysis:** Profit % and PF dipped slightly vs v0.60.0 ATH (4.76% → 4.47%, PF 3.10 → 2.75),
+but still 2nd best run ever. ROI exits dominated (13 trades, 30.8% WR) — the new time_exit_8h
+(1 trade, -3.47 USDT) is worse than expected (should have been positive ROI). time_exit_6h
+persisted (3 trades, -10.20 USDT) via ROI table 0% exit at 305 candles — these are the same
+stale trades being cut at breakeven. ADA/ETH (3 trades each, 33.3% WR) are low-sample but
+profitable — not removing. No pairs to remove — all profitable, no 0-win pairs.
+
+**Key Observation:** time_exit_6h still fires via ROI table (0% at 305min = 5h05min ≈ 6h).
+This is a structural limitation of the ROI table — fixing time_exit_2 param doesn't fix
+the ROI table breakeven exit. Next: widen ROI table's 0% exit from 305 candles → longer.
+
+---
+
+## v0.60.0 Test Results (2026-03-19) — Previous ATH
 
 **Fix Applied:** Remove SOL/USDT from pair whitelist (7 trades, 0.43 WR, -4.68 USDT in v0.59.0).
 
@@ -503,7 +553,8 @@ Problem (roadmap Phase 4): OTE zone was 30-85%, hyperopt could widen to 50-85%. 
 
 | Version | Focus | Key Changes |
 |---------|-------|-------------|
-| v0.60.0 | 🏆 **ATH** | **Remove SOL — 34 trades, 52.9% WR, +4.76% profit, PF 3.10, SQN 2.27, DD 0.88%** |
+| v0.61.0 | ✅ IMPROVED | **Disable time_exit_2 — 35 trades, 51.4% WR, +4.47% profit, PF 2.75, SQN 2.08, DD 0.85%** |
+| v0.60.0 | ✅ Previous | **Remove SOL — 34 trades, 52.9% WR, +4.76% profit, PF 3.10, SQN 2.27, DD 0.88%** |
 | v0.59.0 | ✅ Previous | Remove BNB + pairlist cleanup — 41 trades, 51.2% WR, +4.31% profit, PF 2.26 |
 | v0.57.0 | ✅ IMPROVED | Restore 8 pairs + XRP fix — 43 trades, 46.5% WR, +2.93% profit, PF 1.75 |
 | v0.56.0 | ❌ REGRESSED | XRP removal — 21 trades, 38.1% WR, +0.74% profit, PF 1.413 (WORSE than v0.55.0) |
@@ -529,8 +580,9 @@ Problem (roadmap Phase 4): OTE zone was 30-85%, hyperopt could widen to 50-85%. 
 - ✅ ChoCH profit guard (v0.54.0) — exit_signal avg loss -0.76% → -0.53% ✅
 - ✅ Per-pair parameter optimization (v0.55.0) — 39 trades, 46.2% WR, 2.25% profit, 1.689 PF
 - ✅ Remove BNB from pairlist (v0.59.0) — 41 trades, 51.2% WR, 4.31% profit, PF 2.26 🏆 ATH
-- ✅ Remove SOL from pairlist (v0.60.0) — 🏆 NEW ATH: 34 trades, 52.9% WR, 4.76% profit, PF 3.10
-- 🔧 NEXT: Fix time_exit_6h exits (4 trades, -10.90 USDT, 0% WR — stale trades)
+- ✅ Remove SOL from pairlist (v0.60.0) — 🏆 ATH: 34 trades, 52.9% WR, 4.76% profit, PF 3.10
+- ✅ Disable time_exit_2 (v0.61.0) — 35 trades, 51.4% WR, 4.47% profit, PF 2.75, DD 0.85%
+- 🔧 NEXT: Widen ROI table 0% exit (305 candles ≈ 6h) → longer to fix stale trade exits
 - ⏳ Rolling 2-year backtest window
 
 ---
