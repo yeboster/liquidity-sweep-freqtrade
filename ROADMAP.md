@@ -1,7 +1,55 @@
 # Liquidity Sweep Strategy - Research & Roadmap
 
 > Updated: 2026-03-20
-> Version: v0.62.0 tested
+> Version: v0.63.0 tested (REGRESSED → REVERTED to v0.62.0 in v0.64.0)
+
+---
+
+## v0.63.0 Test Results (2026-03-20) — ❌ CATASTROPHIC REGRESSION — REVERTED
+
+**Fix Applied:** Remove ROI 305 entry + raise early_profit_take to +1.5%.
+**Result:** DISASTER. Immediately reverting in v0.64.0.
+
+| Metric | v0.62.0 | **v0.63.0** | Change |
+|--------|---------|---------|--------|
+| Total Trades | 35 | **35** | — |
+| Win Rate | 57.1% | **45.7%** | -11.4pp ❌ |
+| Profit % | 4.86% | **0.01%** | -4.85pp ❌ |
+| Profit Factor | 2.48 | **1.16** | -1.32 ❌ |
+| SQN | 2.16 | **0.30** | -1.86 ❌ |
+| Drawdown | 0.85% | **27.84%** | +27pp ❌ |
+| DD Duration | 20 days | **6501600s** | catastrophic ❌ |
+
+**Exit Breakdown:**
+| Exit | Trades | Avg Profit | Total USDT | WR |
+|------|--------|-----------|------------|-----|
+| trailing_stop_loss | 14 | +0.46% | +20.65 | 78.6% |
+| early_profit_take | 2 | +1.59% | +10.41 | 100% ✅ |
+| target_liquidity_reached | 3 | +0.95% | +9.32 | 100% ✅ |
+| time_exit_4h | 2 | -0.25% | -1.68 | 0% ❌ |
+| time_exit_6h | 7 | -0.60% | -13.66 | 0% ❌ |
+| time_exit_8h | 7 | -0.65% | -14.82 | 0% ❌ |
+
+**Problem Analysis:** Removing ROI 305 meant trades no longer hit that +1% exit.
+Instead they rode to time_exit_6h (7 trades, 0% WR, -13.66 USDT) and
+time_exit_8h (7 trades, 0% WR, -14.82 USDT). The raising of early_profit_take
+from 0.8% → 1.5% also reduced early profit exits (12→2 trades, +40.61→+10.41 USDT).
+
+**Fix:** v0.64.0 reverts both changes — restores ROI 305 at 1% + early_profit_take at 0.8%.
+
+**Per-Pair Performance:**
+| Pair | Trades | WR | Profit USDT | Profit % |
+|------|--------|----|-------------|----------|
+| DOT/USDT | 5 | 60.0% | +9.83 | 0.98% |
+| DOGE/USDT | 5 | 60.0% | +8.29 | 0.83% |
+| ETH/USDT | 3 | 66.7% | +4.36 | 0.44% |
+| BTC/USDT | 9 | 33.3% | +2.98 | 0.30% |
+| ADA/USDT | 3 | 33.3% | +1.99 | 0.20% |
+| XRP/USDT | 10 | 40.0% | -17.24 | -1.72% ⚠️ |
+
+XRP significantly worse than v0.62.0 (+7.31 USDT → -17.24 USDT). All pairs still
+positive except XRP — but XRP had +7.31 in v0.62.0 so this is fixable, not removal-worthy.
+**No pairs removed.**
 
 ---
 
@@ -608,7 +656,10 @@ Problem (roadmap Phase 4): OTE zone was 30-85%, hyperopt could widen to 50-85%. 
 
 | Version | Focus | Key Changes |
 |---------|-------|-------------|
-| v0.61.0 | ✅ IMPROVED | **Disable time_exit_2 — 35 trades, 51.4% WR, +4.47% profit, PF 2.75, SQN 2.08, DD 0.85%** |
+| v0.64.0 | 🔧 REVERT | **Revert v0.63.0 — massive regression. Restore ROI 305 at 1% + early_profit 0.8%. Re-running backtest.** |
+| v0.63.0 | ❌ REGRESSED | **Remove ROI 305 + raise early_profit to 1.5% — 35 trades, 45.7% WR, 0.01% profit, 1.16 PF, 27.8% DD ❌** |
+| v0.62.0 | ✅ ATH | **Change ROI 305 exit 0% → 1% — 35 trades, 57.1% WR, 4.86% profit, PF 2.48, SQN 2.16, DD 0.85%** 🏆 |
+| v0.61.0 | ✅ Previous | **Disable time_exit_2 — 35 trades, 51.4% WR, +4.47% profit, PF 2.75, SQN 2.08, DD 0.85%** |
 | v0.60.0 | ✅ Previous | **Remove SOL — 34 trades, 52.9% WR, +4.76% profit, PF 3.10, SQN 2.27, DD 0.88%** |
 | v0.59.0 | ✅ Previous | Remove BNB + pairlist cleanup — 41 trades, 51.2% WR, +4.31% profit, PF 2.26 |
 | v0.57.0 | ✅ IMPROVED | Restore 8 pairs + XRP fix — 43 trades, 46.5% WR, +2.93% profit, PF 1.75 |
@@ -637,7 +688,9 @@ Problem (roadmap Phase 4): OTE zone was 30-85%, hyperopt could widen to 50-85%. 
 - ✅ Remove BNB from pairlist (v0.59.0) — 41 trades, 51.2% WR, 4.31% profit, PF 2.26 🏆 ATH
 - ✅ Remove SOL from pairlist (v0.60.0) — 🏆 ATH: 34 trades, 52.9% WR, 4.76% profit, PF 3.10
 - ✅ Disable time_exit_2 (v0.61.0) — 35 trades, 51.4% WR, 4.47% profit, PF 2.75, DD 0.85%
-- 🔧 NEXT: Widen ROI table 0% exit (305 candles ≈ 6h) → longer to fix stale trade exits
+- ❌ Remove ROI 305 + raise early_profit to 1.5% (v0.63.0) — REGRESSED: 45.7% WR, 0.01% profit, 27.8% DD ❌
+- 🔧 NEXT: Revert to v0.62.0 config (v0.64.0) → then XRP-specific analysis
+- ⏳ Rolling 2-year backtest window
 - ⏳ Rolling 2-year backtest window
 
 ---

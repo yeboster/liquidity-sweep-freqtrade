@@ -14,9 +14,13 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.63.0
+Version: 0.64.0
 
 Changelog:
+- v0.64.0 (2026-03-20): REVERT v0.63.0 — massive regression. v0.63.0: 45.7% WR, 0.01% profit,
+  1.16 PF, 27.8% DD. Problem: removing ROI 305 + raising early_profit to 1.5% caused trades
+  to ride to time_exit_6h/8h (0% WR, -28 USDT combined). Fix: restore ROI 305 at 1% +
+  restore early_profit_take at 0.8% (from v0.62.0).
 - v0.63.0 (2026-03-20): Remove ROI 305 entry + raise early_profit_take to +1.5%.
   Problem (v0.62.0): time_exit_6h expanded (3→7 trades, -14.13 USDT) despite ROI 305
   raised to 1%. These trades hit ROI 305 at <1% profit and were cut there — losing exits.
@@ -403,13 +407,14 @@ class LiquiditySweep(IStrategy):
     # v0.30.0: Widened ROI targets — OB entries at institutional demand/supply zones
     # tend to produce impulsive moves. Previous +0.57% avg win was too conservative.
     # Target: let institutional momentum trades run to 1.5%+ before taking profit.
-    # v0.63.0: Removed 305 entry — it was cutting winners at +1% that should have ridden
-    # trailing_stop or time_exit_1 (8h). Also raised 159 from 0.023% to 0.10% to reduce
-    # premature ROI exits at the 159-candle mark.
+    # v0.64.0: REVERT v0.63.0 — massive regression: 45.7% WR (vs 57.1%), 0.01% profit (vs 4.86%).
+    # v0.63.0 removed ROI 305 + raised early_profit_take to 1.5% — trades rode to time_exit_6h/8h
+    # (0% WR, -28 USDT) instead of ROI/early_profit exits. Reverting both changes.
     minimal_roi = {
         "0": 0.349,
         "109": 0.07,
         "159": 0.10,
+        "305": 0.01,
     }
     
     # Absolute backstop required by Freqtrade — custom_stoploss will use ATR, this is fallback
@@ -1021,9 +1026,9 @@ class LiquiditySweep(IStrategy):
         
         # 1. Early profit exit — lock in wins before TSL activates at +1.5% (v0.46.0)
         # Require at least 45min hold to avoid gap-based false exits
-        # v0.63.0: Raised from +0.8% to +1.5% — let stronger winners run to TSL territory
+        # v0.64.0: REVERT — early_profit at 0.8% (was 1.5% in failed v0.63.0)
         trade_duration = (current_time - trade.open_date_utc).total_seconds() / 3600
-        if trade_duration >= 0.75 and current_profit >= 0.015:
+        if trade_duration >= 0.75 and current_profit >= 0.008:
             return "early_profit_take"
         
         # Time-based exit
