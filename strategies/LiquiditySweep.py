@@ -14,9 +14,14 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.64.0
+Version: 0.65.0
 
 Changelog:
+- v0.65.0 (2026-03-20): Widen ROI 305 → 400 candles at 2% profit.
+  Problem (v0.64.0): ROI 305 at 1% (~76h) cuts winners too early. time_exit_6h/8h losses
+  persist (13 trades, -22.71 USDT, 0% WR). Fix: Raise exit from 1% → 2% and push from
+  305 candles → 400 candles (~67h). Faster timeline (67h vs 76h), higher bar (2% vs 1%).
+  Trailing stop still activates at +1.5%, manages winners that overshoot 2%.
 - v0.64.0 (2026-03-20): REVERT v0.63.0 — massive regression. v0.63.0: 45.7% WR, 0.01% profit,
   1.16 PF, 27.8% DD. Problem: removing ROI 305 + raising early_profit to 1.5% caused trades
   to ride to time_exit_6h/8h (0% WR, -28 USDT combined). Fix: restore ROI 305 at 1% +
@@ -407,14 +412,18 @@ class LiquiditySweep(IStrategy):
     # v0.30.0: Widened ROI targets — OB entries at institutional demand/supply zones
     # tend to produce impulsive moves. Previous +0.57% avg win was too conservative.
     # Target: let institutional momentum trades run to 1.5%+ before taking profit.
-    # v0.64.0: REVERT v0.63.0 — massive regression: 45.7% WR (vs 57.1%), 0.01% profit (vs 4.86%).
-    # v0.63.0 removed ROI 305 + raised early_profit_take to 1.5% — trades rode to time_exit_6h/8h
-    # (0% WR, -28 USDT) instead of ROI/early_profit exits. Reverting both changes.
+    # v0.65.0: Widen ROI 305 → 400 candles at 2% profit.
+    # Problem (v0.64.0): ROI 305 at 1% cuts winners prematurely at ~76h.
+    # time_exit_6h/8h losses (13 trades, -22.71 USDT, 0% WR) persist — these are losing
+    # trades that never reach 1% profit, so ROI doesn't fire for them anyway.
+    # Fix: Raise ROI 305 to 2% AND push to 400 candles (~67h). Winners that would have
+    # been cut at +1% at 76h can now run to 2% at 67h (faster timeline, higher target).
+    # Trailing stop still manages risk: activates at +1.5%, exits at +1.0%.
     minimal_roi = {
         "0": 0.349,
         "109": 0.07,
         "159": 0.10,
-        "305": 0.01,
+        "400": 0.02,
     }
     
     # Absolute backstop required by Freqtrade — custom_stoploss will use ATR, this is fallback
