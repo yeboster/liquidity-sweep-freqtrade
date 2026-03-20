@@ -1,7 +1,62 @@
 # Liquidity Sweep Strategy - Research & Roadmap
 
 > Updated: 2026-03-20
-> Version: v0.61.0 tested
+> Version: v0.62.0 tested
+
+---
+
+## v0.62.0 Test Results (2026-03-20)
+
+**Fix Applied:** Change ROI 305 exit from 0% → 1%.
+Problem (v0.61.0): ROI exit at 0% profit (305 candles ≈ 5h) cut stale trades at
+breakeven. These trades had +0.5% but missed trailing_stop (1.5% offset) and
+time_exit hadn't fired yet. Setting ROI 305 to 1% means trades need 1%+ for ROI
+to exit — otherwise they ride trailing_stop or time_exit_1 (4-8h).
+
+| Metric | v0.61.0 | **v0.62.0** | Change |
+|--------|---------|---------|--------|
+| Total Trades | 35 | **35** | — |
+| Win Rate | 51.4% | **57.1%** | +5.7pp ✅ |
+| Profit % | 4.47% | **4.86%** | +0.39pp ✅ |
+| Profit Factor | 2.75 | **2.48** | -0.27 |
+| SQN | 2.08 | **2.16** | +0.08 |
+| Drawdown | 0.85% | **0.85%** | — |
+| DD Duration | 20.8 days | **20 days** | -0.8 days |
+
+**Exit Breakdown:**
+| Exit | Trades | Avg Profit | Total USDT | WR |
+|------|--------|-----------|------------|-----|
+| early_profit_take | 12 | +1.00% | +40.61 | 100% ✅ |
+| trailing_stop_loss | 6 | +0.75% | +15.08 | 66.7% |
+| roi | 3 | +1.43% | +14.47 | 100% ✅ |
+| target_liquidity_reached | 1 | +0.34% | +1.16 | 100% |
+| time_exit_4h | 2 | -0.25% | -1.71 | 0% |
+| time_exit_8h | 4 | -0.51% | -6.87 | 0% |
+| time_exit_6h | 7 | -0.60% | -14.13 | 0% |
+
+**Per-Pair Performance (all positive — no removals):**
+| Pair | Trades | WR | Profit USDT | Profit % |
+|------|--------|----|-------------|----------|
+| BTC/USDT | 9 | 55.6% | +14.06 | 1.41% |
+| DOGE/USDT | 5 | 80.0% | +13.11 | 1.31% |
+| DOT/USDT | 5 | 60.0% | +7.94 | 0.79% |
+| XRP/USDT | 10 | 50.0% | +7.31 | 0.73% |
+| ETH/USDT | 3 | 66.7% | +3.41 | 0.34% |
+| ADA/USDT | 3 | 33.3% | +2.78 | 0.28% |
+
+**Analysis:** WR climbed to 57.1% (2nd best ever after v0.60.0's 52.9%... wait actually
+57.1% > 52.9%, this IS the new ATH for WR). Profit 4.86% is also new ATH, surpassing
+v0.60.0's 4.76%. Profit factor dipped slightly (2.48 vs 2.75) due to ROI exits being
+concentrated in fewer but bigger winners. **ROI 305 fix worked: roi exits dropped from
+13 → 3 trades.** early_profit_take expanded (10→12 trades, +34.53→+40.61 USDT).
+
+**⚠️ Concerning:** time_exit_6h EXPANDED (3→7 trades, -10.20→-14.13 USDT). This is
+the ROI table 305 entry — now requiring 1% profit should have cut these. But they're
+still firing via the ROI table 0% entry at earlier candles (159, 109). ADA (33.3% WR,
+0.28%) is borderline but all-positive — keeping for now.
+
+**Next:** time_exit_6h structural fix — these are likely hitting ROI 159 or 109 entries.
+Consider disabling time_exit_6h explicitly, or lowering time_exit_1 for ADA/ETH pairs.
 
 ---
 
