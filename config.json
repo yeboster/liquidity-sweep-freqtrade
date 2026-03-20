@@ -42,7 +42,6 @@
             "ETH/USDT",
             "XRP/USDT",
             "DOT/USDT",
-            "DOGE/USDT",
             "ADA/USDT"
         ],
         "pair_blacklist": []

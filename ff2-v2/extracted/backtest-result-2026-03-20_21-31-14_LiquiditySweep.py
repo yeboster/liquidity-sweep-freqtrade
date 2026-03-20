@@ -14,15 +14,9 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.67.0 (FF-2 Revert)
+Version: 0.66.0 (FF-2)
 
 Changelog:
-- v0.67.0 (2026-03-20): FF-2 REVERT — catastrophic results.
-  FF-2 loosened OTE to 20-80%, disabled confirmation/fvg/imbalance filters.
-  Result: 132 trades, 17.4% WR, -22.23% profit. TSL: 51 exits, 0% WR, -$236.77.
-  Trailing stop was killing trades because looser entries hit SL before any rally.
-  FIX: Revert OTE to 30-70%, restore confirmation_candle=True, restore fvg optimize=True.
-  Also: DOGE removed from pair_whitelist (0/10 wins, -$42.42).
 - v0.39.0 (2026-03-03): Recovery Iteration.
   Re-enabled mandatory OTE filter (30-70%) as v0.38.0 hyperopt-disabled logic
   produced only 9 trades with 11.1% WR. OTE is a core SMC requirement for
@@ -263,8 +257,8 @@ class LiquiditySweep(IStrategy):
     # v0.39.0: Re-introduced OTE 30-70% as mandatory filter.
     # Hyperopt v0.38.0 disabled it, but results were poor (9 trades, 11% WR).
     # SMC theory suggests OTE is critical for high-probability setups.
-    ote_lower = DecimalParameter(0.25, 0.38, default=0.30, space="buy", optimize=True)
-    ote_upper = DecimalParameter(0.60, 0.75, default=0.70, space="buy", optimize=True)
+    ote_lower = DecimalParameter(0.20, 0.30, default=0.20, space="buy", optimize=True)
+    ote_upper = DecimalParameter(0.70, 0.90, default=0.80, space="buy", optimize=True)
     require_ote = CategoricalParameter([True, False], default=True, space="buy", optimize=False)
     
     # ATR-based SL — new in v0.22.0
@@ -276,7 +270,7 @@ class LiquiditySweep(IStrategy):
     
     # Entry filters
     min_rr = DecimalParameter(0.5, 4.0, default=1.404, space="buy", optimize=True)
-    require_fvg = CategoricalParameter([True, False], default=False, space="buy", optimize=True)
+    require_fvg = CategoricalParameter([True, False], default=False, space="buy", optimize=False)
     # v0.30.0: Order Block now mandatory by default (was False).
     # OB = structural demand/supply zone created by institutional move. Entering
     # at OB + sweep + ChoCH = max confluence ICT setup. Expected to cut TSL exits
@@ -290,7 +284,7 @@ class LiquiditySweep(IStrategy):
     #   - Shorts: close < open (bearish candle) — price already moving DOWN
     # Rationale: Eliminates entries where price has already reversed or is consolidating
     # at the zone. Only enter when momentum is confirmed. May reduce volume but improve WR.
-    require_confirmation_candle = CategoricalParameter([True, False], default=True, space="buy", optimize=True)
+    require_confirmation_candle = CategoricalParameter([True, False], default=False, space="buy", optimize=False)
     
     # Liquidity detection
     liquidity_range_pct = DecimalParameter(0.005, 0.03, default=0.019, space="buy", optimize=True)
