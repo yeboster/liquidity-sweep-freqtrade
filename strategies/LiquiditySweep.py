@@ -14,9 +14,13 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.65.0
+Version: 0.66.0
 
 Changelog:
+- v0.66.0 (2026-03-21): FF-2 loosen filters — boost trade frequency.
+  Roadmap FF-2: Widen OTE 30-70% → 20-80%, disable confirmation_candle (was blocking),
+  disable imbalance filter (was blocking), FVG already disabled by default.
+  Goal: 40+ trades/yr with WR ≥45%, PF ≥1.5.
 - v0.65.0 (2026-03-20): Widen ROI 305 → 400 candles at 2% profit.
   Problem (v0.64.0): ROI 305 at 1% (~76h) cuts winners too early. time_exit_6h/8h losses
   persist (13 trades, -22.71 USDT, 0% WR). Fix: Raise exit from 1% → 2% and push from
@@ -457,9 +461,11 @@ class LiquiditySweep(IStrategy):
     # Tightening to 30-70% enforces the high-probability OTE band only.
     # v0.38.0 hyperopt disabled require_ote entirely → 9 trades, 11.1% WR (disastrous).
     # Fix: require_ote=True is MANDATORY (optimize=False) to prevent hyperopt removing it again.
-    # Keep ote_lower/ote_upper hyperoptable within the 30-70% tight band.
-    ote_lower = DecimalParameter(0.25, 0.38, default=0.30, space="buy", optimize=True)
-    ote_upper = DecimalParameter(0.60, 0.75, default=0.70, space="buy", optimize=True)
+    # FF-2 (v0.66.0): Widen OTE to 20-80% to boost trade frequency.
+    # v0.50.0 originally tightened to 30-70%. Now loosening to capture more setups.
+    # ICT Silver Bullet: OTE 38-78% is the "discount" to "mid" zone — widening to 20-80%.
+    ote_lower = DecimalParameter(0.10, 0.30, default=0.20, space="buy", optimize=True)
+    ote_upper = DecimalParameter(0.70, 0.90, default=0.80, space="buy", optimize=True)
     require_ote = CategoricalParameter([True, False], default=True, space="buy", optimize=False)  # MANDATORY — optimize=False prevents hyperopt disabling
     
     # ATR-based SL — new in v0.22.0
@@ -485,7 +491,8 @@ class LiquiditySweep(IStrategy):
     #   - Shorts: close < open (bearish candle) — price already moving DOWN
     # Rationale: Eliminates entries where price has already reversed or is consolidating
     # at the zone. Only enter when momentum is confirmed. May reduce volume but improve WR.
-    require_confirmation_candle = CategoricalParameter([True, False], default=True, space="buy", optimize=True)
+    # FF-2 (v0.66.0): Disabled by default — was blocking valid entries in trending coins.
+    require_confirmation_candle = CategoricalParameter([True, False], default=False, space="buy", optimize=True)
 
     # v0.45.0 (2026-03-18): Disable session filter — too aggressive, only 19 trades, 10.5% WR.
 # The NY/London filter was reducing trades too much (19 vs hundreds previously).
@@ -496,7 +503,8 @@ class LiquiditySweep(IStrategy):
     # Skip entries on Saturday (dayofweek=5) and Sunday (dayofweek=6).
     # ICT Silver Bullet setups require high-liquidity sessions — weekends are choppy/low-volume.
     # v0.49.0: Testing with filter ENABLED (was disabled in v0.48.0).
-    require_weekend_filter = CategoricalParameter([True, False], default=True, space="buy", optimize=False)
+    # FF-2 (v0.66.0): Disabled by default — was blocking valid entries.
+    require_imbalance_filter = CategoricalParameter([True, False], default=False, space="buy", optimize=False)
     
     # Liquidity detection
     liquidity_range_pct = DecimalParameter(0.005, 0.03, default=0.019, space="buy", optimize=True)
@@ -867,18 +875,20 @@ class LiquiditySweep(IStrategy):
         # v0.36.0 FIX: Logic was inverted since v0.28.0. 
         # For LONGS: SL is below. Magnet is a BULLISH FVG (support) even deeper.
         # For SHORTS: SL is above. Magnet is a BEARISH FVG (resistance) even higher.
+        # ── Opposite-Side Imbalance Filter (v0.28.0, disabled in FF-2 v0.66.0) ─
+        # FF-2: Disabled by default — was blocking too many valid entries.
         sl_buffer = self.buffer_pips.value
         long_sl_level = dataframe['swing_low_level'] - sl_buffer
         short_sl_level = dataframe['swing_high_level'] + sl_buffer
 
-        safe_long = ~(
+        imbalance_long_check = ~(
             dataframe['bullish_fvg_zone_top'].notna() &
             (dataframe['bullish_fvg_zone_top'] < long_sl_level)
-        )
-        safe_short = ~(
+        ) if self.require_imbalance_filter.value else True
+        imbalance_short_check = ~(
             dataframe['bearish_fvg_zone_bottom'].notna() &
             (dataframe['bearish_fvg_zone_bottom'] > short_sl_level)
-        )
+        ) if self.require_imbalance_filter.value else True
 
         # ── Confirmation Candle Filter (v0.40.0) ──────────────────────────────
         # Only enter when the entry candle itself is directionally aligned.
@@ -900,7 +910,7 @@ class LiquiditySweep(IStrategy):
             (ote_check) &                                            # OTE (if required)
             (fvg_check_short) &                                      # FVG confluence (v0.28.0 default=True)
             (ob_check_short) &                                       # Order Block (if required)
-            (safe_short) &                                           # No imbalance magnet beyond SL (v0.28.0)
+            (imbalance_short_check) &                                # No imbalance magnet beyond SL (v0.28.0)
             (confirm_short) &                                        # Confirmation candle (v0.40.0)
             (dataframe['rr_short'] >= self.min_rr.value) &           # Min R:R (v0.28.0 default=1.5)
             (session_check) &                                         # Session filter — v0.45.0 disabled by default
@@ -918,7 +928,7 @@ class LiquiditySweep(IStrategy):
             (ote_check) &                                            # OTE (if required)
             (fvg_check_long) &                                       # FVG confluence (v0.28.0 default=True)
             (ob_check_long) &                                        # Order Block (if required)
-            (safe_long) &                                            # No imbalance magnet beyond SL (v0.28.0)
+            (imbalance_long_check) &                                 # No imbalance magnet beyond SL (v0.28.0)
             (confirm_long) &                                         # Confirmation candle (v0.40.0)
             (dataframe['rr_long'] >= self.min_rr.value) &           # Min R:R (v0.28.0 default=1.5)
             (session_check) &                                         # Session filter — v0.45.0 disabled by default
