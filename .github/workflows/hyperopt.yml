@@ -93,10 +93,18 @@ jobs:
             echo "{}" > strategy_params.json
           fi
 
-          # Copy to strategies/ dir (host) — volume-mounted into the backtest container
-          # Freqtrade auto-loads <StrategyName>.json from the same dir as the .py file
-          cp strategy_params.json strategies/LiquiditySweep.json
-          echo "✅ Copied to strategies/LiquiditySweep.json for backtest"
+          # Copy to user_data/strategies/ (writable dir with 777 perms from Prepare directories step)
+          # Freqtrade auto-loads <StrategyName>.json from the strategy dir (also mounted there)
+          cp strategy_params.json user_data/strategies/LiquiditySweep.json
+          chmod 644 user_data/strategies/LiquiditySweep.json
+          echo "✅ Copied to user_data/strategies/LiquiditySweep.json for backtest"
+
+          # Also copy to host strategies/ dir (used by backtest container volume mount)
+          # The host strategies/ dir may be read-only; use chmod to allow write
+          chmod -R u+w strategies/ 2>/dev/null || true
+          cp strategy_params.json strategies/LiquiditySweep.json 2>/dev/null || \
+            cp strategy_params.json user_data/strategies/LiquiditySweep.json
+          echo "✅ Also copied to strategies/LiquiditySweep.json"
 
           # Show hyperopt results directory
           ls -la user_data/hyperopt_results/ || echo "No hyperopt_results dir"

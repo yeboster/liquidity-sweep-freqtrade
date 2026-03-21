@@ -14,9 +14,23 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.65.0
+Version: 0.68.0
 
 Changelog:
+- v0.68.0 (2026-03-21): Apply hyperopt Epoch 374 params (500 epochs, Sharpe loss).
+  Hyperopt result: 61 trades, +8.20%, 62.3% WR, avg 3:02min hold.
+  Key changes from v0.65.0:
+  - swing_length: 4 → 8 (longer swing = fewer but higher-quality sweeps)
+  - ote zone: 0.30-0.70 → 0.31-0.613 (narrower, tighter to 61.8% golden zone)
+  - trailing_stop_positive: 0.005 → 0.153 (+15.3% trail! much wider)
+  - trailing_stop_positive_offset: 0.015 → 0.194 (+19.4% activation)
+  - minimal_roi: simplified to {0: 28.6%, 59: 10.6%, 109: 2.8%, 165: 0%}
+  - stoploss: -0.194 → -0.062 (much wider -6.2% backstop)
+  - atr_multiplier (BTC): 3.0 → 3.291 (slightly wider dynamic SL)
+  - require_confirmation_candle: True → False (hyperopt found confirms hurt WR)
+  - htf_swing_length: 19 → 7 (shorter HTF context)
+  - buffer_pips: 0.001 → 0.004 (wider liquidity buffer)
+  - liquidity_range_pct: 0.019 → 0.028 (wider liquidity detection)
 - v0.65.0 (2026-03-20): Widen ROI 305 → 400 candles at 2% profit.
   Problem (v0.64.0): ROI 305 at 1% (~76h) cuts winners too early. time_exit_6h/8h losses
   persist (13 trades, -22.71 USDT, 0% WR). Fix: Raise exit from 1% → 2% and push from
@@ -419,21 +433,22 @@ class LiquiditySweep(IStrategy):
     # Fix: Raise ROI 305 to 2% AND push to 400 candles (~67h). Winners that would have
     # been cut at +1% at 76h can now run to 2% at 67h (faster timeline, higher target).
     # Trailing stop still manages risk: activates at +1.5%, exits at +1.0%.
+    # v0.68.0: Hyperopt Epoch 374 — simplified ROI {0:28.6%, 59:10.6%, 109:2.8%, 165:0%}
     minimal_roi = {
-        "0": 0.349,
-        "109": 0.07,
-        "159": 0.10,
-        "400": 0.02,
+        "0": 0.286,
+        "59": 0.106,
+        "109": 0.028,
+        "165": 0,
     }
     
     # Absolute backstop required by Freqtrade — custom_stoploss will use ATR, this is fallback
-    stoploss = -0.194   # -4.0% absolute backstop (ATR SL should hit first)
+    stoploss = -0.062   # -6.2% absolute backstop (v0.68.0: hyperopt Epoch 374)
     
     # Trailing stop — fixed from broken values (v0.42.0)
     # Previous values: 0.277 (27.7%!) and 0.295 (29.5%) — completely wrong
     trailing_stop = True
-    trailing_stop_positive = 0.005     # Trail 0.5% behind peak
-    trailing_stop_positive_offset = 0.015  # Activate after +1.5%
+    trailing_stop_positive = 0.153     # v0.68.0: Trail 15.3% behind peak (hyperopt)
+    trailing_stop_positive_offset = 0.194  # Activate after +19.4%
     trailing_only_offset_is_reached = True
     
     # ATR-based dynamic stoploss enabled in v0.22.0
@@ -446,8 +461,8 @@ class LiquiditySweep(IStrategy):
 
     # ── Hyperoptable Parameters ───────────────────────────────────────────────
     # Swing detection
-    swing_length = IntParameter(3, 15, default=4, space="buy", optimize=True)
-    htf_swing_length = IntParameter(5, 20, default=19, space="buy", optimize=True)
+    swing_length = IntParameter(3, 15, default=8, space="buy", optimize=True)
+    htf_swing_length = IntParameter(5, 20, default=7, space="buy", optimize=True)
     
     # OTE zone — v0.50.0: Tighten to 30-70% mandatory.
     # Previously (v0.39.0-v0.49.0): 30-85% range with hyperopt could widen to 50-85%.
@@ -458,8 +473,8 @@ class LiquiditySweep(IStrategy):
     # v0.38.0 hyperopt disabled require_ote entirely → 9 trades, 11.1% WR (disastrous).
     # Fix: require_ote=True is MANDATORY (optimize=False) to prevent hyperopt removing it again.
     # Keep ote_lower/ote_upper hyperoptable within the 30-70% tight band.
-    ote_lower = DecimalParameter(0.25, 0.38, default=0.30, space="buy", optimize=True)
-    ote_upper = DecimalParameter(0.60, 0.75, default=0.70, space="buy", optimize=True)
+    ote_lower = DecimalParameter(0.25, 0.38, default=0.31, space="buy", optimize=True)
+    ote_upper = DecimalParameter(0.60, 0.75, default=0.613, space="buy", optimize=True)
     require_ote = CategoricalParameter([True, False], default=True, space="buy", optimize=False)  # MANDATORY — optimize=False prevents hyperopt disabling
     
     # ATR-based SL — new in v0.22.0
