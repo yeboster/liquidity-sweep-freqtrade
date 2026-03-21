@@ -80,20 +80,37 @@ jobs:
           # Show best result from log
           grep -A 50 "Best result:" hyperopt_output.log || echo "No best result found — hyperopt may have failed."
 
-          # Export params file if freqtrade wrote one
-          if [ -f "user_data/strategies/LiquiditySweep.json" ]; then
-            cp user_data/strategies/LiquiditySweep.json ./strategy_params.json
-            echo "✅ strategy_params.json extracted"
+          # Extract the JSON line printed by --print-json (starts with '{"params"')
+          PARAMS_LINE=$(grep '^{"params"' hyperopt_output.log | tail -1)
+
+          if [ -n "$PARAMS_LINE" ]; then
+            echo "$PARAMS_LINE" > strategy_params.json
+            echo "✅ strategy_params.json extracted from --print-json output"
+            echo "--- Extracted params ---"
+            cat strategy_params.json | python3 -m json.tool 2>/dev/null || cat strategy_params.json
           else
-            echo "⚠️  No strategy_params.json found (may need more epochs or trades)"
+            echo "⚠️  No JSON params found in hyperopt output"
             echo "{}" > strategy_params.json
           fi
+
+          # Copy to strategies/ dir (host) — volume-mounted into the backtest container
+          # Freqtrade auto-loads <StrategyName>.json from the same dir as the .py file
+          cp strategy_params.json strategies/LiquiditySweep.json
+          echo "✅ Copied to strategies/LiquiditySweep.json for backtest"
 
           # Show hyperopt results directory
           ls -la user_data/hyperopt_results/ || echo "No hyperopt_results dir"
 
       - name: Run backtest with optimized params
         run: |
+          # Verify params file exists before backtest
+          if [ -f "strategies/LiquiditySweep.json" ]; then
+            echo "✅ LiquiditySweep.json found — backtest will use hyperopt params"
+            cat strategies/LiquiditySweep.json | python3 -m json.tool 2>/dev/null || cat strategies/LiquiditySweep.json
+          else
+            echo "⚠️ No LiquiditySweep.json — backtest will use strategy defaults"
+          fi
+
           docker run --rm \
             -v ${{ github.workspace }}/user_data:/freqtrade/user_data \
             -v ${{ github.workspace }}/config.json:/freqtrade/config.json \
@@ -116,6 +133,7 @@ jobs:
           name: hyperopt-results-${{ github.run_number }}
           path: |
             strategy_params.json
+            strategies/LiquiditySweep.json
             hyperopt_output.log
             backtest_results.txt
             user_data/hyperopt_results/
