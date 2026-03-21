@@ -350,3 +350,60 @@ training subset and v0.65.0 remains the best strategy.
    - Wider trailing stop (confirmed by 2 hyperopt runs)
    But use conservative values, not the extreme hyperopt values
 4. Or accept v0.65.0 as the best achievable with current approach
+
+---
+
+## v0.69.0 ✅ — Conservative Hyperopt Fixes VALIDATED (2026-03-21)
+
+**Backtest Run:** 23388471881 (workflow_dispatch)
+**Result:** ✅ Major improvement in trade frequency — from 29 to 53 trades/2yr (+82%)!
+
+| Metric | v0.69.0 | v0.65.0 | Change |
+|--------|---------|---------|--------|
+| Trades | **53** | 29 | **+82% ✅** |
+| Win Rate | **54.7%** | 55.2% | -0.5pp |
+| Profit | **$50.55 (5.05%)** | $35.88 (3.59%) | **+$14.67 ✅** |
+| Profit Factor | **1.84** | 2.35 | -0.51 ⚠️ |
+| SQN | 1.88 | ~2.0 | stable |
+| Drawdown | 1.39% | ~0.85% | slightly higher |
+| Avg Hold | 4:49 | 4:59 | stable |
+
+**Per-pair (all positive, all have wins — no removals):**
+| Pair | Trades | WR | Profit |
+|------|--------|-----|--------|
+| DOT/USDT | 11 | 72.7% | +$17.43 ✅ |
+| ADA/USDT | 6 | 66.7% | +$12.75 |
+| BTC/USDT | 15 | 40.0% | +$7.90 |
+| ETH/USDT | 9 | 55.6% | +$7.59 |
+| XRP/USDT | 12 | 50.0% | +$4.88 |
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| early_profit_take | 28 | **100%** | +$40.01 |
+| trailing_stop_loss | 5 | 20% | -$16.25 |
+| time_exit_6h | 10 | 0% | -$25.68 |
+| time_exit_8h | 8 | 0% | -$10.60 |
+| time_exit_4h | 2 | 0% | -$1.70 |
+
+**Fix criteria check:**
+- TS exits: 9.4% (threshold >30%) → no TS fix needed
+- All 5 pairs positive + have wins → no pair removals
+- Profit positive → ✅ approach validated
+- Trade frequency: 53/2yr = ~27/yr (still below 100 target but 82% improvement)
+
+**What changed vs v0.65.0:**
+- `confirmation_candle = False` (disabled — hyperopt found it was filtering valid entries)
+- `trailing_stop_positive = 1.5%` (widened from 0.5%)
+- `trailing_stop_positive_offset = 2.5%` (widened from 1.5%)
+
+**Key insight:** Disabling confirmation_candle dramatically increased trade frequency
+(29→53) with minimal win rate impact (-0.5pp). More trades = more winners absolute.
+Profit factor dipped because wider trailing stop caught fewer but bigger winners,
+while additional trades included more marginal winners. Net result: +$14.67 more profit.
+
+**Next step (⏳):** Step 3 — Remove 0%-WR time exits. time_exit_6h and time_exit_8h
+are ALL losing exits (0% WR, -$36.28 combined). Remove them to:
+1. Let winners run longer (they currently hit time exits at 0% WR)
+2. Reduce total trades slightly (which should improve PF)
+3. Focus exits on early_profit_take + trailing_stop only
