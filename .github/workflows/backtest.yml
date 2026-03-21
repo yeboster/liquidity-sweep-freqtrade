@@ -35,6 +35,8 @@ jobs:
 
       - name: Run Freqtrade Backtest
         run: |
+          # Copy fresh strategy from strategies/ to user_data/strategies/ to avoid stale cached code
+          cp strategies/LiquiditySweep.py user_data/strategies/LiquiditySweep.py
           docker run --rm \
             -v ${{ github.workspace }}/user_data:/freqtrade/user_data \
             -v ${{ github.workspace }}/config.json:/freqtrade/config.json \
@@ -46,7 +48,6 @@ jobs:
             --strategy LiquiditySweep \
             --timerange 20240213- \
             --data-format-ohlcv feather \
-            --timerange 20240213- \
             --export trades \
             --export-filename user_data/backtest_results/backtest-trades.json"
 
