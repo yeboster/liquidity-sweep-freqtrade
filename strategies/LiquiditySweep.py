@@ -14,9 +14,16 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.65.0
+Version: 0.67.0
 
 Changelog:
+- v0.67.0 (2026-03-21): Hyperopt epoch 374/500 — 61 trades, +8.20%, 62% WR (2yr).
+  Params: OTE 31-61%, ATR mult 3.291, swing 8, htf_swing 7, TS +15.3%/+19.4%.
+  Key: confirmation_candle/FVG/OB disabled, weekend filter ON, tighter OTE band.
+  trailing_stop_positive: 0.153 (from 0.005), stoploss: -0.062 (from -0.194).
+  minimal_roi: 0→28.6%, 59→10.6%, 109→2.8%, 165→0%.
+  v0.66.0 FAILED (44 trades, 11% WR) — REVERTED. Re-running hyperopt with tighter
+  OTE zone (31-61%) and confirmation OFF found better params.
 - v0.65.0 (2026-03-20): Widen ROI 305 → 400 candles at 2% profit.
   Problem (v0.64.0): ROI 305 at 1% (~76h) cuts winners too early. time_exit_6h/8h losses
   persist (13 trades, -22.71 USDT, 0% WR). Fix: Raise exit from 1% → 2% and push from
@@ -344,7 +351,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.61.0"
+    STRATEGY_VERSION = "0.67.0"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -419,21 +426,21 @@ class LiquiditySweep(IStrategy):
     # Fix: Raise ROI 305 to 2% AND push to 400 candles (~67h). Winners that would have
     # been cut at +1% at 76h can now run to 2% at 67h (faster timeline, higher target).
     # Trailing stop still manages risk: activates at +1.5%, exits at +1.0%.
+    # v0.67.0: Hyperopt epoch 374 — tighter ROI (28.6% → 10.6% → 2.8%), TS 15.3%.
     minimal_roi = {
-        "0": 0.349,
-        "109": 0.07,
-        "159": 0.10,
-        "400": 0.02,
+        "0": 0.286,
+        "59": 0.106,
+        "109": 0.028,
+        "165": 0,
     }
-    
+
     # Absolute backstop required by Freqtrade — custom_stoploss will use ATR, this is fallback
-    stoploss = -0.194   # -4.0% absolute backstop (ATR SL should hit first)
-    
-    # Trailing stop — fixed from broken values (v0.42.0)
-    # Previous values: 0.277 (27.7%!) and 0.295 (29.5%) — completely wrong
+    stoploss = -0.062   # -6.2% absolute backstop (ATR SL should hit first)
+
+    # Trailing stop — v0.67.0: Hyperopt found tighter TS params
     trailing_stop = True
-    trailing_stop_positive = 0.005     # Trail 0.5% behind peak
-    trailing_stop_positive_offset = 0.015  # Activate after +1.5%
+    trailing_stop_positive = 0.153     # Trail 15.3% behind peak
+    trailing_stop_positive_offset = 0.194  # Activate after +19.4%
     trailing_only_offset_is_reached = True
     
     # ATR-based dynamic stoploss enabled in v0.22.0
@@ -446,9 +453,9 @@ class LiquiditySweep(IStrategy):
 
     # ── Hyperoptable Parameters ───────────────────────────────────────────────
     # Swing detection
-    swing_length = IntParameter(3, 15, default=4, space="buy", optimize=True)
-    htf_swing_length = IntParameter(5, 20, default=19, space="buy", optimize=True)
-    
+    swing_length = IntParameter(3, 15, default=8, space="buy", optimize=True)
+    htf_swing_length = IntParameter(5, 20, default=7, space="buy", optimize=True)
+
     # OTE zone — v0.50.0: Tighten to 30-70% mandatory.
     # Previously (v0.39.0-v0.49.0): 30-85% range with hyperopt could widen to 50-85%.
     # Problem: Wider OTE zones (50-85%) dilute entry quality by allowing entries
@@ -458,19 +465,21 @@ class LiquiditySweep(IStrategy):
     # v0.38.0 hyperopt disabled require_ote entirely → 9 trades, 11.1% WR (disastrous).
     # Fix: require_ote=True is MANDATORY (optimize=False) to prevent hyperopt removing it again.
     # Keep ote_lower/ote_upper hyperoptable within the 30-70% tight band.
-    ote_lower = DecimalParameter(0.25, 0.38, default=0.30, space="buy", optimize=True)
-    ote_upper = DecimalParameter(0.60, 0.75, default=0.70, space="buy", optimize=True)
+    # v0.67.0: Hyperopt found tighter OTE band: 31-61%
+    ote_lower = DecimalParameter(0.25, 0.38, default=0.31, space="buy", optimize=True)
+    ote_upper = DecimalParameter(0.60, 0.75, default=0.613, space="buy", optimize=True)
     require_ote = CategoricalParameter([True, False], default=True, space="buy", optimize=False)  # MANDATORY — optimize=False prevents hyperopt disabling
     
     # ATR-based SL — new in v0.22.0
     # v0.34.0: ATR Multiplier increase to 2.0x (from 1.5x)
     # The avg TSL loss in v0.29.0 was -1.61% vs avg win +0.57%. Loosening SL
     # gives institutional reversals room to breathe.
-    atr_multiplier = DecimalParameter(1.0, 4.0, default=3.0, space="buy", optimize=True)
+    # v0.67.0: Hyperopt found ATR mult 3.291
+    atr_multiplier = DecimalParameter(1.0, 4.0, default=3.291, space="buy", optimize=True)
     atr_period = IntParameter(10, 20, default=14, space="buy", optimize=False)
     
     # Entry filters
-    min_rr = DecimalParameter(0.5, 4.0, default=1.404, space="buy", optimize=True)
+    min_rr = DecimalParameter(0.5, 4.0, default=1.093, space="buy", optimize=True)
     require_fvg = CategoricalParameter([True, False], default=False, space="buy", optimize=True)
     # v0.30.0: Order Block now mandatory by default (was False).
     # OB = structural demand/supply zone created by institutional move. Entering
@@ -485,7 +494,8 @@ class LiquiditySweep(IStrategy):
     #   - Shorts: close < open (bearish candle) — price already moving DOWN
     # Rationale: Eliminates entries where price has already reversed or is consolidating
     # at the zone. Only enter when momentum is confirmed. May reduce volume but improve WR.
-    require_confirmation_candle = CategoricalParameter([True, False], default=True, space="buy", optimize=True)
+    # v0.67.0: Hyperopt disabled confirmation — find entries at candle low not close
+    require_confirmation_candle = CategoricalParameter([True, False], default=False, space="buy", optimize=True)
 
     # v0.45.0 (2026-03-18): Disable session filter — too aggressive, only 19 trades, 10.5% WR.
 # The NY/London filter was reducing trades too much (19 vs hundreds previously).
@@ -499,16 +509,18 @@ class LiquiditySweep(IStrategy):
     require_weekend_filter = CategoricalParameter([True, False], default=True, space="buy", optimize=False)
     
     # Liquidity detection
-    liquidity_range_pct = DecimalParameter(0.005, 0.03, default=0.019, space="buy", optimize=True)
-    
+    # v0.67.0: Hyperopt found 0.028
+    liquidity_range_pct = DecimalParameter(0.005, 0.03, default=0.028, space="buy", optimize=True)
+
     # Buffer for SL placement
-    buffer_pips = DecimalParameter(0.0001, 0.0100, default=0.001, space="buy", optimize=True)
+    # v0.67.0: Hyperopt found 0.004
+    buffer_pips = DecimalParameter(0.0001, 0.0100, default=0.004, space="buy", optimize=True)
 
     # Time-based custom exits (hyperoptable in v0.24.0)
     time_exit_1_enabled = CategoricalParameter([True, False], default=True, space="sell", optimize=True)
     time_exit_1_hours = IntParameter(2, 6, default=4, space="sell", optimize=True)
     time_exit_1_profit = DecimalParameter(-0.02, 0.01, default=0.0, space="sell", optimize=True)
-    
+
     time_exit_2_enabled = CategoricalParameter([True, False], default=False, space="sell", optimize=True)
     time_exit_2_hours = IntParameter(5, 12, default=6, space="sell", optimize=True)
     time_exit_2_profit = DecimalParameter(0.0, 0.02, default=0.005, space="sell", optimize=True)
