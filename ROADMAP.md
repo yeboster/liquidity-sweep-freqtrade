@@ -208,3 +208,47 @@ step before the docker run in `.github/workflows/backtest.yml`.
 - 2 consecutive identical backtests → backtesting is stable and reliable
 
 **Next step:** Step 2 — Hyperopt for Entry Quality (v0.67.0). Use `gh workflow run hyperopt.yml` with `--epochs 500`, `--timerange 20240213-`, `--loss-function SharpeHyperOptLoss`.
+
+---
+
+## v0.65.0 Re-confirmed (2026-03-21 — Iteration 3 + Hyperopt Attempt)
+
+**Backtest Run:** 23382565634 (push-triggered on revert to v0.65.0)
+**Result:** ✅ Identical — v0.65.0 baseline stable. No changes warranted.
+
+| Metric | Value | Status |
+|--------|-------|--------|
+| Trades | 29 (2yr, ~15/yr) | ❌ |
+| Win Rate | **55.2%** | ✅ |
+| Profit | **$35.88** | ✅ |
+| Profit Factor | **2.35** | ✅ |
+| Avg Hold | 4:59h | — |
+
+**Per-pair (all positive, all have wins — no removals):**
+| Pair | Trades | WR | Profit |
+|------|--------|-----|--------|
+| BTC/USDT | 9 | 55.6% | +$14.04 |
+| XRP/USDT | 9 | 55.6% | +$8.43 |
+| DOT/USDT | 5 | 60.0% | +$7.87 |
+| ADA/USDT | 3 | 33.3% | +$2.77 |
+| ETH/USDT | 3 | 66.7% | +$2.76 |
+
+**Hyperopt Attempt (200 epochs, v0.65.0 codebase):**
+- Epoch 165: 60 trades, +6.36%, 45% WR, avg 2:50min (Objective: -0.687)
+- **Problem:** params NOT extracted (strategy_params.json empty)
+- **Problem:** backtest step runs original code, not optimized params
+- **Root cause:** hyperopt workflow `--print-json` output not parsed into strategy_params.json
+- **Key hyperopt findings (from logs):**
+  - swing_length: 12 (vs 4 in v0.65.0)
+  - ote_lower: 0.268 (vs 0.30)
+  - trailing_stop_positive: 0.212 (vs 0.005)
+  - trailing_stop_positive_offset: 0.23 (vs 0.015)
+  - minimal_roi: 0→31.5%, 59→13.5%, 92→2.8%, 148→0%
+
+**Fix criteria check:**
+- TS exits: 13.8% → no fix needed
+- All 5 pairs positive + have wins → no pair removals
+- Profit positive → hyperopt-worthy
+- **Workflow bug:** hyperopt params not applied to backtest step
+
+**Next step:** Fix hyperopt workflow to properly extract/apply params, then re-run hyperopt.
