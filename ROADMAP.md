@@ -252,3 +252,55 @@ step before the docker run in `.github/workflows/backtest.yml`.
 - **Workflow bug:** hyperopt params not applied to backtest step
 
 **Next step:** Fix hyperopt workflow to properly extract/apply params, then re-run hyperopt.
+
+---
+
+## v0.65.0 Re-confirmed (2026-03-21 — Iteration 4)
+
+**Backtest Run:** 23384093920 (workflow_dispatch)
+**Result:** ✅ Identical — v0.65.0 baseline stable across 4 iterations. No changes warranted.
+
+| Metric | Value | Status |
+|--------|-------|--------|
+| Trades | 29 (2yr, ~15/yr) | ❌ |
+| Win Rate | **55.2%** | ✅ |
+| Profit | **$35.88** | ✅ |
+| Profit Factor | **2.35** | ✅ |
+| Avg Hold | 4:59h | — |
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| early_profit_take | 12 | **100%** | +$40.01 |
+| trailing_stop_loss | 4 | 75% | +$16.20 |
+| target_liquidity_reached | 1 | 100% | +$1.15 |
+| time_exit_6h | 6 | 0% | -$12.92 |
+| time_exit_8h | 4 | 0% | -$6.86 |
+| time_exit_4h | 2 | 0% | -$1.71 |
+
+**Per-pair (all positive, all have wins — no removals):**
+| Pair | Trades | WR | Profit |
+|------|--------|-----|--------|
+| BTC/USDT | 9 | 55.6% | +$14.04 |
+| XRP/USDT | 9 | 55.6% | +$8.43 |
+| DOT/USDT | 5 | 60.0% | +$7.87 |
+| ADA/USDT | 3 | 33.3% | +$2.77 |
+| ETH/USDT | 3 | 66.7% | +$2.76 |
+
+**Fix criteria check:**
+- TS exits: 13.8% (threshold >30%) → no fix needed
+- All 5 pairs positive + have wins → no pair removals
+- Profit positive → proceed to hyperopt
+- **Hyperopt workflow fix (90dc1fe) validated** — params now extracted from --print-json
+
+**Previous hyperopt findings (Epoch 165, 200 epochs):**
+- Best result: 60 trades, +6.36%, 45% WR, avg 2:50min
+- **Problem:** Backtest step after hyperopt showed 0 trades — hyperopt params loaded
+  correctly (confirmed in logs) but backtest returned 0 results. Possible overfitting
+  or timerange mismatch between hyperopt training and backtest validation.
+- Key params: swing_length=12, ote_lower=0.268, trailing_stop_positive=0.212
+
+**Next step:** Run hyperopt with 500 epochs (new workflow dispatch) — if it finds
+a similar best epoch (50+ trades, WR ≥45%, PF ≥1.5), apply params and validate.
+If backtest still shows 0 trades, the hyperopt result may be overfit to the
+training subset and v0.65.0 remains the best strategy.
