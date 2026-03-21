@@ -14,9 +14,17 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.65.0
+Version: 0.69.0
 
 Changelog:
+- v0.69.0 (2026-03-21): Apply hyperopt-conservative fixes from v0.68.0 overfitting analysis.
+  Problem (v0.68.0): Hyperopt found 61 trades but backtest showed 4 — classic overfitting.
+  Key hyperopt findings (confirmed across 2 runs): confirmation_candle=False and wider
+  trailing stop. Applying full hyperopt params caused overfit.
+  Fix (conservative): (1) Disable confirmation_candle by default (hyperopt found True
+  was filtering valid entries). (2) Widen trailing_stop_positive 0.5% → 1.5% and
+  offset 1.5% → 2.5% (conservative interpretation of hyperopt's 21.2%/23%).
+  Expected: More trades from fewer entry filters + better winner capture from wider TSL.
 - v0.65.0 (2026-03-20): Widen ROI 305 → 400 candles at 2% profit.
   Problem (v0.64.0): ROI 305 at 1% (~76h) cuts winners too early. time_exit_6h/8h losses
   persist (13 trades, -22.71 USDT, 0% WR). Fix: Raise exit from 1% → 2% and push from
@@ -432,8 +440,8 @@ class LiquiditySweep(IStrategy):
     # Trailing stop — fixed from broken values (v0.42.0)
     # Previous values: 0.277 (27.7%!) and 0.295 (29.5%) — completely wrong
     trailing_stop = True
-    trailing_stop_positive = 0.005     # Trail 0.5% behind peak
-    trailing_stop_positive_offset = 0.015  # Activate after +1.5%
+    trailing_stop_positive = 0.015     # Trail 1.5% behind peak (v0.69.0: widened from 0.5%)
+    trailing_stop_positive_offset = 0.025  # Activate after +2.5%
     trailing_only_offset_is_reached = True
     
     # ATR-based dynamic stoploss enabled in v0.22.0
@@ -485,7 +493,7 @@ class LiquiditySweep(IStrategy):
     #   - Shorts: close < open (bearish candle) — price already moving DOWN
     # Rationale: Eliminates entries where price has already reversed or is consolidating
     # at the zone. Only enter when momentum is confirmed. May reduce volume but improve WR.
-    require_confirmation_candle = CategoricalParameter([True, False], default=True, space="buy", optimize=True)
+    require_confirmation_candle = CategoricalParameter([True, False], default=False, space="buy", optimize=True)
 
     # v0.45.0 (2026-03-18): Disable session filter — too aggressive, only 19 trades, 10.5% WR.
 # The NY/London filter was reducing trades too much (19 vs hundreds previously).
