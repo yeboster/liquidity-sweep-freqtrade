@@ -125,3 +125,86 @@ step before the docker run in `.github/workflows/backtest.yml`.
 ---
 
 *Last Updated: 2026-03-21*
+
+---
+
+## v0.65.0 Re-confirmed (2026-03-21 — Iteration 1)
+
+**Backtest Run:** 23370338111 (workflow_dispatch)
+**Result:** ✅ Consistent with baseline — no changes warranted
+
+| Metric | Value | Status |
+|--------|-------|--------|
+| Trades | 29 (2yr, ~15/yr) | ❌ |
+| Win Rate | **55.2%** | ✅ |
+| Profit | **$35.88** | ✅ |
+| Profit Factor | **2.35** | ✅ |
+| Avg Hold | 5.0h | — |
+
+**Per-pair (all positive — no removals):**
+| Pair | Trades | WR | Profit |
+|------|--------|-----|--------|
+| BTC/USDT | 9 | 55.6% | +$14.04 |
+| XRP/USDT | 9 | 55.6% | +$8.43 |
+| DOT/USDT | 5 | 60.0% | +$7.87 |
+| ADA/USDT | 3 | 33.3% | +$2.77 |
+| ETH/USDT | 3 | 66.7% | +$2.76 |
+
+**Exit analysis:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| early_profit_take | 12 | **100%** | +$40.01 |
+| trailing_stop_loss | 4 | 75% | +$16.20 |
+| target_liquidity_reached | 1 | 100% | +$1.14 |
+| time_exit_6h | 6 | 0% | -$12.92 |
+| time_exit_8h | 4 | 0% | -$6.86 |
+| time_exit_4h | 2 | 0% | -$1.71 |
+
+**Fix criteria check:**
+- TS exits: 13.8% (threshold >30%) → no fix needed
+- All 5 pairs positive + have wins → no pair removals
+- Profit positive → proceed to next roadmap item (Hyperopt)
+
+**Next step:** Step 2 — Hyperopt for Entry Quality (v0.67.0)
+
+---
+
+## v0.65.0 Re-confirmed (2026-03-21 — Iteration 2)
+
+**Backtest Run:** 23372234007 (workflow_dispatch)
+**Result:** ✅ Identical to Iteration 1 — perfect stability, no changes warranted
+
+| Metric | Value | Status |
+|--------|-------|--------|
+| Trades | 29 (2yr, ~15/yr) | ❌ |
+| Win Rate | **55.2%** | ✅ |
+| Profit | **$35.88** | ✅ |
+| Profit Factor | **2.35** | ✅ |
+| Avg Hold | 5.0h | — |
+
+**Per-pair (all positive, all have wins — no removals):**
+| Pair | Trades | WR | Profit |
+|------|--------|-----|--------|
+| BTC/USDT | 9 | 55.6% | +$14.04 |
+| XRP/USDT | 9 | 55.6% | +$8.43 |
+| DOT/USDT | 5 | 60.0% | +$7.87 |
+| ADA/USDT | 3 | 33.3% | +$2.77 |
+| ETH/USDT | 3 | 66.7% | +$2.76 |
+
+**Exit analysis (identical to Iteration 1 — confirms stable backtesting):**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| early_profit_take | 12 | **100%** | +$40.01 |
+| trailing_stop_loss | 4 | 75% | +$16.20 |
+| target_liquidity_reached | 1 | 100% | +$1.14 |
+| time_exit_6h | 6 | 0% | -$12.92 |
+| time_exit_8h | 4 | 0% | -$6.86 |
+| time_exit_4h | 2 | 0% | -$1.71 |
+
+**Fix criteria check:**
+- TS exits: 13.8% (threshold >30%) → no TS fix needed
+- All 5 pairs positive + have wins → no pair removals
+- Profit positive → proceed to next roadmap item (Hyperopt)
+- 2 consecutive identical backtests → backtesting is stable and reliable
+
+**Next step:** Step 2 — Hyperopt for Entry Quality (v0.67.0). Use `gh workflow run hyperopt.yml` with `--epochs 500`, `--timerange 20240213-`, `--loss-function SharpeHyperOptLoss`.
