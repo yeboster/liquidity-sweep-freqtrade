@@ -304,3 +304,49 @@ step before the docker run in `.github/workflows/backtest.yml`.
 a similar best epoch (50+ trades, WR ≥45%, PF ≥1.5), apply params and validate.
 If backtest still shows 0 trades, the hyperopt result may be overfit to the
 training subset and v0.65.0 remains the best strategy.
+
+---
+
+## v0.68.0 FAILED — Hyperopt Overfitting (2026-03-21)
+
+**Backtest Run:** 23384638625 (push-triggered on v0.68.0 commit)
+**Result:** ❌ CATASTROPHIC — hyperopt result was overfit to training subset.
+
+| Metric | v0.68.0 (applied) | v0.65.0 (baseline) |
+|--------|-------------------|-------------------|
+| Trades | **4** ❌ | 29 |
+| Win Rate | **0%** ❌ | 55.2% |
+| Profit | **-$3.25** ❌ | +$35.88 |
+| WR | 0% | 55.2% |
+| Avg Hold | 4:22h | 4:59h |
+
+**Hyperopt Epoch 374 (500 epochs):**
+- Found: 61 trades, +8.20%, 62.3% WR, avg 3:02min hold
+- Timerange: 20240213- (same as backtest)
+- **Problem:** Same timerange, same data — yet backtest shows 4 trades vs 61 in hyperopt
+- **Root cause:** Freqtrade hyperopt uses internal train/analysis split. The best epoch
+  on one split doesn't generalize to the same full timerange in backtest.
+  This is classic overfitting — hyperopt "memorized" noise in the training subset.
+
+**Fix criteria check:**
+- Trades collapsed from 29 → 4 → **FAIL** — overfitting confirmed
+- Profit negative → revert
+
+**What failed:**
+- Applying hyperopt params directly without cross-validation
+- Same timerange for both hyperopt and backtest = no validation step
+
+**Hyperopt workflow fix (partial):** ✅ Permission bug fixed
+- cp to user_data/strategies/ now works (chmod 644)
+- But overfitting issue remains — not a workflow bug
+
+**Next step:** Try different approach:
+1. Use hyperopt with a **separate timerange** for backtest validation (e.g., hyperopt
+   on 20240213-20251231, backtest on 20260101-)
+2. Or use a **different loss function** (e.g., only optimize trades count without
+   overfitting to profit)
+3. Or manually apply only the **direction** of hyperopt findings:
+   - confirmation_candle=False (confirmed by 2 hyperopt runs)
+   - Wider trailing stop (confirmed by 2 hyperopt runs)
+   But use conservative values, not the extreme hyperopt values
+4. Or accept v0.65.0 as the best achievable with current approach
