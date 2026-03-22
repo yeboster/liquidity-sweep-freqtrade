@@ -40,7 +40,6 @@
         "pair_whitelist": [
             "BTC/USDT",
             "ETH/USDT",
-            "XRP/USDT",
             "DOT/USDT",
             "ADA/USDT"
         ],

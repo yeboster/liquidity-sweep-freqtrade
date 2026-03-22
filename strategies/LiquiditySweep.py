@@ -14,9 +14,15 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.71.1
+Version: 0.72.0
 
 Changelog:
+- v0.72.0 (2026-03-22): Fix trailing stop (1.5%→0.8%) + remove XRP from pair whitelist.
+  Problem (v0.71.1): TS exits = 23/53 (43.4%), 39.1% WR, -$54.46. Offset 1.5% is still
+  too wide — winners run to +1.5-2%+ before TS activates, then give back -0.69% avg.
+  Also XRP/USDT: 12 trades, 50% WR, -$33.69 — only negative pair, remove it.
+  Fix: (1) trailing_stop_positive_offset: 1.5% → 0.8% (TS activates at +0.8%, catching
+  reversals earlier). (2) Remove XRP/USDT from config pair_whitelist.
 - v0.71.1 (2026-03-22): Fix trailing_stop_positive config error.
   Problem (v0.71.0): trailing_stop_positive was 0.015 (1.5%) — same as the offset!
   Freqtrade requires offset > positive. Both 1.5% = config error → backtest crash.
@@ -465,7 +471,7 @@ class LiquiditySweep(IStrategy):
     # Previous values: 0.277 (27.7%!) and 0.295 (29.5%) — completely wrong
     trailing_stop = True
     trailing_stop_positive = 0.005     # Trail 0.5% behind peak (TS must be < offset)
-    trailing_stop_positive_offset = 0.015  # Activate after +1.5% (v0.71.0: tightened from 2.5%)
+    trailing_stop_positive_offset = 0.008  # Activate after +0.8% (v0.72.0: tightened from 1.5%)
     trailing_only_offset_is_reached = True
     
     # ATR-based dynamic stoploss enabled in v0.22.0
