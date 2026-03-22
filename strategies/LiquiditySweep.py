@@ -11,35 +11,13 @@ Core Logic:
 5. Require recent FVG confluence — a bullish/bearish FVG formed within N candles
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
-Uses smartmoneyconcepts library for ICT indicator calculations.
-
 Author: Jarvis (OpenClaw)
-Version: 0.74.0
+Version: 0.75.0
 
 Changelog:
-- v0.74.0 (2026-03-22): Raise early_profit_take (1.5%→2.5%) — let winners run further.
-  Problem (v0.73.0): Raised 1.0%→1.5% but early_profit exits DROPPED (2→1 trades).
-  TS at 0.8% offset is too aggressive — it intercepts all winners before they can
-  reach +1.5%. With TS at +0.8% activating and trailing 0.5% behind peak, any
-  winner that reaches +1.5% will pull back 0.5% and get stopped out before the
-  45-min early_profit guard can fire.
-  Fix: early_profit_take 1.5% → 2.5% — a level TS cannot intercept unless BTC
-  has a >2.5% intraday spike. Winners that sustain +2.5% for 45min will exit
-  via early_profit (very high quality). ROI table at 2% still handles the
-  bulk of exits. Expected: TS stays dominant (~95%), but avg profit per trade
-  increases when early_profit fires on exceptional moves.
-- v0.73.0 (2026-03-22): Raise early_profit_take (1.0%→1.5%).
-  Problem (v0.72.0): TS at 0.8% offset is so tight it catches reversals before
-  early_profit_take can fire at 1.0%. Only 2/41 exits via early_profit (4.9%),
-  vs 38/41 via TS (92.7%). Winners averaging +1.5-2% were being captured by TS
-  instead of locking in at early_profit (100% WR). The TS is doing its job
-  (86.8% WR vs 20% in v0.69.0), but we're leaving profit on the table.
-  Fix: early_profit_take 1.0% → 1.5% — winners that reach +1.5% and hold 45min
-  will exit via early_profit (100% WR) instead of riding TS. TS still handles
-  reversals at +0.8-1.5%. Expected: more early_profit exits, higher avg profit.
-- v0.72.0 (2026-03-22): Fix trailing stop (1.5%→0.8%) + remove XRP from pair whitelist.
-
-Changelog:
+- v0.75.0 (2026-03-22): Add 8 new pairs (SOL, AVAX, MATIC, LINK, ATOM, UNI, XRP, NEAR) to boost trade volume. XRP restored (was removed in v0.72.0 — had 55.6% WR, +$8.43 in v0.65.0 baseline).
+- v0.74.0 (2026-03-22): Raise early_profit_take (1.5%→2.5%) — let winners run further. TS at 0.8% intercepts all before +1.5%. Fix: early_profit_take → 2.5% (ROI at 2% handles stalls).
+- v0.73.0 (2026-03-22): Raise early_profit_take (1.0%→1.5%). Only 2/41 via early_profit (4.9%), TS intercepts too early.
 - v0.72.0 (2026-03-22): Fix trailing stop (1.5%→0.8%) + remove XRP from pair whitelist.
   Problem (v0.71.1): TS exits = 23/53 (43.4%), 39.1% WR, -$54.46. Offset 1.5% is still
   too wide — winners run to +1.5-2%+ before TS activates, then give back -0.69% avg.
