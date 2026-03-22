@@ -14,9 +14,20 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.73.0
+Version: 0.74.0
 
 Changelog:
+- v0.74.0 (2026-03-22): Raise early_profit_take (1.5%→2.5%) — let winners run further.
+  Problem (v0.73.0): Raised 1.0%→1.5% but early_profit exits DROPPED (2→1 trades).
+  TS at 0.8% offset is too aggressive — it intercepts all winners before they can
+  reach +1.5%. With TS at +0.8% activating and trailing 0.5% behind peak, any
+  winner that reaches +1.5% will pull back 0.5% and get stopped out before the
+  45-min early_profit guard can fire.
+  Fix: early_profit_take 1.5% → 2.5% — a level TS cannot intercept unless BTC
+  has a >2.5% intraday spike. Winners that sustain +2.5% for 45min will exit
+  via early_profit (very high quality). ROI table at 2% still handles the
+  bulk of exits. Expected: TS stays dominant (~95%), but avg profit per trade
+  increases when early_profit fires on exceptional moves.
 - v0.73.0 (2026-03-22): Raise early_profit_take (1.0%→1.5%).
   Problem (v0.72.0): TS at 0.8% offset is so tight it catches reversals before
   early_profit_take can fire at 1.0%. Only 2/41 exits via early_profit (4.9%),
@@ -1070,7 +1081,7 @@ class LiquiditySweep(IStrategy):
         """
         Custom exit logic:
         1. ChoCH profit guard: block ChoCH exits when trade is underwater (v0.54.0)
-        2. Early profit exit at +0.8%: secure wins before TSL activates (v0.46.0)
+        2. Early profit exit at +2.5%: lock in exceptional winners (v0.74.0)
         3. Time-based exit: cut stale trades
         4. Target liquidity reached
         """
@@ -1085,14 +1096,15 @@ class LiquiditySweep(IStrategy):
         
         # 1. Early profit exit — lock in wins before TSL activates at +1.5% (v0.46.0)
         # Require at least 45min hold to avoid gap-based false exits
-        # v0.73.0: raised from 1.0% to 1.5% — TS at 0.8% offset is catching most exits before
-        # early_profit_take can fire at 1.0%. Raising to 1.5% lets winners run further while
-        # TS still activates at +0.8% for fast reversals. Expected: more early_profit exits
-        # (was only 2/41 in v0.72.0), higher avg profit per trade.
+        # v0.74.0: raised from 1.5% to 2.5% — TS at 0.8% offset intercepts all winners
+        # before they can reach 1.5%. Raising to 2.5% puts early_profit ABOVE the ROI
+        # table (2%) — only the strongest trends fire it. TS still handles ~95% of exits.
+        # v0.73.0: raised from 1.0% to 1.5% — but early_profit exits DROPPED (2→1 trade).
+        # TS is simply too aggressive below 2%.
         # v0.71.0: raised from 0.8% to 1.0% — winners averaged 1.06% (100% WR), let them run
         # v0.64.0: REVERT — early_profit at 0.8% (was 1.5% in failed v0.63.0)
         trade_duration = (current_time - trade.open_date_utc).total_seconds() / 3600
-        if trade_duration >= 0.75 and current_profit >= 0.015:
+        if trade_duration >= 0.75 and current_profit >= 0.025:
             return "early_profit_take"
         
         # Time-based exit
