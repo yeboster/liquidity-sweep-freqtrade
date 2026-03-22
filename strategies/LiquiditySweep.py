@@ -12,7 +12,7 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.75.0
+Version: 0.77.0
 
 Changelog:
 - v0.75.0 (2026-03-22): Add 8 new pairs (SOL, AVAX, MATIC, LINK, ATOM, UNI, XRP, NEAR) to boost trade volume. XRP restored (was removed in v0.72.0 — had 55.6% WR, +$8.43 in v0.65.0 baseline).
