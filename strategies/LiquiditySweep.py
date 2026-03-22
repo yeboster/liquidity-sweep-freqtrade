@@ -14,9 +14,18 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.70.0
+Version: 0.71.0
 
 Changelog:
+- v0.71.0 (2026-03-22): Fix trailing stop (tighten offset 2.5%→1.5%) + raise early_profit_take (0.8%→1.0%).
+  Problem (v0.70.0): trailing_stop_loss = 13 exits, 12 losses, 7.7% WR, -$65.95.
+  TS offset 2.5% is too wide — allows winners to run to +2.5% before activating,
+  then reverses and gives back -1.48% avg. Meanwhile early_profit_take at 0.8% exits
+  winners averaging 1.06% (100% WR on 38 trades) — they had more to give.
+  Fix: (1) trailing_stop_positive_offset: 2.5% → 1.5% (TS activates at +1.5% instead
+  of +2.5%, catching reversals earlier). (2) early_profit_take: 0.8% → 1.0% (winners
+  average 1.06%, so 0.8% was too tight — let them run longer before locking in).
+  Expected: Fewer TS loss trades, higher % of exits via 100% WR early_profit_take.
 - v0.70.0 (2026-03-22): Disable ALL time-based exits (time_exit_1 and time_exit_2).
   Problem (v0.69.0): time_exit_6h = 10 trades (0% WR, -$25.68), time_exit_8h = 8 trades
   (0% WR, -$10.60). Total -$36.28 destroyed by cutting winners that hadn't yet hit
@@ -362,7 +371,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.70.0"
+    STRATEGY_VERSION = "0.71.0"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -450,8 +459,8 @@ class LiquiditySweep(IStrategy):
     # Trailing stop — fixed from broken values (v0.42.0)
     # Previous values: 0.277 (27.7%!) and 0.295 (29.5%) — completely wrong
     trailing_stop = True
-    trailing_stop_positive = 0.015     # Trail 1.5% behind peak (v0.69.0: widened from 0.5%)
-    trailing_stop_positive_offset = 0.025  # Activate after +2.5%
+    trailing_stop_positive = 0.015     # Trail 1.5% behind peak
+    trailing_stop_positive_offset = 0.015  # Activate after +1.5% (v0.71.0: tightened from 2.5%)
     trailing_only_offset_is_reached = True
     
     # ATR-based dynamic stoploss enabled in v0.22.0
@@ -1053,9 +1062,10 @@ class LiquiditySweep(IStrategy):
         
         # 1. Early profit exit — lock in wins before TSL activates at +1.5% (v0.46.0)
         # Require at least 45min hold to avoid gap-based false exits
+        # v0.71.0: raised from 0.8% to 1.0% — winners averaged 1.06% (100% WR), let them run
         # v0.64.0: REVERT — early_profit at 0.8% (was 1.5% in failed v0.63.0)
         trade_duration = (current_time - trade.open_date_utc).total_seconds() / 3600
-        if trade_duration >= 0.75 and current_profit >= 0.008:
+        if trade_duration >= 0.75 and current_profit >= 0.010:
             return "early_profit_take"
         
         # Time-based exit
