@@ -473,4 +473,44 @@ early_profit_take be raised to 1.5%+ (let winners run further), or is 0.8% TS th
 new primary exit? Also consider: avg hold time dropped to 4:57 — is there room
 to extend winning trades with a wider TS or higher early_profit target?
 
+---
+
+## v0.72.0 Re-confirmed (2026-03-22 — Iteration Cron)
+
+**Backtest Run:** 23397639238 (workflow_dispatch)
+**Result:** ✅ Identical — v0.72.0 stable across cron re-confirmation. No changes warranted.
+
+| Metric | Value | Status |
+|--------|-------|--------|
+| Trades | **41** | ✅ (vs ~15 baseline) |
+| Win Rate | **87.8%** | ✅ |
+| Profit | **$60.58 (6.06%)** | ✅ |
+| Profit Factor | **3.23** | ✅ |
+| Drawdown | **1.17%** | ✅ |
+| Avg Hold | 5.0h | — |
+
+**Per-pair (all positive, all have wins — no removals needed):**
+| Pair | Trades | WR | Profit |
+|------|--------|-----|--------|
+| BTC/USDT | 15 | 86.7% | +$21.05 |
+| DOT/USDT | 11 | 90.9% | +$18.31 |
+| ETH/USDT | 9 | 88.9% | +$14.51 |
+| ADA/USDT | 6 | 83.3% | +$6.71 |
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| trailing_stop_loss | 38 | **86.8%** | +$52.04 |
+| early_profit_take | 2 | 100% | +$7.34 |
+| target_liquidity_reached | 1 | 100% | +$1.21 |
+
+**Fix criteria check:**
+- TS exits: 92.7% (>30%) but TS WR 86.8% → no fix needed (already optimized)
+- All 4 pairs positive + have wins → no pair removals
+- Profit positive + PF 3.23 → exceptional performance
+
+**Next step (⏳):** Step 4 — Fine-tune early_profit_take level. Currently 1.0% but TS at 0.8%
+is capturing 92.7% of exits. Consider: raise early_profit_take to 1.5%+ to let winners
+run further before TS activates, or accept 0.8% TS as the primary exit mechanism.
+
 *Last Updated: 2026-03-22*
