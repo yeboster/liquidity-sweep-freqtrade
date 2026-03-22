@@ -602,7 +602,50 @@ for early_profit_take at 1.5% to fire. Consider: (a) raise to 2.5%+ or (b) lower
 is capturing 92.7% of exits. Consider: raise early_profit_take to 1.5%+ to let winners
 run further before TS activates, or accept 0.8% TS as the primary exit mechanism.
 
-*Last Updated: 2026-03-22*
+*Last Updated: 2026-03-22 (22:41 UTC)*
+
+---
+
+## v0.77.0 ✅ — Iteration Backtest (2026-03-22)
+
+**Backtest Run:** 23412093097 (push-triggered on v0.77.0 commit)
+**Result:** ✅ Identical to v0.76.0 — v0.77.0 was only a version bump (no code changes). Strategy remains exceptional.
+
+| Metric | v0.77.0 | v0.76.0 | Status |
+|--------|---------|---------|--------|
+| Trades | **84** | 84 | ✅ |
+| Win Rate | **90.5%** | 90.5% | ✅ |
+| Profit | **$135.82** | $135.82 | ✅ |
+| Profit Factor | **3.87** | 3.87 | ✅ |
+| Avg Hold | 4.2h | 4.2h | ✅ |
+
+**Per-pair (all positive, all have wins — no removals):**
+| Pair | Trades | WR | Profit |
+|------|--------|-----|--------|
+| AVAX/USDT | 13 | 100.0% | +$34.19 |
+| BTC/USDT | 15 | 86.7% | +$24.09 |
+| DOT/USDT | 11 | 90.9% | +$19.38 |
+| ETH/USDT | 9 | 88.9% | +$15.34 |
+| UNI/USDT | 7 | 100.0% | +$12.81 |
+| LINK/USDT | 12 | 83.3% | +$10.17 |
+| ATOM/USDT | 4 | 100.0% | +$8.04 |
+| NEAR/USDT | 7 | 85.7% | +$6.01 |
+| ADA/USDT | 6 | 83.3% | +$5.77 |
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| trailing_stop_loss | 80 | **90.0%** | +$121.62 |
+| target_liquidity_reached | 3 | 100% | +$7.59 |
+| roi | 1 | 100% | +$6.61 |
+
+**Fix criteria check:**
+- TS exits: 80/84 = 95.2% (>30%) but TS WR 90.0% → no fix needed (TS is working exceptionally)
+- All 9 pairs positive + have wins → no pair removals
+- Profit positive + PF 3.87 → exceptional performance
+- **Confirmed: v0.76.0 results are stable across multiple iterations**
+
+**Next step (⏳):** Fine-tune trailing stop offset. TS at 0.8% offset captures 95% of exits at 90% WR — extremely consistent. Could experiment with tighter offset (0.5-0.6%) to squeeze even more small gains, or wider (1.0%) to let winners run further for occasional bigger exits.
 
 ---
 
