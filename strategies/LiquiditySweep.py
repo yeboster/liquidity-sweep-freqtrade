@@ -14,7 +14,19 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.72.0
+Version: 0.73.0
+
+Changelog:
+- v0.73.0 (2026-03-22): Raise early_profit_take (1.0%→1.5%).
+  Problem (v0.72.0): TS at 0.8% offset is so tight it catches reversals before
+  early_profit_take can fire at 1.0%. Only 2/41 exits via early_profit (4.9%),
+  vs 38/41 via TS (92.7%). Winners averaging +1.5-2% were being captured by TS
+  instead of locking in at early_profit (100% WR). The TS is doing its job
+  (86.8% WR vs 20% in v0.69.0), but we're leaving profit on the table.
+  Fix: early_profit_take 1.0% → 1.5% — winners that reach +1.5% and hold 45min
+  will exit via early_profit (100% WR) instead of riding TS. TS still handles
+  reversals at +0.8-1.5%. Expected: more early_profit exits, higher avg profit.
+- v0.72.0 (2026-03-22): Fix trailing stop (1.5%→0.8%) + remove XRP from pair whitelist.
 
 Changelog:
 - v0.72.0 (2026-03-22): Fix trailing stop (1.5%→0.8%) + remove XRP from pair whitelist.
@@ -382,7 +394,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.71.0"
+    STRATEGY_VERSION = "0.73.0"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -1073,10 +1085,14 @@ class LiquiditySweep(IStrategy):
         
         # 1. Early profit exit — lock in wins before TSL activates at +1.5% (v0.46.0)
         # Require at least 45min hold to avoid gap-based false exits
+        # v0.73.0: raised from 1.0% to 1.5% — TS at 0.8% offset is catching most exits before
+        # early_profit_take can fire at 1.0%. Raising to 1.5% lets winners run further while
+        # TS still activates at +0.8% for fast reversals. Expected: more early_profit exits
+        # (was only 2/41 in v0.72.0), higher avg profit per trade.
         # v0.71.0: raised from 0.8% to 1.0% — winners averaged 1.06% (100% WR), let them run
         # v0.64.0: REVERT — early_profit at 0.8% (was 1.5% in failed v0.63.0)
         trade_duration = (current_time - trade.open_date_utc).total_seconds() / 3600
-        if trade_duration >= 0.75 and current_profit >= 0.010:
+        if trade_duration >= 0.75 and current_profit >= 0.015:
             return "early_profit_take"
         
         # Time-based exit
