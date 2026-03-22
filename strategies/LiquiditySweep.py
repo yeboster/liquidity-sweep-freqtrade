@@ -14,9 +14,14 @@ Core Logic:
 Uses smartmoneyconcepts library for ICT indicator calculations.
 
 Author: Jarvis (OpenClaw)
-Version: 0.71.0
+Version: 0.71.1
 
 Changelog:
+- v0.71.1 (2026-03-22): Fix trailing_stop_positive config error.
+  Problem (v0.71.0): trailing_stop_positive was 0.015 (1.5%) — same as the offset!
+  Freqtrade requires offset > positive. Both 1.5% = config error → backtest crash.
+  Fix: trailing_stop_positive: 0.015 → 0.005 (0.5%). Now TS trails 0.5% behind peak,
+  offset activates at +1.5%. Also added clarifying comment.
 - v0.71.0 (2026-03-22): Fix trailing stop (tighten offset 2.5%→1.5%) + raise early_profit_take (0.8%→1.0%).
   Problem (v0.70.0): trailing_stop_loss = 13 exits, 12 losses, 7.7% WR, -$65.95.
   TS offset 2.5% is too wide — allows winners to run to +2.5% before activating,
@@ -459,7 +464,7 @@ class LiquiditySweep(IStrategy):
     # Trailing stop — fixed from broken values (v0.42.0)
     # Previous values: 0.277 (27.7%!) and 0.295 (29.5%) — completely wrong
     trailing_stop = True
-    trailing_stop_positive = 0.015     # Trail 1.5% behind peak
+    trailing_stop_positive = 0.005     # Trail 0.5% behind peak (TS must be < offset)
     trailing_stop_positive_offset = 0.015  # Activate after +1.5% (v0.71.0: tightened from 2.5%)
     trailing_only_offset_is_reached = True
     
