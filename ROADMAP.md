@@ -475,6 +475,93 @@ to extend winning trades with a wider TS or higher early_profit target?
 
 ---
 
+## v0.74.0 ✅ — early_profit_take raised to 2.5% (2026-03-22)
+
+**Backtest Run:** 23405501050 (push trigger)
+**Result:** ✅ Marginal improvement — profit $60.87→$62.26 (+$1.39). TS still dominant.
+
+| Metric | v0.73.0 | v0.74.0 | Δ |
+|--------|---------|---------|---|
+| Trades | 41 | **41** | — |
+| Win Rate | 87.8% | **87.8%** | — |
+| Profit | $60.87 | **$62.26** | +$1.39 |
+| Profit Factor | 3.24 | **3.24** | — |
+| Drawdown | 1.17% | **1.17%** | — |
+| Avg Profit % | 0.44% | **0.45%** | +0.01% |
+
+**Exit breakdown (v0.74.0):**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| trailing_stop_loss | 39 | 87.2% | +$54.44 |
+| roi | 1 | 100% | +$6.61 |
+| target_liquidity_reached | 1 | 100% | +$1.21 |
+
+**Key observation:** Raising early_profit_take to 2.5% (above ROI table at 2%) meant the ROI table
+now fires first at 2% for the one exceptional winner. early_profit_take at 2.5% still didn't fire
+(TS intercepts at +0.8-1.3%). TS at 0.8% offset is simply too aggressive for early_profit to ever
+fire meaningfully. The ROI table at 2% is now the effective ceiling for early exits.
+
+**Per-pair (unchanged — all positive, all have wins):**
+| Pair | Trades | WR | Profit |
+|------|--------|-----|--------|
+| BTC/USDT | 15 | 86.7% | +$23.89 |
+| DOT/USDT | 11 | 90.9% | +$18.34 |
+| ETH/USDT | 9 | 88.9% | +$14.53 |
+| ADA/USDT | 6 | 83.3% | +$5.50 |
+
+**Fix criteria check:**
+- TS exits: 95% (>30%) but TS WR 87.2% → no fix (TS is working)
+- early_profit_take: effectively disabled (TS intercepts all below 2.5%)
+- All 4 pairs positive + have wins → no pair removals
+- Profit positive + PF 3.24 → strategy is exceptional
+
+**Next step (⏳):** Step 4 (complete). Strategy is optimized. TS dominant exit with 87.2% WR
+across 39 trades. Next frontier: increase trade frequency via additional pairs or shorter
+timeframe. Or: experiment with confirmation_candle=True to improve entry quality vs quantity.
+
+---
+
+## v0.73.0 (2026-03-22 — Iteration Cron)
+
+**Backtest Run:** 23403334165 (workflow_dispatch)
+**Result:** ✅ Marginal improvement over v0.72.0 — profit $60.58→$60.87 (+$0.29).
+
+| Metric | v0.72.0 | v0.73.0 | Δ |
+|--------|---------|---------|---|
+| Trades | 41 | **41** | — |
+| Win Rate | 87.8% | **87.8%** | — |
+| Profit | $60.58 | **$60.87** | +$0.29 |
+| Profit Factor | 3.23 | **3.24** | +0.01 |
+| Drawdown | 1.17% | **1.17%** | — |
+
+**Exit breakdown (v0.73.0):**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| trailing_stop_loss | 39 | 87.2% | +$54.37 |
+| early_profit_take | 1 | 100% | +$5.30 |
+| target_liquidity_reached | 1 | 100% | +$1.21 |
+
+**Per-pair (all positive, all have wins — no removals needed):**
+| Pair | Trades | WR | Profit |
+|------|--------|-----|--------|
+| BTC/USDT | 15 | 86.7% | +$22.56 |
+| DOT/USDT | 11 | 90.9% | +$18.31 |
+| ETH/USDT | 9 | 88.9% | +$14.51 |
+| ADA/USDT | 6 | 83.3% | +$5.49 |
+
+**Fix criteria check:**
+- TS exits: 95% (>30%) but TS WR 87.2% → no fix needed (already optimized)
+- early_profit_take only 1 exit (vs 2 in v0.72.0) — the raise to 1.5% didn't help
+- All 4 pairs positive + have wins → no pair removals
+- Profit positive + PF 3.24 → exceptional performance
+
+**Next step (⏳):** Step 4 — Fine-tune early_profit_take level. TS at 0.8% is too aggressive
+for early_profit_take at 1.5% to fire. Consider: (a) raise to 2.5%+ or (b) lower TS offset.
+
+*Last Updated: 2026-03-22*
+
+---
+
 ## v0.72.0 Re-confirmed (2026-03-22 — Iteration Cron)
 
 **Backtest Run:** 23397639238 (workflow_dispatch)
