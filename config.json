@@ -42,13 +42,11 @@
             "ETH/USDT",
             "DOT/USDT",
             "ADA/USDT",
-            "SOL/USDT",
             "AVAX/USDT",
             "MATIC/USDT",
             "LINK/USDT",
             "ATOM/USDT",
             "UNI/USDT",
-            "XRP/USDT",
             "NEAR/USDT"
         ],
         "pair_blacklist": []
