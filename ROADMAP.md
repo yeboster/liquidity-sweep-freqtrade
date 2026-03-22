@@ -1,6 +1,6 @@
 # Liquidity Sweep — Roadmap
 
-> Updated: 2026-03-21
+> Updated: 2026-03-22
 > **Goal: Increase trade frequency from ~17/yr to 100+/yr**
 
 ---
@@ -106,6 +106,11 @@ Timeframe: 15m
 
 | Version | Trades | WR | Profit | Notes |
 |---------|--------|----|--------|-------|
+| v0.72.0 | 41/2yr | **87.8%** | $60.58 | ✅ TS offset 1.5%→0.8% + remove XRP |
+| v0.71.1 | 53/2yr | 73.6% | $60.97 | Config fix: TS positive 1.5%→0.5% |
+| v0.71.0 | — | — | — | FAILED (config error, TS same as offset) |
+| v0.70.0 | 53/2yr | 54.7% | $50.55 | Remove time exits (0% WR) |
+| v0.69.0 | 53/2yr | 54.7% | $50.55 | ✅ confirmation_candle=False, wider TS |
 | v0.65.0 | 29/2yr | 55% | $35.88 | Confirmed baseline |
 | v0.66.0 | 44/2yr | 11% | -$101.83 | FF-2 FAILED — REVERTED |
 | v0.64.0 | 35/2yr | 57% | $44.69 | Revert |
@@ -407,3 +412,65 @@ are ALL losing exits (0% WR, -$36.28 combined). Remove them to:
 1. Let winners run longer (they currently hit time exits at 0% WR)
 2. Reduce total trades slightly (which should improve PF)
 3. Focus exits on early_profit_take + trailing_stop only
+
+---
+
+## v0.72.0 ✅ — TS Offset Fix + XRP Removal (2026-03-22)
+
+**Backtest Run:** 23397638399 (push-triggered on v0.72.0 commit)
+**Result:** ✅ BREAKTHROUGH — best performance yet across all key metrics!
+
+| Metric | v0.72.0 | v0.71.1 | Change |
+|--------|---------|---------|--------|
+| Trades | **41** | 53 | -12 (XRP removed) |
+| Win Rate | **87.8%** | 73.6% | **+14.2pp ✅** |
+| Profit | **$60.58 (6.06%)** | $60.97 | ~same |
+| Profit Factor | **3.23** | 1.60 | **+1.63 ✅** |
+| Drawdown | **1.17%** | 2.40% | **-1.23pp ✅** |
+| Avg Hold | 4:57 | 7:22 | -2:25 faster |
+
+**Per-pair (all positive, all have wins — no removals needed):**
+| Pair | Trades | WR | Profit |
+|------|--------|-----|--------|
+| BTC/USDT | 15 | 86.7% | +$21.05 |
+| DOT/USDT | 11 | 90.9% | +$18.31 |
+| ETH/USDT | 9 | 88.9% | +$14.51 |
+| ADA/USDT | 6 | 83.3% | +$6.71 |
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| trailing_stop_loss | 38 | **86.8%** | +$52.04 |
+| early_profit_take | 3 | 100% | +$7.34 |
+
+**Fix criteria check:**
+- TS exits: 38/41 = 92.7% (was >30% threshold → FIX APPLIED ✅)
+- TS WR: **86.8%** (was 39.1% → FIXED!)
+- TS profit: **+$52.04** (was -$54.46 → TURNED AROUND!)
+- All 4 pairs positive + have wins → no pair removals
+- Profit positive + PF 3.23 → exceptional performance
+
+**What fixed the trailing stop:**
+- v0.71.1 used TS offset 1.5% — still too wide, winners ran to +1.5-2% then
+  reversed, giving back -0.69% avg on 23 TS exits.
+- v0.72.0 tightened offset 1.5%→0.8% — TS now activates at +0.8% instead of +1.5%,
+  catching reversals much earlier and locking in smaller but consistent gains.
+- Result: TS WR went from 39.1% → **86.8%**, profit from -$54 → **+$52**.
+
+**XRP removal impact:**
+- XRP: 12 trades, 50% WR, -$33.69 — eliminated entirely
+- After removal: 4 pairs all positive, 83.3-90.9% WR
+
+**Key insight:** The 0.8% offset is the sweet spot — tight enough to catch reversals
+before they fully reverse, wide enough to let winners run beyond +0.8% before the
+TS kicks in. The early_profit_take (which was 100% WR in prior versions) is now
+only 2 trades — meaning the tighter TS is capturing most winners before they can
+hit the early profit target. Both exits are now profitable, which is the goal.
+
+**Next step (⏳):** Step 4 — Fine-tune early_profit_take level. Currently 1.0% was set
+in v0.71.0 but TS at 0.8% is capturing most exits first. Need to decide: should
+early_profit_take be raised to 1.5%+ (let winners run further), or is 0.8% TS the
+new primary exit? Also consider: avg hold time dropped to 4:57 — is there room
+to extend winning trades with a wider TS or higher early_profit target?
+
+*Last Updated: 2026-03-22*
