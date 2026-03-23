@@ -15,7 +15,7 @@ Author: Jarvis (OpenClaw)
 Version: 0.78.0
 
 Changelog:
-- v0.78.0 (2026-03-23): Tighten trailing stop offset (0.8%→0.6%). Roadmap next step: try tighter TS to catch reversals even earlier. trailing_stop_positive remains 0.5% (must stay < offset). Expect: more TS exits, slightly smaller avg winners, potentially higher trade count.
+- v0.78.0 (2026-03-23): FAILED — Tighten TS offset (0.8%→0.6%). Result: profit $79.96 vs $135.82, PF 3.24 vs 3.87. TS too tight, cutting winners early. REVERTED to 0.8%.
 - v0.75.0 (2026-03-22): Add 8 new pairs (SOL, AVAX, MATIC, LINK, ATOM, UNI, XRP, NEAR) to boost trade volume. XRP restored (was removed in v0.72.0 — had 55.6% WR, +$8.43 in v0.65.0 baseline).
 - v0.74.0 (2026-03-22): Raise early_profit_take (1.5%→2.5%) — let winners run further. TS at 0.8% intercepts all before +1.5%. Fix: early_profit_take → 2.5% (ROI at 2% handles stalls).
 - v0.73.0 (2026-03-22): Raise early_profit_take (1.0%→1.5%). Only 2/41 via early_profit (4.9%), TS intercepts too early.
@@ -473,7 +473,7 @@ class LiquiditySweep(IStrategy):
     # Previous values: 0.277 (27.7%!) and 0.295 (29.5%) — completely wrong
     trailing_stop = True
     trailing_stop_positive = 0.005     # Trail 0.5% behind peak (TS must be < offset)
-    trailing_stop_positive_offset = 0.006  # Activate after +0.6% (v0.78.0: tightened from 0.8%)
+    trailing_stop_positive_offset = 0.008  # Activate after +0.8% (v0.72.0: optimal, v0.78.0 FAILED tighter 0.6%)
     trailing_only_offset_is_reached = True
     
     # ATR-based dynamic stoploss enabled in v0.22.0
