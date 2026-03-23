@@ -1,6 +1,6 @@
 # Liquidity Sweep — Roadmap
 
-> Updated: 2026-03-22
+> Updated: 2026-03-23
 > **Goal: Increase trade frequency from ~17/yr to 100+/yr**
 
 ---
@@ -731,3 +731,51 @@ Both pairs had wins but consistently lost money overall — removed to protect p
 **Revert:** 2e549cd — TS restored to 0.8%, backtest 23416787726 confirmed v0.76.0 results restored.
 
 **Next step (⏳):** Try wider TS offset (1.0-1.2%) to let winners run further.
+
+---
+
+## v0.81.0 ✅ — Iteration Backtest (2026-03-23)
+
+**Backtest Run:** 23454343580 (workflow_dispatch)
+**Result:** ✅ Consistent with v0.76.0 — strategy stable. MATIC removal had no impact (0 trades in backtest).
+
+| Metric | v0.81.0 | v0.76.0 | Status |
+|--------|---------|---------|--------|
+| Trades | **80** | 84 | ✅ |
+| Win Rate | **90.0%** | 90.5% | ✅ |
+| Profit | **$127.36 (12.74%)** | $135.82 (13.58%) | ✅ |
+| Profit Factor | **3.69** | 3.87 | ✅ |
+| SQN | **4.87** | 5.16 | ✅ |
+| Avg Hold | 4:14 | 4:12 | ✅ |
+
+**Per-pair (all positive, all have wins — no removals):**
+| Pair | Trades | WR | Profit |
+|------|--------|-----|--------|
+| AVAX/USDT | 13 | 100.0% | +$34.07 |
+| BTC/USDT | 15 | 86.7% | +$24.08 |
+| DOT/USDT | 11 | 90.9% | +$19.27 |
+| ETH/USDT | 9 | 88.9% | +$15.25 |
+| UNI/USDT | 7 | 100.0% | +$12.79 |
+| LINK/USDT | 12 | 83.3% | +$10.12 |
+| NEAR/USDT | 7 | 85.7% | +$6.03 |
+| ADA/USDT | 6 | 83.3% | +$5.74 |
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| trailing_stop_loss | 77 | **89.6%** | +$116.99 |
+| roi | 1 | 100% | +$6.61 |
+| target_liquidity_reached | 2 | 100% | +$3.76 |
+
+**Fix criteria check:**
+- TS exits: 77/80 = 96.3% (>30%) but TS WR 89.6% → no fix needed (TS is working exceptionally)
+- All 8 pairs positive + have wins → no pair removals
+- Profit positive + PF 3.69 → exceptional performance
+- **Confirmed: v0.81.0 results are stable — MATIC had 0 trades, removal was housekeeping**
+
+**Note:** v0.79.0 tried wider TS offset (1.2%) → profit dropped from $135.82 to $117.61, WR from 90.5% to 78.6%, PF from 3.87 to 1.88. TS offset 0.8% confirmed as optimal.
+
+**Next step (⏳):** Increase trade frequency. Current: ~40/yr. Target: 100+/yr. Options:
+1. Add more pairs to whitelist (check top Zacks performers for high-volume crypto)
+2. Shorten timeframe (5m instead of 15m) — more setups in same period
+3. Loosen OTE zone slightly (28-72%) — more valid entries within tight band
