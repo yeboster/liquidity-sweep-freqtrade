@@ -12,9 +12,10 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.80.0
+Version: 0.81.0
 
 Changelog:
+- v0.81.0 (2026-03-23): Remove MATIC/USDT from pair whitelist. MATIC had 0 trades in backtest despite being whitelisted since v0.75.0 — strategy never generates entries for it. Cleaning up pairlist.
 - v0.80.0 (2026-03-23): Remove ATOM/USDT from pair whitelist. ATOM was only pair with negative profit (-$7.44, 75% WR, PF 0.58). Removing it should improve overall stats.
 - v0.79.0 (2026-03-23): Widen TS offset (0.8%→1.2%). Result: profit $117.61 vs $135.82, WR 78.6% vs 90.5%, PF 1.88 vs 3.87 — WORSE. TS offset 1.2% is too wide, missed winners. REVERTED to 0.8%.
 - v0.78.0 (2026-03-23): FAILED — Tighten TS offset (0.8%→0.6%). Result: profit $79.96 vs $135.82, PF 3.24 vs 3.87. TS too tight, cutting winners early. REVERTED to 0.8%.
