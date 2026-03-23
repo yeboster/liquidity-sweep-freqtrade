@@ -12,10 +12,11 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.79.0
+Version: 0.80.0
 
 Changelog:
-- v0.79.0 (2026-03-23): Widen TS offset (0.8%→1.2%). v0.78.0 tried tighter (0.6%) and failed -41%. Now trying wider to let winners run further. Hypothesis: 0.8% may be too tight, cutting trades before they fully develop.
+- v0.80.0 (2026-03-23): Remove ATOM/USDT from pair whitelist. ATOM was only pair with negative profit (-$7.44, 75% WR, PF 0.58). Removing it should improve overall stats.
+- v0.79.0 (2026-03-23): Widen TS offset (0.8%→1.2%). Result: profit $117.61 vs $135.82, WR 78.6% vs 90.5%, PF 1.88 vs 3.87 — WORSE. TS offset 1.2% is too wide, missed winners. REVERTED to 0.8%.
 - v0.78.0 (2026-03-23): FAILED — Tighten TS offset (0.8%→0.6%). Result: profit $79.96 vs $135.82, PF 3.24 vs 3.87. TS too tight, cutting winners early. REVERTED to 0.8%.
 - v0.75.0 (2026-03-22): Add 8 new pairs (SOL, AVAX, MATIC, LINK, ATOM, UNI, XRP, NEAR) to boost trade volume. XRP restored (was removed in v0.72.0 — had 55.6% WR, +$8.43 in v0.65.0 baseline).
 - v0.74.0 (2026-03-22): Raise early_profit_take (1.5%→2.5%) — let winners run further. TS at 0.8% intercepts all before +1.5%. Fix: early_profit_take → 2.5% (ROI at 2% handles stalls).
@@ -474,7 +475,7 @@ class LiquiditySweep(IStrategy):
     # Previous values: 0.277 (27.7%!) and 0.295 (29.5%) — completely wrong
     trailing_stop = True
     trailing_stop_positive = 0.005     # Trail 0.5% behind peak (TS must be < offset)
-    trailing_stop_positive_offset = 0.012  # Activate after +1.2% (v0.79.0: try wider than 0.8% to let winners run further)
+    trailing_stop_positive_offset = 0.008  # Activate after +0.8% (v0.72.0: optimal balance)
     trailing_only_offset_is_reached = True
     
     # ATR-based dynamic stoploss enabled in v0.22.0
