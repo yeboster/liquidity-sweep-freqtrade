@@ -560,7 +560,7 @@ timeframe. Or: experiment with confirmation_candle=True to improve entry quality
 **Next step (⏳):** Step 4 — Fine-tune early_profit_take level. TS at 0.8% is too aggressive
 for early_profit_take at 1.5% to fire. Consider: (a) raise to 2.5%+ or (b) lower TS offset.
 
-*Last Updated: 2026-03-22*
+*Last Updated: 2026-03-23*
 
 ---
 
@@ -696,3 +696,38 @@ Both pairs had wins but consistently lost money overall — removed to protect p
 **Key insight:** Removing SOL and XRP actually IMPROVED overall performance. Despite fewer total trades (84 vs 107), profit increased ($135.82 vs $120.74) and win rate jumped (90.5% vs 85.9%). These two pairs were dragging down the strategy's profitability and win rate significantly.
 
 **Next step (⏳):** Fine-tune trailing stop offset. TS at 0.8% offset captures 95% of exits at 90% WR — extremely consistent. Could experiment with tighter offset (0.5-0.6%) to squeeze even more small gains, or wider (1.0%) to let winners run further for occasional bigger exits.
+
+---
+
+## v0.78.0 ❌ FAILED — Tighter TS Offset (2026-03-23)
+
+**Backtest Run:** 23416565630 (push-triggered on v0.78.0 commit)
+**Result:** ❌ CATASTROPHIC — tighter TS offset destroyed profit. REVERTED immediately.
+
+| Metric | v0.78.0 (0.6%) | v0.76.0 (0.8%) | Change |
+|--------|-----------------|-----------------|--------|
+| Trades | 84 | 84 | — |
+| Win Rate | 92.9% | 90.5% | +2.4pp |
+| Profit | $79.96 (8.0%) | $135.82 (13.58%) | -$55.86 ❌ |
+| Profit Factor | 3.24 | 3.87 | -0.63 ❌ |
+| SQN | 3.95 | 5.16 | -1.21 ❌ |
+| Avg Winner | 0.27% | 0.43% | -0.16% ❌ |
+
+**Per-pair (all positive, all have wins):**
+| Pair | Trades | WR | Profit |
+|------|--------|-----|--------|
+| AVAX/USDT | 13 | 100% | +$21.31 |
+| UNI/USDT | 7 | 100% | +$12.53 |
+| ETH/USDT | 9 | 100% | +$11.61 |
+| BTC/USDT | 15 | 93.3% | +$10.43 |
+| DOT/USDT | 11 | 90.9% | +$9.72 |
+| ATOM/USDT | 4 | 100% | +$7.76 |
+| NEAR/USDT | 7 | 85.7% | +$2.92 |
+| LINK/USDT | 12 | 83.3% | +$2.32 |
+| ADA/USDT | 6 | 83.3% | +$1.37 |
+
+**What failed:** TS offset 0.6% is too tight — cuts 37% of potential profit per trade. Avg winner dropped from 0.43% to 0.27%.
+
+**Revert:** 2e549cd — TS restored to 0.8%, backtest 23416787726 confirmed v0.76.0 results restored.
+
+**Next step (⏳):** Try wider TS offset (1.0-1.2%) to let winners run further.
