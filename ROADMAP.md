@@ -1,6 +1,6 @@
 # Liquidity Sweep — Roadmap
 
-> Updated: 2026-03-23
+> Updated: 2026-03-24
 > **Goal: Increase trade frequency from ~17/yr to 100+/yr**
 
 ---
@@ -871,3 +871,73 @@ Both pairs had wins but consistently lost money overall — removed to protect p
 1. Shorten timeframe (5m instead of 15m) — more setups in same period
 2. Add more pairs to whitelist (Zacks top volume crypto)
 3. Experiment with additional entry zone types (not just OTE)
+
+---
+
+## v0.85.0 ❌ FAILED — 5m Timeframe (2026-03-24)
+
+**Backtest Run:** 23501278893 (push-triggered on v0.84.0 commit)
+**Result:** ❌ CATASTROPHIC — no historical 5m data on runner.
+
+| Metric | v0.85.0 (5m) | v0.83.0 (15m) | Change |
+|--------|---------------|----------------|--------|
+| Trades | **0 ❌** | 85 | -85 |
+| Win Rate | **N/A** | 90.6% | — |
+| Profit | **$0 ❌** | $140.33 | — |
+
+**Root cause:** Backtest workflow downloads only 15m data. freqtrade found no 5m candles → "No data found. Terminating."
+
+**Fix:** Reverted (commit 65c6105).
+
+**Prerequisite for 5m retest:**
+- [ ] Add `freqtrade download-data --timeframe 5m` step to backtest.yml
+- [ ] Then re-apply 5m timeframe change
+
+**Next step (⏳):** Modify backtest.yml to download 5m data, then retry v0.84.0.
+
+---
+
+## v0.83.0 Re-confirmed (2026-03-24 — Iteration Cron)
+
+**Backtest Run:** 23501621913 (push-triggered on revert to v0.83.0)
+**Result:** ✅ Consistent with v0.83.0 — strategy stable after revert. No changes warranted.
+
+| Metric | Value | Status |
+|--------|-------|--------|
+| Trades | **85** | ✅ |
+| Win Rate | **90.6%** | ✅ |
+| Profit | **$140.33 (14.03%)** | ✅ |
+| Profit Factor | **3.95** | ✅ |
+| SQN | **5.30** | ✅ |
+| Avg Hold | **4:09** | ✅ |
+| Drawdown | **1.17%** | ✅ |
+
+**Per-pair (all positive, all have wins — no removals):**
+| Pair | Trades | WR | Profit |
+|------|--------|-----|--------|
+| AVAX/USDT | 14 | 100.0% | +$38.39 |
+| BTC/USDT | 15 | 86.7% | +$24.13 |
+| DOT/USDT | 11 | 90.9% | +$19.44 |
+| ETH/USDT | 9 | 88.9% | +$15.39 |
+| UNI/USDT | 8 | 100.0% | +$14.62 |
+| LINK/USDT | 14 | 85.7% | +$13.58 |
+| NEAR/USDT | 8 | 87.5% | +$8.99 |
+| ADA/USDT | 6 | 83.3% | +$5.80 |
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| trailing_stop_loss | 82 | **90.2%** | +$129.94 |
+| roi | 1 | 100% | +$6.61 |
+| target_liquidity_reached | 2 | 100% | +$3.78 |
+
+**Fix criteria check:**
+- TS exits: 82/85 = 96.5% (>30%) but TS WR 90.2% → no fix needed (TS working exceptionally)
+- All 8 pairs positive + have wins → no pair removals
+- Profit positive + PF 3.95 → exceptional performance
+- **Confirmed: v0.83.0 consistent across all iterations — strategy at ceiling for 15m/8-pair config**
+
+**Next step (⏳):** Increase trade frequency. To test 5m timeframe:
+1. First: Add 5m data download step to backtest.yml
+2. Then: Re-apply timeframe 15m→5m change
+3 Alternative: Add more pairs to whitelist (Zacks top volume crypto)
