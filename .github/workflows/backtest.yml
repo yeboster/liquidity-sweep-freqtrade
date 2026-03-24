@@ -30,7 +30,7 @@ jobs:
             download-data \
             --config /freqtrade/config.json \
             --days 730 \
-            --timeframes 15m 1h \
+            --timeframes 5m 15m 1h \
             --data-format-ohlcv feather
 
       - name: Run Freqtrade Backtest
