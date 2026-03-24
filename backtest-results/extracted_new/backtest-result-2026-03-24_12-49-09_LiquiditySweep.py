@@ -12,11 +12,9 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.84.0
+Version: 0.82.0
 
 Changelog:
-- v0.84.0 (2026-03-24): Shorten timeframe 15m→5m to increase trade frequency. More 5m candles = more liquidity sweep setups in the same period. Target: 100+ trades/yr vs current ~42/yr.
-- v0.83.0 (2026-03-24): Docs only — stable iteration, no code changes.
 - v0.82.0 (2026-03-24): Loosen OTE zone (30-70%→28-72%) to capture more valid entries. Small incremental widening — conservative vs FF-2's catastrophic 20-80%.
 - v0.81.0 (2026-03-23): Remove MATIC/USDT from pair whitelist. MATIC had 0 trades in backtest despite being whitelisted since v0.75.0 — strategy never generates entries for it. Cleaning up pairlist.
 - v0.80.0 (2026-03-23): Remove ATOM/USDT from pair whitelist. ATOM was only pair with negative profit (-$7.44, 75% WR, PF 0.58). Removing it should improve overall stats.
@@ -486,7 +484,7 @@ class LiquiditySweep(IStrategy):
     use_custom_stoploss = True
 
     # ── Timeframes ────────────────────────────────────────────────────────────
-    timeframe = '5m'
+    timeframe = '15m'
     informative_timeframe = '1h'
     startup_candle_count = 100
 
