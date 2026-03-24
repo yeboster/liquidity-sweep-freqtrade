@@ -1,6 +1,6 @@
 # Liquidity Sweep — Roadmap
 
-> Updated: 2026-03-24
+> Updated: 2026-03-25
 > **Goal: Increase trade frequency from ~17/yr to 100+/yr**
 
 ---
@@ -106,6 +106,8 @@ Timeframe: 15m
 
 | Version | Trades | WR | Profit | Notes |
 |---------|--------|----|--------|-------|
+| v0.87.0 | 183/2yr | 68.3% | -$43.50 | ⏳ 5m TF — 85% TS exits, -$43 loss |
+| v0.86.0 | — | — | — | 5m data download test (confirm) |
 | v0.76.0 | 84/2yr | **90.5%** | $135.82 | ✅ Remove SOL + XRP — profit +$15, WR +4.6pp |
 | v0.75.0 | 107/2yr | 85.9% | $120.74 | Add 8 new pairs (10 total) |
 | v0.72.0 | 41/2yr | **87.8%** | $60.58 | ✅ TS offset 1.5%→0.8% + remove XRP |
