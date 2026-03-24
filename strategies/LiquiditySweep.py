@@ -15,7 +15,7 @@ Author: Jarvis (OpenClaw)
 Version: 0.88.0
 
 Changelog:
-- v0.88.0 (2026-03-24): REVERT 5m→15m + remove ETH from pairlist. 5m generated 183 trades/2yr (+115%) but TS win rate collapsed from 90.6%→68.3% and profit went from +$140→-$43.50. 5m timeframe causes too many false TS activations. Also removing ETH/USDT — 5m backtest showed 37 trades, 67.6% WR, -$7.83 (only ETH negative in 5m). Reverting to 15m with DOT/LINK/UNI/NEAR only.
+- v0.88.0 (2026-03-24): REVERT 5m→15m. 5m generated 183 trades/2yr (+115%) but TS win rate collapsed from 90.6%→68.3% and profit went from +$140→-$43.50. 5m timeframe causes too many false TS activations due to intra-candle noise. Reverting to 15m with existing 5-pair config (ETH/DOT/LINK/UNI/NEAR).
 - v0.82.0 (2026-03-24): Loosen OTE zone (30-70%→28-72%) to capture more valid entries. Small incremental widening — conservative vs FF-2's catastrophic 20-80%.
 - v0.81.0 (2026-03-23): Remove MATIC/USDT from pair whitelist. MATIC had 0 trades in backtest despite being whitelisted since v0.75.0 — strategy never generates entries for it. Cleaning up pairlist.
 - v0.80.0 (2026-03-23): Remove ATOM/USDT from pair whitelist. ATOM was only pair with negative profit (-$7.44, 75% WR, PF 0.58). Removing it should improve overall stats.
