@@ -388,7 +388,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.76.0"
+    STRATEGY_VERSION = "0.87.0"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -484,7 +484,7 @@ class LiquiditySweep(IStrategy):
     use_custom_stoploss = True
 
     # ── Timeframes ────────────────────────────────────────────────────────────
-    timeframe = '15m'
+    timeframe = '5m'
     informative_timeframe = '1h'
     startup_candle_count = 100
 
