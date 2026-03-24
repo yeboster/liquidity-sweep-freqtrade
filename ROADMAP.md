@@ -779,3 +779,49 @@ Both pairs had wins but consistently lost money overall — removed to protect p
 1. Add more pairs to whitelist (check top Zacks performers for high-volume crypto)
 2. Shorten timeframe (5m instead of 15m) — more setups in same period
 3. Loosen OTE zone slightly (28-72%) — more valid entries within tight band
+
+## v0.82.0 ✅ — Iteration Backtest (2026-03-24)
+
+**Backtest Run:** 23473481263 (workflow_dispatch)
+**Result:** ✅ Consistent with v0.76.0 — OTE zone widening validated. No changes warranted.
+
+| Metric | v0.82.0 | v0.76.0 | Status |
+|--------|---------|---------|--------|
+| Trades | **84** | 84 | ✅ |
+| Win Rate | **90.5%** | 90.5% | ✅ |
+| Profit | **$138.26 (13.83%)** | $135.82 (13.58%) | ✅ |
+| Profit Factor | **3.91** | 3.87 | ✅ |
+| SQN | **5.22** | 5.16 | ✅ |
+| Avg Hold | **4:11** | 4:12 | ✅ |
+
+**Per-pair (all positive, all have wins — no removals):**
+| Pair | Trades | WR | Profit |
+|------|--------|-----|--------|
+| AVAX/USDT | 14 | 100.0% | +$38.39 |
+| BTC/USDT | 15 | 86.7% | +$24.13 |
+| DOT/USDT | 11 | 90.9% | +$19.44 |
+| ETH/USDT | 9 | 88.9% | +$15.39 |
+| UNI/USDT | 8 | 100.0% | +$14.62 |
+| LINK/USDT | 13 | 84.6% | +$11.52 |
+| NEAR/USDT | 8 | 87.5% | +$8.98 |
+| ADA/USDT | 6 | 83.3% | +$5.80 |
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| trailing_stop_loss | 81 | **90.1%** | +$127.88 |
+| roi | 1 | 100% | +$6.61 |
+| target_liquidity_reached | 2 | 100% | +$3.78 |
+
+**Fix criteria check:**
+- TS exits: 81/84 = 96.4% (>30%) but TS WR 90.1% → no fix needed (TS is working exceptionally)
+- All 8 pairs positive + have wins → no pair removals
+- Profit positive + PF 3.91 → exceptional performance
+- **Confirmed: OTE zone 28-72% produces identical trade count to 30-70% — incremental widening did not capture additional trades. Trade frequency remains ~40/yr.**
+
+**Note:** The OTE zone widening from 30-70% → 28-72% was already committed in v0.82.0 prior to this backtest. The backtest confirms the change doesn't degrade performance. However, the primary goal (increase trade frequency to 100+/yr) was not achieved — trades remained at 84/2yr (~40/yr). The strategy may be at the ceiling for trade generation with the current pairlist and timeframe.
+
+**Next step (⏳):** Increase trade frequency. Current: ~40/yr. Target: 100+/yr. Options:
+1. Add more pairs to whitelist (top Zacks performers for high-volume crypto)
+2. Shorten timeframe (5m instead of 15m) — more setups in same period
+3. Experiment with additional entry zone types (not just OTE)
