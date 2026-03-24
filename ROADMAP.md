@@ -825,3 +825,49 @@ Both pairs had wins but consistently lost money overall — removed to protect p
 1. Add more pairs to whitelist (top Zacks performers for high-volume crypto)
 2. Shorten timeframe (5m instead of 15m) — more setups in same period
 3. Experiment with additional entry zone types (not just OTE)
+
+## v0.83.0 ✅ — Iteration Backtest (2026-03-24)
+
+**Backtest Run:** 23489991025 (workflow_dispatch)
+**Result:** ✅ Consistent with v0.82.0 — strategy remains stable. No changes needed.
+
+| Metric | v0.83.0 | v0.82.0 | Status |
+|--------|---------|---------|--------|
+| Trades | **85** | 84 | ✅ |
+| Win Rate | **90.6%** | 90.5% | ✅ |
+| Profit | **$140.33 (14.03%)** | $138.26 (13.83%) | ✅ |
+| Profit Factor | **3.95** | 3.91 | ✅ |
+| SQN | **5.30** | 5.22 | ✅ |
+| Avg Hold | **4:09** | 4:11 | ✅ |
+
+**Per-pair (all positive, all have wins — no removals):**
+| Pair | Trades | WR | Profit |
+|------|--------|-----|--------|
+| AVAX/USDT | 14 | 100.0% | +$38.39 |
+| BTC/USDT | 15 | 86.7% | +$24.13 |
+| DOT/USDT | 11 | 90.9% | +$19.44 |
+| ETH/USDT | 9 | 88.9% | +$15.39 |
+| UNI/USDT | 8 | 100.0% | +$14.62 |
+| LINK/USDT | 14 | 85.7% | +$13.58 |
+| NEAR/USDT | 8 | 87.5% | +$8.98 |
+| ADA/USDT | 6 | 83.3% | +$5.80 |
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| trailing_stop_loss | 82 | **90.2%** | +$129.94 |
+| roi | 1 | 100% | +$6.61 |
+| target_liquidity_reached | 2 | 100% | +$3.78 |
+
+**Fix criteria check:**
+- TS exits: 82/85 = 96.5% (>30%) but TS WR 90.2% → no fix needed (TS working exceptionally)
+- All 8 pairs positive + have wins → no pair removals
+- Profit positive + PF 3.95 → exceptional performance
+- **Confirmed: v0.83.0 consistent with v0.82.0 — strategy is at ceiling for 15m/8-pair config**
+
+**Note:** Trade frequency remains ~42/yr (85 trades / 2 years). To reach 100+/yr would require either (1) shorter timeframe (5m), (2) more pairs, or (3) fundamentally different entry approach. Current strict quality filters are working — WR 90%+ is excellent.
+
+**Next step (⏳):** Increase trade frequency. Options:
+1. Shorten timeframe (5m instead of 15m) — more setups in same period
+2. Add more pairs to whitelist (Zacks top volume crypto)
+3. Experiment with additional entry zone types (not just OTE)
