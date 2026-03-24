@@ -106,7 +106,8 @@ Timeframe: 15m
 
 | Version | Trades | WR | Profit | Notes |
 |---------|--------|----|--------|-------|
-| v0.87.0 | 183/2yr | 68.3% | -$43.50 | ⏳ 5m TF — 85% TS exits, -$43 loss |
+| v0.88.0 | 50/2yr | 90.0% | $69.09 | ✅ REVERT 5m→15m — 5m destroys TS WR (68%→90%) |
+| v0.87.0 | 183/2yr | 68.3% | -$43.50 | ❌ 5m TF — 85% TS exits, -$43 loss — REVERTED |
 | v0.86.0 | — | — | — | 5m data download test (confirm) |
 | v0.76.0 | 84/2yr | **90.5%** | $135.82 | ✅ Remove SOL + XRP — profit +$15, WR +4.6pp |
 | v0.75.0 | 107/2yr | 85.9% | $120.74 | Add 8 new pairs (10 total) |
@@ -979,3 +980,57 @@ Both pairs had wins but consistently lost money overall — removed to protect p
 **🔧 Fix applied:** Added `5m` to `--timeframes` in backtest.yml download step.
 
 **Next step (⏳):** Change `timeframe: "15m"` → `"5m"` in config.json to actually test 5m performance increase.
+
+---
+
+## v0.88.0 ✅ — 5m Reverted to 15m (2026-03-24)
+
+**Backtest Run:** 23515841453 (push-triggered on v0.88.0 commit)
+**Result:** ✅ 5m REVERTED — 15m strategy restored. 5m causes catastrophic TS performance collapse.
+
+| Metric | v0.88.0 (15m) | v0.87.0 (5m) | v0.83.0 (15m baseline) |
+|--------|---------------|--------------|------------------------|
+| Trades | **50** | 183 | 85 |
+| Win Rate | **90.0%** | 68.3% | 90.6% |
+| Profit | **$69.09 (20.29%)** | -$43.50 | $140.33 |
+| Profit Factor | **3.26** | 0.85 | 3.95 |
+| SQN | **3.80** | N/A | 5.30 |
+| Avg Hold | **3.4h** | 4.0h | 4.1h |
+| TS Exit % | **98.0%** | 85.2% | 96.5% |
+
+**Per-pair (all positive, all have wins — no removals):**
+| Pair | Trades | WR | Profit |
+|------|--------|-----|--------|
+| DOT/USDT | 11 | 90.9% | +$18.39 |
+| ETH/USDT | 9 | 88.9% | +$14.60 |
+| UNI/USDT | 8 | 100.0% | +$14.20 |
+| LINK/USDT | 14 | 85.7% | +$13.04 |
+| NEAR/USDT | 8 | 87.5% | +$8.85 |
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| trailing_stop_loss | 49 | **90.0%** | +$66.03 |
+| target_liquidity_reached | 1 | 100% | +$3.06 |
+
+**Fix criteria check:**
+- TS exits: 98.0% (>30%) but TS WR 90.0% → no fix needed (TS working exceptionally)
+- All 5 pairs positive + have wins → no pair removals
+- Profit positive + PF 3.26 → strong performance
+- **5m confirmed CATASTROPHIC for this strategy — profit collapsed from +$69 to -$43. 5m timeframe causes too many false TS activations due to intra-candle noise.**
+
+**What failed in 5m:**
+- TS win rate collapsed: 90.6% (15m) → 68.3% (5m)
+- Profit turned negative: +$140 → -$43
+- 5m candles are too noisy — liquidity sweeps trigger on fakeouts, not real moves
+
+**Pair removal impact (BTC/ADA/AVAX removed in v0.87.0, kept out in v0.88.0):**
+- v0.83.0 (8 pairs, 15m): $140.33 total
+- v0.88.0 (5 pairs, 15m): $69.09 total
+- Ratio: $69.09 / $140.33 = 49.2% of profit from 62.5% of pairs
+- ETH/DOT/LINK/UNI/NEAR are the strongest performers in the set
+
+**Next step (⏳):** Increase trade frequency. Options:
+1. Try adding back AVAX or BTC (individually) — they were positive in v0.83.0 but may have been dragged down by XRP/SOL/ADA
+2. Try confirmation_candle=True to filter entries more strictly
+3. Accept ~25 trades/yr as the ceiling for 15m/5-pair configuration
