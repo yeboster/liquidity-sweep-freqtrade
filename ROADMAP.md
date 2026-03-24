@@ -941,3 +941,39 @@ Both pairs had wins but consistently lost money overall — removed to protect p
 1. First: Add 5m data download step to backtest.yml
 2. Then: Re-apply timeframe 15m→5m change
 3 Alternative: Add more pairs to whitelist (Zacks top volume crypto)
+
+---
+
+## v0.86.0 ✅ (2026-03-24 — Iteration Cron)
+
+**Backtest Run:** 23506473725 (push-triggered on v0.86.0 commit)
+**Result:** ✅ 5m data download confirmed working — backtest ran successfully. Results identical to v0.83.0 (expected, timeframe still 15m).
+
+| Metric | Value | Status |
+|--------|-------|--------|
+| Trades | **85** | ✅ |
+| Win Rate | **90.6%** | ✅ |
+| Profit | **$140.33 (14.03%)** | ✅ |
+| Profit Factor | **3.95** | ✅ |
+| Avg Hold | **4.1 min** | ✅ |
+
+**Per-pair (all positive, all have wins — no removals):**
+| Pair | Trades | WR | Profit |
+|------|--------|-----|--------|
+| AVAX/USDT | 14 | 100.0% | +$38.39 |
+| BTC/USDT | 15 | 86.7% | +$24.13 |
+| DOT/USDT | 11 | 90.9% | +$19.44 |
+| ETH/USDT | 9 | 88.9% | +$15.39 |
+| UNI/USDT | 8 | 100.0% | +$14.62 |
+| LINK/USDT | 14 | 85.7% | +$13.58 |
+| NEAR/USDT | 8 | 87.5% | +$8.98 |
+| ADA/USDT | 6 | 83.3% | +$5.80 |
+
+**Fix criteria check:**
+- TS exits: 82/85 = 96.5% (>30%) but TS WR 90% → no fix needed (TS working)
+- All 8 pairs positive + have wins → no pair removals
+- **Confirmed: v0.86.0 = v0.83.0. 5m data download now available.**
+
+**🔧 Fix applied:** Added `5m` to `--timeframes` in backtest.yml download step.
+
+**Next step (⏳):** Change `timeframe: "15m"` → `"5m"` in config.json to actually test 5m performance increase.
