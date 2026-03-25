@@ -1034,3 +1034,49 @@ Both pairs had wins but consistently lost money overall — removed to protect p
 1. Try adding back AVAX or BTC (individually) — they were positive in v0.83.0 but may have been dragged down by XRP/SOL/ADA
 2. Try confirmation_candle=True to filter entries more strictly
 3. Accept ~25 trades/yr as the ceiling for 15m/5-pair configuration
+
+---
+
+## v0.89.0 ✅ — AVAX Restored + Exceptional Results (2026-03-25)
+
+**Backtest Run:** 23519294443 (workflow_dispatch)
+**Result:** ✅ BREAKTHROUGH — AVAX restoration delivers best overall performance!
+
+| Metric | v0.89.0 (6 pairs) | v0.88.0 (5 pairs) | Change |
+|--------|-------------------|-------------------|--------|
+| Trades | **64** | 50 | **+14 ✅** |
+| Win Rate | **92.2%** | 90.0% | **+2.2pp ✅** |
+| Profit | **$107.80 (10.78%)** | $69.09 | **+$38.71 ✅** |
+| Profit Factor | **4.48** | 3.26 | **+1.22 ✅** |
+| SQN | **5.15** | 3.80 | **+1.35 ✅** |
+| Drawdown | **1.17%** | 1.17% | — |
+| Avg Hold | **3:30** | 3:24 | stable |
+
+**Per-pair (all positive, all have wins — no removals):**
+| Pair | Trades | WR | Profit |
+|------|--------|-----|--------|
+| AVAX/USDT | 14 | **100.0%** | +$37.49 (3.75%) |
+| DOT/USDT | 11 | 90.9% | +$18.89 (1.89%) |
+| ETH/USDT | 9 | 88.9% | +$14.97 (1.50%) |
+| UNI/USDT | 8 | **100.0%** | +$14.34 (1.43%) |
+| LINK/USDT | 14 | 85.7% | +$13.26 (1.33%) |
+| NEAR/USDT | 8 | 87.5% | +$8.86 (0.89%) |
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| trailing_stop_loss | 63 | **92.1%** | +$105.37 |
+| target_liquidity_reached | 1 | 100% | +$2.43 |
+
+**Fix criteria check:**
+- TS exits: 63/64 = 98.4% (>30%) but TS WR 92.1% → no fix needed (TS working exceptionally)
+- All 6 pairs positive + have wins → no pair removals
+- Profit positive + PF 4.48 → **exceptional performance**
+- **Confirmed: AVAX restoration (v0.89.0) delivers best results yet — more trades, higher WR, higher profit, higher PF than v0.88.0 (5 pairs without AVAX)**
+
+**Key insight:** Adding AVAX back wasn't just neutral — it was **additive**. AVAX went from 0 trades (v0.88.0 removed it) to 14 trades with 100% WR and +$37.49 profit. Total profit jumped from $69.09 → $107.80 (+56%). AVAX is the strongest pair in the strategy.
+
+**Next step (⏳):** Continue increasing trade frequency. Options:
+1. Try BTC or ADA restoration (both were positive in v0.83.0 but removed in v0.88.0)
+2. Experiment with confirmation_candle=True to filter entries more strictly (more quality, less quantity)
+3. Accept ~32 trades/yr as current ceiling — still below 100/yr target but excellent quality
