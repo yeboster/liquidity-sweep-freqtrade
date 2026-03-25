@@ -877,6 +877,35 @@ Both pairs had wins but consistently lost money overall — removed to protect p
 
 ---
 
+## v0.92.0 ✅ — Iteration Backtest (2026-03-25)
+
+**Backtest Run:** 23532492455 (push-triggered on v0.92.0 commit bc6de6d)
+**Result:** ✅ No fix needed. confirmation_candle reversion restored trade count (79 trades, 91.1% WR, $134.32 profit). All fix criteria pass.
+
+| Metric | v0.92.0 | v0.83.0 | Status |
+|--------|----------|---------|--------|
+| Trades | **79** | 85 | ~ |
+| Win Rate | **91.1%** | 90.6% | ✅ |
+| Profit | **$134.32 (13.4%)** | $140.33 (14.0%) | ~ |
+| Profit Factor | **4.16** | 3.95 | ✅ |
+| SQN | **5.17** | 5.30 | ~ |
+| MDD | **$12.02** | $11.62 | ~ |
+
+**Fix criteria check (iteration 2026-03-25):**
+- TS exits: 72/79 = 91.1% (>30%) with 91.1% WR → no fix needed (TS working exceptionally well)
+- ROI exits: 0% → no ROI issues
+- All 7 pairs in whitelist positive with wins → no pair removals needed
+- Profit positive + PF 4.16 → exceptional
+
+**Note:** Trade frequency remains ~40/yr (79 trades / 2 years). confirmation_candle reversion brought back ~35% of trades vs v0.91.0 but did not reach v0.83.0 levels (85). Strategy may be at ceiling for 15m/7-pair config.
+
+**Next step (⏳):** Increase trade frequency. Options:
+1. Restore ADA/USDT to pair whitelist (had 6 trades, 83.3% WR in v0.83.0 backtest)
+2. Experiment with additional entry zone types (not just OTE)
+3. Accept ~40/yr ceiling with current config — quality is excellent (91%+ WR, PF 4.16+)
+
+---
+
 ## v0.85.0 ❌ FAILED — 5m Timeframe (2026-03-24)
 
 **Backtest Run:** 23501278893 (push-triggered on v0.84.0 commit)
