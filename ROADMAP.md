@@ -1,24 +1,56 @@
 # Liquidity Sweep — Roadmap
 
 > Updated: 2026-03-25
-> **Goal: Increase trade frequency from ~17/yr to 100+/yr**
+> **Goal: Increase trade frequency from ~17/yr to 100+/yr AND avg profit from 0.48% to 1-3% per trade**
 
 ---
 
 ## Current State
 
-| Metric | v0.65.0 (clean) | Target |
+| Metric | v0.92.0 (latest) | Target |
 |--------|----------|--------|
-| Trades/yr | ~15 ❌ | 100-200 |
-| Win Rate | **55.2%** ✅ | 45%+ |
-| Profit | +$35.88 ✅ | 5%+ |
-| Profit Factor | **2.35** ✅ | 1.5+ |
+| Trades/yr | ~40 ❌ | 100-200 |
+| Win Rate | **91.1%** ✅ | 45%+ |
+| Profit | +$134.32 (13.4%) ✅ | 5%+ |
+| Profit Factor | **4.16** ✅ | 1.5+ |
+| Avg Profit/Trade | **0.48%** ❌ | 1-3% |
 
-**v0.65.0 baseline confirmed** — ROI 400 candles @ 2%, TS positive 0.5%.
+**v0.92.0 confirmed** — 7 pairs (BTC restored), TS positive 0.5%, confirmation_candle=True.
 
 ---
 
-## Next Cycle: High-Frequency Experiment
+## Next Cycle: Increase Avg Profit Per Trade
+
+### Problem
+Avg profit/trade at 0.48% is too low. Target is 1% (minimum), 3% (optimal).
+
+### Hypotheses to Test
+
+**H1: Tighten OTE zone further (50-65% instead of 30-70%)**
+- Deeper pullbacks = better risk/reward = higher avg win
+- May reduce trade count slightly
+- Run: backtest with `ote_entry_zones = [(0.50, 0.65)]`
+
+**H2: Increase trailing_stop_positive offset**
+- Current: 0.5% (offset 0.8%)
+- Test: 1.0% with offset 1.3% — let winners run longer
+- May reduce WR but increase avg win
+
+**H3: Hyperopt exit params (trailing + ROI) for profit maximization**
+- Use `profitOnlyHyperOptLoss` with `SharpeHyperOptLoss`
+- Optimize `trailing_stop_positive` and `minimal_roi` jointly
+- Goal: find params that maximize avg trade profit
+
+**H4: Reduce max open trades (3→1 or 2)**
+- More capital per trade = larger position = higher absolute profit
+- Trade-off: fewer concurrent positions
+
+### Run Order
+1. H1 + H2 as quick backtests (same day)
+2. H3 hyperopt if H1/H2 show promise
+3. H4 as last resort if frequency still >30 trades/yr
+
+---
 
 ### Step 1: Quick Backtest (FF-2) — loosen filters ✅ TESTED — FAILED
 
