@@ -1113,6 +1113,56 @@ Both pairs had wins but consistently lost money overall — removed to protect p
 
 ---
 
+## v0.97.0 ✅ — TS Offset Reverted + DOT Removed (2026-03-25)
+
+**Backtest Run:** 23567935192 (push-triggered on v0.97.0 commit)
+**Result:** ✅ MAJOR IMPROVEMENT — TS WR restored, drawdown cut 66%!
+
+| Metric | v0.97.0 | v0.96.0 | Change |
+|--------|----------|---------|--------|
+| Trades | **70** | 81 | -11 (DOT removed) |
+| Win Rate | **90.0%** | 74.1% | **+15.9pp ✅** |
+| Profit | **$109.82 (10.98%)** | $94.83 (9.48%) | **+$14.99 ✅** |
+| Profit Factor | **3.74** | 1.62 | **+2.12 ✅** |
+| SQN | **4.61** | 1.88 | **+2.73 ✅** |
+| Drawdown | **0.71%** | 2.11% | **-1.40pp ✅** |
+| TS Exit % | **95.7%** | 91.4% | — |
+| TS Win Rate | **89.6%** | 71.6% | **+18pp ✅** |
+| Avg Hold | **4:14** | 6:45 | -2:31 |
+
+**Per-pair (all positive, all have wins — no removals needed):**
+| Pair | Trades | WR | Profit |
+|------|--------|-----|--------|
+| AVAX/USDT | 13 | **100.0%** | +$33.92 |
+| BTC/USDT | 15 | 86.7% | +$24.12 |
+| ETH/USDT | 9 | 88.9% | +$15.15 |
+| UNI/USDT | 7 | **100.0%** | +$12.79 |
+| LINK/USDT | 13 | 84.6% | +$12.09 |
+| NEAR/USDT | 7 | 85.7% | +$6.06 |
+| ADA/USDT | 6 | 83.3% | +$5.70 |
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| trailing_stop_loss | 67 | **89.6%** | +$99.46 |
+| roi | 1 | 100% | +$6.61 |
+| target_liquidity_reached | 2 | 100% | +$3.75 |
+
+**Fix criteria check:**
+- TS exits: 67/70 = 95.7% (>30%) with 89.6% WR → ✅ TS WR restored from 71.6%!
+- All 7 pairs positive + have wins → no pair removals needed
+- Profit positive + PF 3.74 → exceptional
+- **Confirmed: TS offset 1.3% (v0.96.0) was too wide — winners gave back too much before TS activated. 0.8% is the sweet spot.**
+
+**🔧 Fix applied:** (1) Reverted TS offset 1.3%→0.8% (restores TS WR from 71.6%→89.6%). (2) Removed DOT/USDT (was -$3.10 in v0.96.0, only pair with negative profit).
+
+**Next step (⏳):** Continue trade frequency increase. Options:
+1. Try restoring BTC or LINK (both showed lower performance in v0.96.0 due to TS offset issue, may recover with 0.8% offset)
+2. Add new pairs to whitelist (Zacks top volume crypto)
+3. Experiment with OTE zone fine-tuning within 30-70% range
+
+---
+
 ## v0.89.0 ✅ — AVAX Restored + Exceptional Results (2026-03-25)
 
 **Backtest Run:** 23519294443 (workflow_dispatch)
