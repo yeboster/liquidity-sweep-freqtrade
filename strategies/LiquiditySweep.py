@@ -12,9 +12,10 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.95.0
+Version: 0.96.0
 
 Changelog:
+- v0.96.0 (2026-03-25): H3: Revert OTE zone 50-65% → 30-70%. v0.95.0's tighter OTE (50-65%) only produced 32 trades — too few. Reverting to wider 30-70% to restore trade frequency toward 100+/yr target. Keep TS offset 1.3% (winners still ride longer).
 - v0.95.0 (2026-03-25): H2: Increase trailing stop offset 0.8% → 1.3%. Hypothesis: current 0.8% offset activates TS too early, cutting winners before they fully run. Widen to 1.3% so winners ride longer before TS kicks in. Combined with H1's tighter OTE zone (50-65%) for better entry quality.
 - v0.94.0 (2026-03-25): H1: Tighten OTE zone 28-72% → 50-65%. Hypothesis: deeper pullbacks (50-65%) have better risk/reward than shallow 28-72% range. Target: avg profit/trade from 0.48% → 1%+. May reduce trade count slightly but quality should improve.
 - v0.93.0 (2026-03-25): Add ADA/USDT back to pair whitelist. v0.83.0 had ADA with 6 trades, 83.3% WR, +$5.80 profit — all positive. Testing if 8-pair config increases trade frequency toward 100+/yr target while maintaining quality (91%+ WR).
@@ -512,9 +513,10 @@ class LiquiditySweep(IStrategy):
     # FF-2's 20-80% was catastrophic — outer Fibonacci = reversal traps.
     # v0.38.0 hyperopt disabled require_ote entirely → 9 trades, 11.1% WR (disastrous).
     # Fix: require_ote=True is MANDATORY (optimize=False) to prevent hyperopt removing it again.
-    # Keep ote_lower/ote_upper hyperoptable within the 50-65% tight band (H1 hypothesis).
-    ote_lower = DecimalParameter(0.45, 0.55, default=0.50, space="buy", optimize=True)
-    ote_upper = DecimalParameter(0.60, 0.70, default=0.65, space="buy", optimize=True)
+    # H3: Revert to 30-70% OTE zone (v0.95.0's 50-65% was too tight — only 32 trades).
+    # v0.95.0: OTE 50-65% with TS offset 1.3% → 32 trades. Revert to 30-70% for more trades.
+    ote_lower = DecimalParameter(0.25, 0.35, default=0.30, space="buy", optimize=True)
+    ote_upper = DecimalParameter(0.65, 0.75, default=0.70, space="buy", optimize=True)
     require_ote = CategoricalParameter([True, False], default=True, space="buy", optimize=False)  # MANDATORY — optimize=False prevents hyperopt disabling
     
     # ATR-based SL — new in v0.22.0
