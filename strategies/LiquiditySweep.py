@@ -12,10 +12,10 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.91.0
+Version: 0.92.0
 
 Changelog:
-- v0.91.0 (2026-03-25): Enable confirmation_candle by default (was False). v0.90.0 confirmed 79 trades/91.1% WR/13.4% profit — excellent quality but trade frequency still below 100/yr target. Tightening entry quality to require confirmation candle may reduce bad entries and let winners run longer.
+- v0.92.0 (2026-03-25): REVERT confirmation_candle to False. v0.91.0 confirmation_candle=True cut trades from 79→40 (-49%) and profit from $135→$71 (-47%) with only marginal WR improvement (91.1%→92.5%). Net effect: confirmation_candle=True is too aggressive. Reverting to False to maximize trade frequency and absolute profit.
 - v0.90.0 (2026-03-25): Add BTC/USDT back to pair whitelist. BTC was best performer in v0.65.0 baseline (9 trades, +$14.04, 55.6% WR). Testing if 7-pair config pushes trade frequency toward 100+/yr target while maintaining quality (92%+ WR).
 - v0.89.0 (2026-03-25): Add AVAX/USDT back to pair whitelist. AVAX had 100% WR (+$38.39) in v0.83.0 — best per-pair performance. Testing if 6-pair config increases trade frequency without degrading quality.
 - v0.88.0 (2026-03-24): REVERT 5m→15m. 5m generated 183 trades/2yr (+115%) but TS win rate collapsed from 90.6%→68.3% and profit went from +$140→-$43.50. 5m timeframe causes too many false TS activations due to intra-candle noise. Reverting to 15m with existing 5-pair config (ETH/DOT/LINK/UNI/NEAR).
@@ -537,7 +537,7 @@ class LiquiditySweep(IStrategy):
     #   - Shorts: close < open (bearish candle) — price already moving DOWN
     # Rationale: Eliminates entries where price has already reversed or is consolidating
     # at the zone. Only enter when momentum is confirmed. May reduce volume but improve WR.
-    require_confirmation_candle = CategoricalParameter([True, False], default=True, space="buy", optimize=True)
+    require_confirmation_candle = CategoricalParameter([True, False], default=False, space="buy", optimize=True)
 
     # v0.45.0 (2026-03-18): Disable session filter — too aggressive, only 19 trades, 10.5% WR.
 # The NY/London filter was reducing trades too much (19 vs hundreds previously).
