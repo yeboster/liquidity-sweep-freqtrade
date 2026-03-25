@@ -11,12 +11,59 @@ Core Logic:
 5. Require recent FVG confluence — a bullish/bearish FVG formed within N candles
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
-Uses smartmoneyconcepts library for ICT indicator calculations.
-
 Author: Jarvis (OpenClaw)
-Version: 0.65.0
+Version: 0.90.0
 
 Changelog:
+- v0.90.0 (2026-03-25): Add BTC/USDT back to pair whitelist. BTC was best performer in v0.65.0 baseline (9 trades, +$14.04, 55.6% WR). Testing if 7-pair config pushes trade frequency toward 100+/yr target while maintaining quality (92%+ WR).
+- v0.89.0 (2026-03-25): Add AVAX/USDT back to pair whitelist. AVAX had 100% WR (+$38.39) in v0.83.0 — best per-pair performance. Testing if 6-pair config increases trade frequency without degrading quality.
+- v0.88.0 (2026-03-24): REVERT 5m→15m. 5m generated 183 trades/2yr (+115%) but TS win rate collapsed from 90.6%→68.3% and profit went from +$140→-$43.50. 5m timeframe causes too many false TS activations due to intra-candle noise. Reverting to 15m with existing 5-pair config (ETH/DOT/LINK/UNI/NEAR).
+- v0.82.0 (2026-03-24): Loosen OTE zone (30-70%→28-72%) to capture more valid entries. Small incremental widening — conservative vs FF-2's catastrophic 20-80%.
+- v0.81.0 (2026-03-23): Remove MATIC/USDT from pair whitelist. MATIC had 0 trades in backtest despite being whitelisted since v0.75.0 — strategy never generates entries for it. Cleaning up pairlist.
+- v0.80.0 (2026-03-23): Remove ATOM/USDT from pair whitelist. ATOM was only pair with negative profit (-$7.44, 75% WR, PF 0.58). Removing it should improve overall stats.
+- v0.79.0 (2026-03-23): Widen TS offset (0.8%→1.2%). Result: profit $117.61 vs $135.82, WR 78.6% vs 90.5%, PF 1.88 vs 3.87 — WORSE. TS offset 1.2% is too wide, missed winners. REVERTED to 0.8%.
+- v0.78.0 (2026-03-23): FAILED — Tighten TS offset (0.8%→0.6%). Result: profit $79.96 vs $135.82, PF 3.24 vs 3.87. TS too tight, cutting winners early. REVERTED to 0.8%.
+- v0.75.0 (2026-03-22): Add 8 new pairs (SOL, AVAX, MATIC, LINK, ATOM, UNI, XRP, NEAR) to boost trade volume. XRP restored (was removed in v0.72.0 — had 55.6% WR, +$8.43 in v0.65.0 baseline).
+- v0.74.0 (2026-03-22): Raise early_profit_take (1.5%→2.5%) — let winners run further. TS at 0.8% intercepts all before +1.5%. Fix: early_profit_take → 2.5% (ROI at 2% handles stalls).
+- v0.73.0 (2026-03-22): Raise early_profit_take (1.0%→1.5%). Only 2/41 via early_profit (4.9%), TS intercepts too early.
+- v0.72.0 (2026-03-22): Fix trailing stop (1.5%→0.8%) + remove XRP from pair whitelist.
+  Problem (v0.71.1): TS exits = 23/53 (43.4%), 39.1% WR, -$54.46. Offset 1.5% is still
+  too wide — winners run to +1.5-2%+ before TS activates, then give back -0.69% avg.
+  Also XRP/USDT: 12 trades, 50% WR, -$33.69 — only negative pair, remove it.
+  Fix: (1) trailing_stop_positive_offset: 1.5% → 0.8% (TS activates at +0.8%, catching
+  reversals earlier). (2) Remove XRP/USDT from config pair_whitelist.
+- v0.71.1 (2026-03-22): Fix trailing_stop_positive config error.
+  Problem (v0.71.0): trailing_stop_positive was 0.015 (1.5%) — same as the offset!
+  Freqtrade requires offset > positive. Both 1.5% = config error → backtest crash.
+  Fix: trailing_stop_positive: 0.015 → 0.005 (0.5%). Now TS trails 0.5% behind peak,
+  offset activates at +1.5%. Also added clarifying comment.
+- v0.71.0 (2026-03-22): Fix trailing stop (tighten offset 2.5%→1.5%) + raise early_profit_take (0.8%→1.0%).
+  Problem (v0.70.0): trailing_stop_loss = 13 exits, 12 losses, 7.7% WR, -$65.95.
+  TS offset 2.5% is too wide — allows winners to run to +2.5% before activating,
+  then reverses and gives back -1.48% avg. Meanwhile early_profit_take at 0.8% exits
+  winners averaging 1.06% (100% WR on 38 trades) — they had more to give.
+  Fix: (1) trailing_stop_positive_offset: 2.5% → 1.5% (TS activates at +1.5% instead
+  of +2.5%, catching reversals earlier). (2) early_profit_take: 0.8% → 1.0% (winners
+  average 1.06%, so 0.8% was too tight — let them run longer before locking in).
+  Expected: Fewer TS loss trades, higher % of exits via 100% WR early_profit_take.
+- v0.70.0 (2026-03-22): Disable ALL time-based exits (time_exit_1 and time_exit_2).
+  Problem (v0.69.0): time_exit_6h = 10 trades (0% WR, -$25.68), time_exit_8h = 8 trades
+  (0% WR, -$10.60). Total -$36.28 destroyed by cutting winners that hadn't yet hit
+  early_profit_take (+0.8%) or trailing_stop (+1.5%). All time exits are 0% WR — they
+  are pure bleed.
+  Fix: Set time_exit_1_enabled = False, time_exit_2_enabled = False.
+  Winners now run to: early_profit_take (+0.8% after 45min), trailing_stop (+1.5%),
+  or ATR stoploss. This eliminates -$36.28 of guaranteed losses.
+  Expected: Slightly fewer trades, but higher WR and PF as winners are no longer cut.
+- v0.69.0
+- v0.69.0 (2026-03-21): Apply hyperopt-conservative fixes from v0.68.0 overfitting analysis.
+  Problem (v0.68.0): Hyperopt found 61 trades but backtest showed 4 — classic overfitting.
+  Key hyperopt findings (confirmed across 2 runs): confirmation_candle=False and wider
+  trailing stop. Applying full hyperopt params caused overfit.
+  Fix (conservative): (1) Disable confirmation_candle by default (hyperopt found True
+  was filtering valid entries). (2) Widen trailing_stop_positive 0.5% → 1.5% and
+  offset 1.5% → 2.5% (conservative interpretation of hyperopt's 21.2%/23%).
+  Expected: More trades from fewer entry filters + better winner capture from wider TSL.
 - v0.65.0 (2026-03-20): Widen ROI 305 → 400 candles at 2% profit.
   Problem (v0.64.0): ROI 305 at 1% (~76h) cuts winners too early. time_exit_6h/8h losses
   persist (13 trades, -22.71 USDT, 0% WR). Fix: Raise exit from 1% → 2% and push from
@@ -344,7 +391,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.61.0"
+    STRATEGY_VERSION = "0.87.0"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -432,8 +479,8 @@ class LiquiditySweep(IStrategy):
     # Trailing stop — fixed from broken values (v0.42.0)
     # Previous values: 0.277 (27.7%!) and 0.295 (29.5%) — completely wrong
     trailing_stop = True
-    trailing_stop_positive = 0.005     # Trail 0.5% behind peak
-    trailing_stop_positive_offset = 0.015  # Activate after +1.5%
+    trailing_stop_positive = 0.005     # Trail 0.5% behind peak (TS must be < offset)
+    trailing_stop_positive_offset = 0.008  # Activate after +0.8% (v0.72.0: optimal balance)
     trailing_only_offset_is_reached = True
     
     # ATR-based dynamic stoploss enabled in v0.22.0
@@ -457,9 +504,13 @@ class LiquiditySweep(IStrategy):
     # Tightening to 30-70% enforces the high-probability OTE band only.
     # v0.38.0 hyperopt disabled require_ote entirely → 9 trades, 11.1% WR (disastrous).
     # Fix: require_ote=True is MANDATORY (optimize=False) to prevent hyperopt removing it again.
-    # Keep ote_lower/ote_upper hyperoptable within the 30-70% tight band.
-    ote_lower = DecimalParameter(0.25, 0.38, default=0.30, space="buy", optimize=True)
-    ote_upper = DecimalParameter(0.60, 0.75, default=0.70, space="buy", optimize=True)
+    # Tightening to 28-72% is a small incremental widening vs 30-70% baseline.
+    # FF-2's 20-80% was catastrophic — outer Fibonacci = reversal traps.
+    # v0.38.0 hyperopt disabled require_ote entirely → 9 trades, 11.1% WR (disastrous).
+    # Fix: require_ote=True is MANDATORY (optimize=False) to prevent hyperopt removing it again.
+    # Keep ote_lower/ote_upper hyperoptable within the 28-72% tight band.
+    ote_lower = DecimalParameter(0.25, 0.38, default=0.28, space="buy", optimize=True)
+    ote_upper = DecimalParameter(0.60, 0.75, default=0.72, space="buy", optimize=True)
     require_ote = CategoricalParameter([True, False], default=True, space="buy", optimize=False)  # MANDATORY — optimize=False prevents hyperopt disabling
     
     # ATR-based SL — new in v0.22.0
@@ -485,7 +536,7 @@ class LiquiditySweep(IStrategy):
     #   - Shorts: close < open (bearish candle) — price already moving DOWN
     # Rationale: Eliminates entries where price has already reversed or is consolidating
     # at the zone. Only enter when momentum is confirmed. May reduce volume but improve WR.
-    require_confirmation_candle = CategoricalParameter([True, False], default=True, space="buy", optimize=True)
+    require_confirmation_candle = CategoricalParameter([True, False], default=False, space="buy", optimize=True)
 
     # v0.45.0 (2026-03-18): Disable session filter — too aggressive, only 19 trades, 10.5% WR.
 # The NY/London filter was reducing trades too much (19 vs hundreds previously).
@@ -505,7 +556,7 @@ class LiquiditySweep(IStrategy):
     buffer_pips = DecimalParameter(0.0001, 0.0100, default=0.001, space="buy", optimize=True)
 
     # Time-based custom exits (hyperoptable in v0.24.0)
-    time_exit_1_enabled = CategoricalParameter([True, False], default=True, space="sell", optimize=True)
+    time_exit_1_enabled = CategoricalParameter([True, False], default=False, space="sell", optimize=True)
     time_exit_1_hours = IntParameter(2, 6, default=4, space="sell", optimize=True)
     time_exit_1_profit = DecimalParameter(-0.02, 0.01, default=0.0, space="sell", optimize=True)
     
@@ -1020,7 +1071,7 @@ class LiquiditySweep(IStrategy):
         """
         Custom exit logic:
         1. ChoCH profit guard: block ChoCH exits when trade is underwater (v0.54.0)
-        2. Early profit exit at +0.8%: secure wins before TSL activates (v0.46.0)
+        2. Early profit exit at +2.5%: lock in exceptional winners (v0.74.0)
         3. Time-based exit: cut stale trades
         4. Target liquidity reached
         """
@@ -1035,9 +1086,15 @@ class LiquiditySweep(IStrategy):
         
         # 1. Early profit exit — lock in wins before TSL activates at +1.5% (v0.46.0)
         # Require at least 45min hold to avoid gap-based false exits
+        # v0.74.0: raised from 1.5% to 2.5% — TS at 0.8% offset intercepts all winners
+        # before they can reach 1.5%. Raising to 2.5% puts early_profit ABOVE the ROI
+        # table (2%) — only the strongest trends fire it. TS still handles ~95% of exits.
+        # v0.73.0: raised from 1.0% to 1.5% — but early_profit exits DROPPED (2→1 trade).
+        # TS is simply too aggressive below 2%.
+        # v0.71.0: raised from 0.8% to 1.0% — winners averaged 1.06% (100% WR), let them run
         # v0.64.0: REVERT — early_profit at 0.8% (was 1.5% in failed v0.63.0)
         trade_duration = (current_time - trade.open_date_utc).total_seconds() / 3600
-        if trade_duration >= 0.75 and current_profit >= 0.008:
+        if trade_duration >= 0.75 and current_profit >= 0.025:
             return "early_profit_take"
         
         # Time-based exit
