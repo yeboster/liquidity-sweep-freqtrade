@@ -12,9 +12,10 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.94.0
+Version: 0.95.0
 
 Changelog:
+- v0.95.0 (2026-03-25): H2: Increase trailing stop offset 0.8% → 1.3%. Hypothesis: current 0.8% offset activates TS too early, cutting winners before they fully run. Widen to 1.3% so winners ride longer before TS kicks in. Combined with H1's tighter OTE zone (50-65%) for better entry quality.
 - v0.94.0 (2026-03-25): H1: Tighten OTE zone 28-72% → 50-65%. Hypothesis: deeper pullbacks (50-65%) have better risk/reward than shallow 28-72% range. Target: avg profit/trade from 0.48% → 1%+. May reduce trade count slightly but quality should improve.
 - v0.93.0 (2026-03-25): Add ADA/USDT back to pair whitelist. v0.83.0 had ADA with 6 trades, 83.3% WR, +$5.80 profit — all positive. Testing if 8-pair config increases trade frequency toward 100+/yr target while maintaining quality (91%+ WR).
 - v0.92.0 (2026-03-25): REVERT confirmation_candle to False. v0.91.0 confirmation_candle=True cut trades from 79→40 (-49%) and profit from $135→$71 (-47%) with only marginal WR improvement (91.1%→92.5%). Net effect: confirmation_candle=True is too aggressive. Reverting to False to maximize trade frequency and absolute profit.
@@ -483,7 +484,7 @@ class LiquiditySweep(IStrategy):
     # Previous values: 0.277 (27.7%!) and 0.295 (29.5%) — completely wrong
     trailing_stop = True
     trailing_stop_positive = 0.005     # Trail 0.5% behind peak (TS must be < offset)
-    trailing_stop_positive_offset = 0.008  # Activate after +0.8% (v0.72.0: optimal balance)
+    trailing_stop_positive_offset = 0.013  # Activate after +1.3% (v0.95.0: H2 - let winners run longer)
     trailing_only_offset_is_reached = True
     
     # ATR-based dynamic stoploss enabled in v0.22.0
