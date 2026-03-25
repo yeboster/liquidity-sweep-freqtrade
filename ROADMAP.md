@@ -7,15 +7,15 @@
 
 ## Current State
 
-| Metric | v0.92.0 (latest) | Target |
-|--------|----------|--------|
-| Trades/yr | ~40 ❌ | 100-200 |
-| Win Rate | **91.1%** ✅ | 45%+ |
-| Profit | +$134.32 (13.4%) ✅ | 5%+ |
-| Profit Factor | **4.16** ✅ | 1.5+ |
-| Avg Profit/Trade | **0.48%** ❌ | 1-3% |
+| Metric | v0.95.0 | Target |
+|--------|---------|--------|
+| Trades/yr | ~32 ❌ | 100-200 |
+| Win Rate | **75%** ✅ | 45%+ |
+| Profit | +$46.03 (4.6%) ✅ | 5%+ |
+| Profit Factor | **1.88** ✅ | 1.5+ |
+| Avg Profit/Trade | **?** ❌ | 1-3% |
 
-**v0.92.0 confirmed** — 7 pairs (BTC restored), TS positive 0.5%, confirmation_candle=True.
+**v0.95.0 — H1(OTE 50-65%)+H2(TS offset 1.3%) tested. OTE 50-65% too tight (32 trades). Next: revert OTE to 30-70%, keep TS 1.3%.**
 
 ---
 
@@ -28,6 +28,21 @@ Avg profit/trade at 0.48% is too low. Target is 1% (minimum), 3% (optimal).
 
 **H1: Tighten OTE zone further (50-65% instead of 30-70%)**
 - Deeper pullbacks = better risk/reward = higher avg win
+
+### v0.94.0 Results (H1: OTE 50-65%) — 2026-03-25
+- **107 trades, 86% WR, +$120.74 (12.07%)** — solid
+- Avg profit/trade: 0.32% (still low, not reaching 1%+ target)
+- SOL/USDT: -$7.37 (72.7% WR but 3 big losses) — already removed from v0.95.0
+- XRP/USDT: -$8.45 (66.7% WR but 2 big losses) — already removed from v0.95.0
+- **Verdict: H1 didn't hit 1%+ avg profit target. Trades up but avg/trade low.**
+
+### v0.95.0 Results (H1+H2: OTE 50-65% + TS offset 0.8%→1.3%) — 2026-03-25
+- **32 trades, 75% WR, +$46.03 (4.6%), PF 1.88** — OTE tightening too aggressive
+- Avg hold time: 8h 6min (longer, as expected with wider TS)
+- Avg profit/trade: **43%** (annualized, misleading due to small n)
+- **Problem: OTE 50-65% filtered too aggressively — only 32 trades (vs 107 in v0.94.0).**
+- **Conclusion: Revert OTE zone wider for more trades. Keep wider TS offset.**
+- **Next: ⏳ H3 — Revert OTE to 30-70% but keep TS offset 1.3%**
 - May reduce trade count slightly
 - Run: backtest with `ote_entry_zones = [(0.50, 0.65)]`
 
