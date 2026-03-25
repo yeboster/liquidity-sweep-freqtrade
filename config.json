@@ -40,12 +40,11 @@
         "pair_whitelist": [
             "BTC/USDT",
             "ETH/USDT",
-            "DOT/USDT",
-            "LINK/USDT",
             "UNI/USDT",
+            "ADA/USDT",
             "NEAR/USDT",
             "AVAX/USDT",
-            "ADA/USDT"
+            "LINK/USDT"
         ],
         "pair_blacklist": []
     },

@@ -12,9 +12,10 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.96.0
+Version: 0.97.0
 
 Changelog:
+- v0.96.1 (2026-03-25): REVERT TS offset 1.3%→0.8%. v0.96.0's wider TS offset (1.3%) caused TS WR to collapse from 92.1%→71.6% and profit to drop from $107.80→$94.83. Winners ran too far before TS activated, giving back too much. Restoring 0.8% offset (validated in v0.89.0 with 92.1% TS WR). Keep OTE 30-70%.
 - v0.96.0 (2026-03-25): H3: Revert OTE zone 50-65% → 30-70%. v0.95.0's tighter OTE (50-65%) only produced 32 trades — too few. Reverting to wider 30-70% to restore trade frequency toward 100+/yr target. Keep TS offset 1.3% (winners still ride longer).
 - v0.95.0 (2026-03-25): H2: Increase trailing stop offset 0.8% → 1.3%. Hypothesis: current 0.8% offset activates TS too early, cutting winners before they fully run. Widen to 1.3% so winners ride longer before TS kicks in. Combined with H1's tighter OTE zone (50-65%) for better entry quality.
 - v0.94.0 (2026-03-25): H1: Tighten OTE zone 28-72% → 50-65%. Hypothesis: deeper pullbacks (50-65%) have better risk/reward than shallow 28-72% range. Target: avg profit/trade from 0.48% → 1%+. May reduce trade count slightly but quality should improve.
@@ -485,7 +486,7 @@ class LiquiditySweep(IStrategy):
     # Previous values: 0.277 (27.7%!) and 0.295 (29.5%) — completely wrong
     trailing_stop = True
     trailing_stop_positive = 0.005     # Trail 0.5% behind peak (TS must be < offset)
-    trailing_stop_positive_offset = 0.013  # Activate after +1.3% (v0.95.0: H2 - let winners run longer)
+    trailing_stop_positive_offset = 0.008  # Activate after +0.8% (v0.97.0: revert 1.3%→0.8% — 1.3% gave back too much profit)
     trailing_only_offset_is_reached = True
     
     # ATR-based dynamic stoploss enabled in v0.22.0
