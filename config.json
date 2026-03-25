@@ -42,7 +42,8 @@
             "DOT/USDT",
             "LINK/USDT",
             "UNI/USDT",
-            "NEAR/USDT"
+            "NEAR/USDT",
+            "AVAX/USDT"
         ],
         "pair_blacklist": []
     },
