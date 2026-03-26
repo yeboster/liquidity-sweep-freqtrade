@@ -1429,3 +1429,54 @@ Both pairs had wins but consistently lost money overall — removed to protect p
 2. Try other high-volume pairs (AAVE, FIL, etc.)
 3. Accept ~38/yr with current config — still excellent quality (87%+ WR, PF 3.25+)
 
+
+---
+
+## v0.99.2 ✅ — Iteration Backtest (2026-03-26)
+
+**Backtest Run:** 23612121351 (workflow_dispatch iteration)
+**Result:** ✅ Consistent with v0.99.2 — strategy stable. All fix criteria pass.
+
+| Metric | v0.99.2 (iter) | v0.99.2 (ROADMAP) | Status |
+|--------|-----------------|-------------------|--------|
+| Trades | **87** | 88 | ✅ |
+| Win Rate | **88.5%** | 87.5% | ✅ |
+| Profit | **$158.04 (15.80%)** | $152.30 (15.23%) | ✅ |
+| Profit Factor | **3.62** | 3.30 | ✅ |
+| SQN | **4.18** | 4.28 | ✅ |
+| Avg Hold | **4:32** | 4:34 | ✅ |
+
+**Per-pair (all positive, all have wins — no removals):**
+| Pair | Trades | WR | Profit |
+|------|--------|-----|--------|
+| AVAX/USDT | 13 | **100.0%** | +$34.51 |
+| XLM/USDT | 6 | 66.7% | +$27.25 |
+| BTC/USDT | 15 | 86.7% | +$24.06 |
+| DOT/USDT | 11 | 90.9% | +$19.60 |
+| ETH/USDT | 9 | 88.9% | +$15.58 |
+| UNI/USDT | 7 | **100.0%** | +$12.83 |
+| LINK/USDT | 13 | 84.6% | +$12.40 |
+| NEAR/USDT | 7 | 85.7% | +$5.95 |
+| ADA/USDT | 6 | 83.3% | +$5.86 |
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| trailing_stop_loss | 84 | **88.1%** | +$147.64 |
+| roi | 1 | 100% | +$6.61 |
+| target_liquidity_reached | 2 | 100% | +$3.80 |
+
+**Fix criteria check:**
+- TS exits: 84/87 = 96.6% (>30%) with 88.1% WR → ✅ TS working exceptionally
+- All 9 pairs positive + have wins → no pair removals needed
+- Profit positive + PF 3.62 → exceptional performance
+- **Strategy is stable across iterations — v0.99.2 results confirmed**
+
+**Note:** Slight variance in total trades (87 vs 88) is normal backtest variance. All per-pair metrics align closely with ROADMAP values.
+
+**Next step (⏳):** Continue trade frequency increase. Current ~44/yr still below 100+ target. Options:
+1. Try other high-volume pairs (AAVE, FIL, etc.)
+2. Experiment with OTE zone fine-tuning within 30-70% range
+3. Accept ~44/yr with current config — excellent quality (88%+ WR, PF 3.62)
+
+*Last Updated: 2026-03-26 (19:05 UTC)*
