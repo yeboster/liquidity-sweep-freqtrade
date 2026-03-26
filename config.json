@@ -45,8 +45,7 @@
             "NEAR/USDT",
             "AVAX/USDT",
             "LINK/USDT",
-            "XLM/USDT",
-            "ALGO/USDT"
+            "XLM/USDT"
         ],
         "pair_blacklist": []
     },
