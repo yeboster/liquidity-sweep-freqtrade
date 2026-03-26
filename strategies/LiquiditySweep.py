@@ -12,9 +12,10 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.98.0
+Version: 0.99.0
 
 Changelog:
+- v0.99.0 (2026-03-26): Add XLM/USDT + ALGO/USDT to pair whitelist. Goal: increase trade frequency from ~35/yr toward 100+/yr target. Both pairs are high-volume, not yet tested in this strategy. Monitoring for 0 wins or negative profit — will remove if they drag down PF.
 - v0.98.0 (2026-03-26): Widen OTE zone optimization bounds (lower: 25-40%, upper: 60-80%). Defaults stay at 30-70%. Gives hyperopt more room to explore wider zones that may increase trade frequency toward 100+/yr target. Current 25-35%/65-75% bounds were too narrow.
 - v0.96.1 (2026-03-25): REVERT TS offset 1.3%→0.8%. v0.96.0's wider TS offset (1.3%) caused TS WR to collapse from 92.1%→71.6% and profit to drop from $107.80→$94.83. Winners ran too far before TS activated, giving back too much. Restoring 0.8% offset (validated in v0.89.0 with 92.1% TS WR). Keep OTE 30-70%.
 - v0.96.0 (2026-03-25): H3: Revert OTE zone 50-65% → 30-70%. v0.95.0's tighter OTE (50-65%) only produced 32 trades — too few. Reverting to wider 30-70% to restore trade frequency toward 100+/yr target. Keep TS offset 1.3% (winners still ride longer).
