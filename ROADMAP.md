@@ -1,6 +1,6 @@
 # Liquidity Sweep — Roadmap
 
-> Updated: 2026-03-25
+> Updated: 2026-03-26
 > **Goal: Increase trade frequency from ~17/yr to 100+/yr AND avg profit from 0.48% to 1-3% per trade**
 
 ---
@@ -1254,4 +1254,64 @@ Both pairs had wins but consistently lost money overall — removed to protect p
 1. Try adding back DOT (was removed from v0.96.0 due to negative profit, but may have recovered)
 2. Try additional pairs from Zacks volume list (AVAX was additive in v0.89.0)
 3. Experiment with tighter entry filters to reduce false sweeps
+
+---
+
+## v0.99.1 ✅ — XLM Added, ALGO Removed (2026-03-26)
+
+**Backtest Run:** 23591092657 (push-triggered on v0.99.1 commit)
+**Result:** ✅ MAJOR IMPROVEMENT — XLM additive, ALGO removed per criteria!
+
+| Metric | v0.99.1 (8 pairs) | v0.98.0 (7 pairs) | Change |
+|--------|---------------------|---------------------|--------|
+| Trades | **77** | 71 | **+6 ✅** |
+| Win Rate | **87.0%** | 88.7% | -1.7pp |
+| Profit | **$132.32 (13.23%)** | $104.32 (10.43%) | **+$28.00 ✅** |
+| Profit Factor | **3.25** | 3.29 | -0.04 |
+| SQN | **3.60** | 4.20 | -0.60 |
+| Drawdown | $14.58 | $7.57 | higher ⚠️ |
+| TS Exit % | 96.1% | 95.8% | stable |
+| TS Win Rate | **86.5%** | 88.2% | stable |
+| Avg Hold | 4:38 | 4:17 | stable |
+
+**Per-pair (all positive, all have wins — no removals needed):**
+| Pair | Trades | WR | Profit |
+|------|--------|-----|--------|
+| AVAX/USDT | 13 | 100.0% | +$34.36 |
+| XLM/USDT | 6 | 66.7% | +$27.09 ✅ NEW |
+| BTC/USDT | 16 | 81.2% | +$18.45 |
+| ETH/USDT | 9 | 88.9% | +$15.47 |
+| UNI/USDT | 7 | 100.0% | +$12.83 |
+| LINK/USDT | 13 | 84.6% | +$12.31 |
+| NEAR/USDT | 7 | 85.7% | +$5.98 |
+| ADA/USDT | 6 | 83.3% | +$5.82 |
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| trailing_stop_loss | 74 | **86.5%** | +$121.92 |
+| target_liquidity_reached | 2 | 100% | +$3.79 |
+| roi | 1 | 100% | +$6.61 |
+
+**Fix criteria check:**
+- TS exits: 74/77 = 96.1% (>30%) with 86.5% WR → ✅ TS working well
+- All 8 pairs positive + have wins → no pair removals needed
+- Profit positive + PF 3.25 → solid performance
+- **XLM/USDT: +$27.09, 66.7% WR, 6 trades — net positive addition ✅**
+- **ALGO/USDT: REMOVED — 2 trades, 0 wins, -$25.59 (both were big losers via TS) ❌**
+
+**🔧 Changes:**
+- Added XLM/USDT to pair whitelist (high-volume, strategy-compatible)
+- Added ALGO/USDT to pair whitelist (first test)
+- Removed ALGO/USDT after backtest showed 0 wins / -$25.59 — violates pair removal criteria
+
+**Trade frequency improvement:**
+- v0.98.0: 71 trades/2yr = ~35/yr
+- v0.99.1: 77 trades/2yr = ~38/yr
+- Net: +6 trades from XLM addition
+
+**Next step (⏳):** Continue trade frequency increase. Options:
+1. Try DOT/USDT restoration (TS offset changed since removal, may perform differently)
+2. Try other high-volume pairs (AAVE, FIL, etc.)
+3. Accept ~38/yr with current config — still excellent quality (87%+ WR, PF 3.25+)
 
