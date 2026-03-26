@@ -1315,3 +1315,26 @@ Both pairs had wins but consistently lost money overall — removed to protect p
 2. Try other high-volume pairs (AAVE, FIL, etc.)
 3. Accept ~38/yr with current config — still excellent quality (87%+ WR, PF 3.25+)
 
+---
+
+## v0.99.2 ⏳ — DOT/USDT Restoration (2026-03-26)
+
+**Goal:** Increase trade frequency by restoring DOT/USDT.
+
+**Rationale:** DOT/USDT had +$7.87 (60% WR, 5 trades) in v0.65.0 baseline. Since then, TS offset has been refined (0.8%) and multiple other pairs have been added/removed. Worth retesting DOT at current config.
+
+**Per-pair v0.99.1 profitability ranking (for reference):**
+| Pair | Trades | WR | Profit |
+|------|--------|-----|--------|
+| AVAX/USDT | 13 | 100% | +$34.36 |
+| XLM/USDT | 6 | 66.7% | +$27.09 |
+| BTC/USDT | 16 | 81.2% | +$18.45 |
+| ETH/USDT | 9 | 88.9% | +$15.47 |
+| UNI/USDT | 7 | 100% | +$12.83 |
+| LINK/USDT | 13 | 84.6% | +$12.31 |
+| NEAR/USDT | 7 | 85.7% | +$5.98 |
+| ADA/USDT | 6 | 83.3% | +$5.82 |
+
+**Changes:**
+- Added DOT/USDT to pair whitelist (9 pairs total)
+
