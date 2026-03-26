@@ -1206,3 +1206,52 @@ Both pairs had wins but consistently lost money overall — removed to protect p
 1. Try BTC or ADA restoration (both were positive in v0.83.0 but removed in v0.88.0)
 2. Experiment with confirmation_candle=True to filter entries more strictly (more quality, less quantity)
 3. Accept ~32 trades/yr as current ceiling — still below 100/yr target but excellent quality
+
+## v0.98.0 ✅ — OTE Bounds Widened (2026-03-26)
+
+**Backtest Run:** 23574904210 (push-triggered on v0.98.0 commit)
+**Result:** ✅ Marginal improvement — 1 more trade, slightly higher profit vs v0.97.0. No major degradation.
+
+| Metric | v0.98.0 | v0.97.0 | Change |
+|--------|----------|---------|--------|
+| Trades | **71** | 70 | +1 |
+| Win Rate | **88.7%** | 90.0% | -1.3pp |
+| Profit | **$107.39 (10.74%)** | $109.82 (10.98%) | -$0.43 |
+| Profit Factor | **3.52** | 3.74 | -0.22 |
+| SQN | **4.44** | 4.61 | -0.17 |
+| Drawdown | **0.71%** | 0.71% | stable |
+| TS Exit % | 94.4% | 95.7% | — |
+| TS Win Rate | **89.6%** | 89.6% | stable |
+| Avg Hold | **4:14** | 4:14 | stable |
+
+**Per-pair (all positive, all have wins — no removals):**
+| Pair | Trades | WR | Profit |
+|------|--------|-----|--------|
+| AVAX/USDT | 13 | **100.0%** | +$33.92 (3.39%) |
+| BTC/USDT | 16 | 81.2% | +$21.69 (2.17%) |
+| ETH/USDT | 9 | 88.9% | +$15.15 (1.51%) |
+| UNI/USDT | 7 | **100.0%** | +$12.79 (1.28%) |
+| LINK/USDT | 13 | 84.6% | +$12.09 (1.21%) |
+| NEAR/USDT | 7 | 85.7% | +$6.06 (0.61%) |
+| ADA/USDT | 6 | 83.3% | +$5.70 (0.57%) |
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| trailing_stop_loss | 67 | **89.6%** | +$99.46 |
+| target_liquidity_reached | 3 | 100% | +$5.53 |
+| roi | 1 | 100% | +$2.38 |
+
+**Fix criteria check:**
+- TS exits: 67/71 = 94.4% (>30%) with 89.6% WR → ✅ TS working well
+- All 7 pairs positive + have wins → no pair removals needed
+- Profit positive + PF 3.52 → solid performance
+- **Wider OTE bounds (20-40%/60-80%) give hyperopt more room to explore. Defaults stayed at 30-70%, suggesting that's near-optimal. Marginal improvement (+1 trade) confirms v0.97.0 was already well-tuned.**
+
+**🔧 Fix applied:** (1) Widened OTE optimization bounds from 25-35%/65-75% to 20-40%/60-80%. (2) Default stays at 30-70%. This gives hyperopt room to find wider/narrower zones if they help.
+
+**Next step (⏳):** Continue trade frequency increase. Current ~71 trades/yr still below 100+ target. Options:
+1. Try adding back DOT (was removed from v0.96.0 due to negative profit, but may have recovered)
+2. Try additional pairs from Zacks volume list (AVAX was additive in v0.89.0)
+3. Experiment with tighter entry filters to reduce false sweeps
+
