@@ -1,73 +1,116 @@
 # Liquidity Sweep — Roadmap
 
 > Updated: 2026-03-27
-> **Goal: Increase trade frequency from ~17/yr to 100+/yr AND avg profit from 0.48% to 1-3% per trade**
+> **Strategy Type: Liquidity Sweep / Mean Reversion (NOT trend following)**
 
 ---
 
-## Current State
+## ⚠️ CRITICAL FINDING: R/R Ratio is Inverted
 
-| Metric | v0.99.5 (HEAD) | Target |
-|--------|-----------------|--------|
-| Trades/yr | ~43 ❌ | 100-200 |
-| Win Rate | **88.5%** ✅ | 45%+ |
-| Profit | **$158.04 (15.80%)** ✅ | 5%+ |
-| Profit Factor | **3.62** ✅ | 1.5+ |
-| SQN | **4.18** ✅ | 2.0+ |
-| Avg Profit/Trade | **0.18%** ❌ | 1-3% |
+**Verified from trade-level analysis (backtest-result-2026-03-26_19-05-08.json):**
 
-> ⚠️ **Data integrity issue (2026-03-27):** Previous reports (98 trades, $176.62) were sourced from GitHub Actions API output without validating against the actual backtest JSON artifact. Verified backtest (2026-03-26_19-05-08) shows: **87 trades, $158.04 (15.80%), avg $1.82/trade (0.18%)**. ROADMAP corrected. Backtest workflow may be caching stale strategy code — needs investigation.
+| Metric | Value | Verdict |
+|--------|-------|---------|
+| Trades | **87** | ~43/yr |
+| Win Rate | **88.5%** ✅ | High, but misleading |
+| Avg Win | **0.79%** | Too small |
+| Avg Loss | **1.69%** | 2.1× avg win |
+| **R/R Ratio** | **0.47** | ❌ DANGEROUS — need >1.0 |
+| Avg Profit/Trade | **0.18%** | ❌ Below 1% threshold |
+| **Realistic Live Return** | **~15-18%/yr** | ⚠️ Before slippage |
 
-**v0.99.5 (HEAD):** FIL/USDT added to pairlist (11 pairs). Backtest pending. Goal: push toward 100+ trades/yr.
+**Win distribution (77 wins):**
+| Range | Count | % |
+|-------|-------|---|
+| < 0.5% | 31 | 40% |
+| 0.5–1% | 32 | 42% |
+| 1–2% | 10 | 13% |
+| 2–5% | 3 | 4% |
+| > 5% | 1 | 1% |
+
+**Loss distribution (10 losses, ALL via TS):**
+- Cluster: -1.45% to -2.06%
+- Every loss wipes ~2 wins
+
+**Why this matters for live trading:**
+- Slippage 0.1–0.2% per trade erodes the 0.18% avg significantly
+- In live markets with wider spreads: edge could disappear entirely
+- The 88.5% WR is only impressive until you see the R/R ratio
+
+**Root cause:** TS at +0.8% offset clips winners at their peak micro-movements.
+This is a QUICK REVERSAL hunt strategy, not a trend follower. The 0.79% avg win
+IS the actual edge. But R/R < 1.0 means the strategy is structurally fragile.
 
 ---
 
-## v0.99.4 ✅ — Iteration Backtest (2026-03-27)
+## Strategic Roadmap (New Priority Order)
 
-> ⚠️ **CORRECTED:** Previous reported numbers (98 trades, $176.62) were inaccurate. Updated with verified backtest JSON data.
+### Goal: Either fix R/R or maximize the hunt strategy
 
-**Backtest Artifact:** backtest-result-2026-03-26_19-05-08.json
-**Result:** Strategy stable at 87 trades. All fix criteria pass.
+#### 🔴 Priority 1: Fix R/R Ratio (Avg Win must exceed Avg Loss)
 
-| Metric | v0.99.4 (verified) | Target |
-|--------|---------------------|--------|
-| Trades | **87** | 100-200 |
-| Win Rate | **88.5%** | 45%+ ✅ |
-| Profit | **$158.04 (15.80%)** | 5%+ ✅ |
-| Profit Factor | **3.62** | 1.5+ ✅ |
-| SQN | **4.18** | 2.0+ ✅ |
-| Avg Profit/Trade | **$1.82 (0.18%)** | 1-3% ❌ |
-| Drawdown | **$14.63 (1.35%)** | — |
-| Avg Hold | **4:38** | — |
+**Problem:** R/R = 0.47. Every loss costs 2× what each win gains.
 
-**Per-pair (all positive, all have wins — 9 pairs):**
-| Pair | Trades | WR | Profit |
-|------|--------|-----|--------|
-| AVAX/USDT | 13 | 100.0% | +$34.51 |
-| XLM/USDT | 6 | 66.7% | +$27.25 |
-| BTC/USDT | 15 | 86.7% | +$24.06 |
-| DOT/USDT | 11 | 90.9% | +$19.60 |
-| ETH/USDT | 9 | 88.9% | +$15.58 |
-| UNI/USDT | 7 | 100.0% | +$12.83 |
-| LINK/USDT | 13 | 84.6% | +$12.40 |
-| NEAR/USDT | 7 | 85.7% | +$5.95 |
-| ADA/USDT | 6 | 83.3% | +$5.86 |
+**Hypothesis H-A: ATR-based dynamic exits**
+- TP = entry + 2.5× ATR (adaptive, lets big moves run)
+- SL = entry - 1.5× ATR (tighter, cuts losses earlier)
+- In high volatility: bigger wins. In low volatility: small wins, fast exit.
+- **Test:** Run backtest with `trailing_stop_positive_offset` replaced by dynamic ATR TP
 
-**Exit breakdown:**
-| Exit | Count | WR | Profit |
-|------|-------|-----|--------|
-| trailing_stop_loss | 84 | **88.1%** | +$147.64 |
-| roi | 1 | 100% | +$6.61 |
-| target_liquidity_reached | 2 | 100% | +$3.80 |
+**Hypothesis H-B: Fixed TP floor at 1.5%**
+- Force all exits to achieve at least 1.5% before TS can exit
+- Winners below 1.5% → hold until 1.5% or stop
+- **Test:** Modify ROI table so early TP fires at 1.5% before TS activates
 
-**Fix criteria check:**
-- TS exits: 84/87 = 96.6% (>30%) with 88.1% WR → ✅ TS working exceptionally
-- All 9 pairs positive + have wins → no pair removals needed
-- Profit positive + PF 3.62 → exceptional performance
+**Hypothesis H-C: Tighter SL floor**
+- Current: stoploss at -19.4%, losses average -1.69% (TS forces exit)
+- Hypothesis: if SL is -1.0%, losses would be capped earlier
+- **Risk:** Could reduce WR if trades get stopped out prematurely
+- **Test:** Lower stoploss from -0.194 to -0.010
 
-**Root cause of data discrepancy:** Backtest workflow appears to cache or reuse strategy code between runs. GitHub Actions API reported 98 trades from run 23628580657, but the artifact stored in the workspace shows 87 trades from v0.99.2 code. Investigation needed.
+#### 🟡 Priority 2: Increase Trade Frequency (if R/R can't be fixed)
 
-**Next step (⏳):** Continue trade frequency increase toward 100+/yr. Current: ~43/yr. Avg profit/trade at 0.18% is far below 1-3% target — focus should shift to increasing avg profit per trade, not just trade count.
+**If H-A/B/C fail:** Accept this is a hunt strategy with 0.79% avg win.
+Compensate by maximizing trade frequency.
+
+- Current: 87 trades/2yr = 43/yr
+- Target: 200+ trades/yr
+- Each trade: net ~0.4% after slippage
+- 200 trades × 0.4% = 80% annual return potential
+
+**How:** Add more pairs, shorter timeframe (5m with proper data), loosen entry filters.
+
+#### 🟢 Priority 3: Live Trading Readiness
+
+- Verify exchange execution quality (Kraken vs Binance)
+- Paper trade for 1 month to validate slippage assumptions
+- Build position sizing model (current: $354 avg stake on $1000 wallet = 35% per trade)
+- Risk: 3 concurrent trades × 35% × potential 1.69% loss = 1.78% of wallet per bad cycle
+
+---
+
+## Current State (v0.99.5)
+
+| Metric | Value | Status |
+|--------|-------|--------|
+| Trades/yr | ~43 | ❌ Below 100 target |
+| Win Rate | 88.5% | ✅ |
+| Profit | $158.04 (15.80%) | ✅ |
+| Profit Factor | 3.62 | ✅ |
+| SQN | 4.18 | ✅ |
+| Avg Profit/Trade | **0.18% (0.79% avg win)** | ❌ |
+| R/R Ratio | **0.47** | ❌ Need >1.0 |
+| Realistic Live Return | ~15-18%/yr | ⚠️ Thin margin |
+
+---
+
+## v0.99.5 (HEAD) — FIL/USDT Added (Backtest Pending)
+
+FIL/USDT added to pairlist (11 pairs). Backtest pending. Per-pair data inherits from v0.99.4 verified results above.
+
+**Priority for next backtest:** Validate that adding FIL increases trade count toward 100+/yr without degrading WR below 85% or PF below 2.0.
+
+**Strategic note:** Even with 200+ trades/yr, the 0.79% avg win / 1.69% avg loss structural issue remains. The next backtest iteration should also test one of the R/R fix hypotheses (H-A: ATR-based TP, H-B: 1.5% ROI floor, or H-C: tighter SL).
 
 ---
 
