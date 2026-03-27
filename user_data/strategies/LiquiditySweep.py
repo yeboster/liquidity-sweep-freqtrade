@@ -12,9 +12,13 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.90.0
+Version: 0.99.7
 
 Changelog:
+- v0.99.7 (2026-03-27): H-B ROI floor test — minimal_roi "0": 0.349% → 1.5%.
+  Problem (v0.99.6): R/R = 0.47 — avg win 0.48%, avg loss 1.69%. TS at +0.8% clips
+  winners too early. Hypothesis: force 1.5% ROI exit before TS activates, letting
+  winners run longer. If avg win increases to 1.5%+, R/R should flip above 1.0.
 - v0.90.0 (2026-03-25): Add BTC/USDT back to pair whitelist. BTC was best performer in v0.65.0 baseline (9 trades, +$14.04, 55.6% WR). Testing if 7-pair config pushes trade frequency toward 100+/yr target while maintaining quality (92%+ WR).
 - v0.89.0 (2026-03-25): Add AVAX/USDT back to pair whitelist. AVAX had 100% WR (+$38.39) in v0.83.0 — best per-pair performance. Testing if 6-pair config increases trade frequency without degrading quality.
 - v0.88.0 (2026-03-24): REVERT 5m→15m. 5m generated 183 trades/2yr (+115%) but TS win rate collapsed from 90.6%→68.3% and profit went from +$140→-$43.50. 5m timeframe causes too many false TS activations due to intra-candle noise. Reverting to 15m with existing 5-pair config (ETH/DOT/LINK/UNI/NEAR).
@@ -465,9 +469,12 @@ class LiquiditySweep(IStrategy):
     # trades that never reach 1% profit, so ROI doesn't fire for them anyway.
     # Fix: Raise ROI 305 to 2% AND push to 400 candles (~67h). Winners that would have
     # been cut at +1% at 76h can now run to 2% at 67h (faster timeline, higher target).
-    # Trailing stop still manages risk: activates at +1.5%, exits at +1.0%.
+    # H-B (v0.99.7): Force 1.5% ROI exit before TS can activate (TS offset = 0.8%).
+    # Previous: "0": 0.349 (0.349%) — too low, TS at +0.8% clipped winners early.
+    # Now: "0": 1.5 forces winners to reach 1.5% before ROI exit fires.
+    # Expected: avg win should rise from 0.48% → 1.5%+, flipping R/R above 1.0.
     minimal_roi = {
-        "0": 0.349,
+        "0": 1.5,
         "109": 0.07,
         "159": 0.10,
         "400": 0.02,
