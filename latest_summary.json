@@ -1,1 +1,24 @@
-{"placeholder": true, "note": "Updated automatically by CI after each backtest run"}
+{
+  "version": "unknown",
+  "timestamp": "2026-03-27T15:54:14.208168Z",
+  "latest_backtest_file": "backtest-result-2026-03-27_15-54-13.meta.json",
+  "total_trades": 0,
+  "trades_per_year": 0.0,
+  "win_count": 0,
+  "loss_count": 0,
+  "win_rate": 0,
+  "profit_abs": 0,
+  "profit_pct": 0.0,
+  "avg_profit_per_trade": 0,
+  "avg_profit_per_win": 0,
+  "avg_loss_per_loss": 0,
+  "rr_ratio": 0,
+  "expectancy": 0,
+  "profit_factor": 0,
+  "sqn": 0,
+  "drawdown_abs": 0,
+  "drawdown_pct": 0,
+  "holding_avg": "0",
+  "exits": [],
+  "pairs": []
+}
