@@ -7,15 +7,69 @@
 
 ## Current State
 
-| Metric | v0.95.0 | Target |
+| Metric | v0.99.3 | Target |
 |--------|---------|--------|
-| Trades/yr | ~32 ❌ | 100-200 |
-| Win Rate | **75%** ✅ | 45%+ |
-| Profit | +$46.03 (4.6%) ✅ | 5%+ |
-| Profit Factor | **1.88** ✅ | 1.5+ |
-| Avg Profit/Trade | **?** ❌ | 1-3% |
+| Trades/yr | ~49 ❌ | 100-200 |
+| Win Rate | **88.8%** ✅ | 45%+ |
+| Profit | **$176.62 (17.66%)** ✅ | 5%+ |
+| Profit Factor | **3.59** ✅ | 1.5+ |
+| Avg Profit/Trade | **0.50%** ⚠️ | 1-3% |
 
-**v0.95.0 — H1(OTE 50-65%)+H2(TS offset 1.3%) tested. OTE 50-65% too tight (32 trades). Next: revert OTE to 30-70%, keep TS 1.3%.**
+**v0.99.3 — AAVE/USDT added (10 pairs). 98 trades/2yr, +11 vs v0.99.2. All 10 pairs positive with wins. TS 95.9% exits at 88.3% WR — no fix needed. Next: ⏳ H3 — Revert OTE to 30-70% but keep TS 0.8% offset.**
+
+---
+
+## v0.99.3 ✅ — AAVE/USDT Added — Best Performance Yet (2026-03-27)
+
+**Backtest Run:** 23621691695 (push-triggered on v0.99.3 commit)
+**Result:** ✅ BREAKTHROUGH — AAVE additive, trade frequency jumped to 98!
+
+| Metric | v0.99.3 (10 pairs) | v0.99.2 (9 pairs) | Change |
+|--------|---------------------|---------------------|--------|
+| Trades | **98** | 88 | **+11 ✅** |
+| Win Rate | **88.8%** | 88.5% | +0.3pp |
+| Profit | **$176.62 (17.66%)** | $158.04 (15.80%) | **+$18.58 ✅** |
+| Profit Factor | **3.59** | 3.62 | stable |
+| SQN | **4.49** | 4.18 | +0.31 |
+| Drawdown | $20.11 | $12.02 | higher ⚠️ |
+| TS Exit % | 95.9% | 96.6% | stable |
+| TS Win Rate | **88.3%** | 88.1% | stable |
+| Avg Hold | 4:23 | 4:32 | stable |
+
+**Per-pair (all positive, all have wins — no removals):**
+| Pair | Trades | WR | Profit |
+|------|--------|-----|--------|
+| AVAX/USDT | 13 | 100.0% | +$34.86 |
+| XLM/USDT | 6 | 66.7% | +$27.59 |
+| BTC/USDT | 15 | 86.7% | +$24.15 |
+| DOT/USDT | 11 | 90.9% | +$19.86 |
+| AAVE/USDT | 11 | 90.9% | +$17.08 ✅ NEW |
+| ETH/USDT | 9 | 88.9% | +$15.77 |
+| UNI/USDT | 7 | 100.0% | +$12.91 |
+| LINK/USDT | 13 | 84.6% | +$12.51 |
+| NEAR/USDT | 7 | 85.7% | +$5.95 |
+| ADA/USDT | 6 | 83.3% | +$5.93 |
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| trailing_stop_loss | 94 | **88.3%** | +$163.12 |
+| target_liquidity_reached | 3 | 100% | +$6.89 |
+| roi | 1 | 100% | +$6.61 |
+
+**Fix criteria check:**
+- TS exits: 94/98 = 95.9% (>30%) with 88.3% WR → ✅ TS working exceptionally
+- All 10 pairs positive + have wins → no pair removals needed
+- Profit positive + PF 3.59 → exceptional performance
+- **AAVE/USDT: +$17.08, 90.9% WR, 11 trades — net positive addition ✅**
+- Trade frequency: 98 trades/2yr = ~49/yr (still below 100/yr target but improving)
+
+**Key insight:** AAVE/USDT is the 5th best pair by profit ($17.08) with 90.9% WR. Adding it brought total trades from 88→98 (+11.3%). All 10 pairs are profitable with positive win rates.
+
+**Next step (⏳):** Continue trade frequency increase toward 100+/yr. Options:
+1. Try other high-volume pairs (FIL, APT, etc.)
+2. Experiment with OTE zone fine-tuning (30-70% still the sweet spot)
+3. Accept ~49/yr with current config — excellent quality (88.8% WR, PF 3.59+)
 
 ---
 
