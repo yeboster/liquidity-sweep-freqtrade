@@ -57,12 +57,17 @@ IS the actual edge. But R/R < 1.0 means the strategy is structurally fragile.
 - In high volatility: bigger wins. In low volatility: small wins, fast exit.
 - **Test:** Run backtest with `trailing_stop_positive_offset` replaced by dynamic ATR TP
 
-**Hypothesis H-B: Fixed TP floor at 1.5%**
+**Hypothesis H-B: Fixed TP floor at 1.5%** ❌ TESTED — FAILED
 - Force all exits to achieve at least 1.5% before TS can exit
 - Winners below 1.5% → hold until 1.5% or stop
 - **Test:** Modify ROI table so early TP fires at 1.5% before TS activates
+- **Result (v0.99.9):** Only 1/98 trades hit 1.5% ROI. TS at +0.8% clips all winners first.
 
-**Hypothesis H-C: Tighter SL floor**
+**Hypothesis H-C: Tighter SL floor** ⏳ NEXT
+- Current: stoploss at -19.4%, losses average -1.69% (TS forces exit)
+- Hypothesis: if SL is -1.0%, losses would be capped earlier
+- **Risk:** Could reduce WR if trades get stopped out prematurely
+- **Test:** Lower stoploss from -0.194 to -0.010
 - Current: stoploss at -19.4%, losses average -1.69% (TS forces exit)
 - Hypothesis: if SL is -1.0%, losses would be capped earlier
 - **Risk:** Could reduce WR if trades get stopped out prematurely
@@ -89,18 +94,70 @@ Compensate by maximizing trade frequency.
 
 ---
 
-## Current State (v0.99.6)
+## v0.99.9 ❌ — H-B ROI Floor FAILED — R/R Still Dangerous (2026-03-27)
+
+**Backtest Run:** 23662112616 (workflow_dispatch on v0.99.9 commit)
+**Result:** ❌ H-B hypothesis REJECTED — 1.5% ROI floor didn't fix R/R. TS still dominates.
+
+| Metric | v0.99.9 (H-B 1.5% ROI) | v0.99.6 (baseline) | Change |
+|--------|-------------------------|---------------------|--------|
+| Trades | **98** | 98 | — |
+| Win Rate | **88.78%** | 88.8% | stable |
+| Profit | **$176.62 (17.66%)** | $176.62 | stable |
+| Profit Factor | **3.59** | 3.59 | stable |
+| SQN | **4.49** | 4.49 | stable |
+| Avg Win | **0.79%** | 0.79% | stable ❌ |
+| Avg Loss | **1.72%** | 1.69% | stable |
+| **R/R Ratio** | **0.46** | 0.47 | **still dangerous** ❌ |
+| TS Exit % | 95.9% | 95.9% | stable |
+| Avg Hold | **4:23** | 4:23 | stable |
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| trailing_stop_loss | 94 | 88.3% | +$163.12 |
+| target_liquidity_reached | 3 | 100% | +$6.89 |
+| roi | **1** ❌ | 100% | +$6.61 |
+
+**Why H-B failed:** TS at +0.8% offset activates before price can reach 1.5% ROI.
+Once TS activates at +0.8%, it trails 0.5% behind peak — trade exits via TS if profit
+drops, never reaching 1.5% ROI. Only 1/98 trades held long enough to hit the 1.5% ROI.
+
+**Pairs parsing bug:** `results_per_pair` returned in new format — all pairs show as
+"UNKNOWN". Overall metrics (total_trades, exits, etc.) are valid. Per-pair performance
+unknown. CI extraction script needs updating for newer freqtrade format.
+
+**Fix criteria check:**
+- TS exits: 94/98 = 95.9% (>30%) with 88.3% WR → ✅ TS working exceptionally
+- R/R ratio: **0.46** (still < 0.8) → ❌ DANGEROUS — H-B didn't fix it
+- avg_profit_per_win: **0.79%** (still < 1.0%) → ❌ H-B didn't fix avg win
+
+**H-B verdict: REJECTED.** The 1.5% ROI floor cannot override TS activation at +0.8%.
+Winners never reach 1.5% because TS clips them at +0.8%.
+
+**Next (⏳): H-C — Tighter SL floor (-0.194 → -0.010)**
+- Current: SL at -19.4%, losses average -1.72% via TS
+- Hypothesis: if SL is -1.0%, losses would cap at -1.0% instead of -1.72%
+- R/R would improve: 0.79% / 1.0% = 0.79 (still < 1.0, better than 0.46)
+- Risk: Could reduce WR if trades get stopped out prematurely
+
+---
+
+## Current State (v0.99.9)
 
 | Metric | Value | Status |
 |--------|-------|--------|
 | Trades/yr | ~49 | ❌ Below 100 target |
-| Win Rate | 88.8% | ✅ |
+| Win Rate | 88.78% | ✅ |
 | Profit | $176.62 (17.66%) | ✅ |
 | Profit Factor | 3.59 | ✅ |
 | SQN | 4.49 | ✅ |
-| Avg Profit/Trade | **0.50% (0.48% avg win)** | ❌ |
-| R/R Ratio | **0.47** | ❌ Need >1.0 |
+| Avg Win | **0.79%** | ❌ Need >1.5% |
+| Avg Loss | **1.72%** | ❌ |
+| R/R Ratio | **0.46** | ❌ Need >1.0 |
 | Realistic Live Return | ~15-18%/yr | ⚠️ Thin margin |
+
+**⏳ Next:** H-C — Test tighter SL floor (-0.194 → -0.010) to cap losses earlier and flip R/R above 1.0.
 
 ---
 

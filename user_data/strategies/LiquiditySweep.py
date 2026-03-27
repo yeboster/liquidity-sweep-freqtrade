@@ -12,9 +12,10 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.9
+Version: 0.99.10
 
 Changelog:
+- v0.99.10 (2026-03-27): H-C test — stoploss -0.194→-0.010 (was H-B trigger)
 - v0.99.9 (2026-03-27): Trigger backtest on v0.99.8 H-B ROI floor code.
 - v0.99.8 (2026-03-27): H-B ROI floor test — minimal_roi "0": 0.349% → 1.5%.
   Problem (v0.99.6): R/R = 0.47 — avg win 0.48%, avg loss 1.69%. TS at +0.8% clips
@@ -483,7 +484,7 @@ class LiquiditySweep(IStrategy):
     }
     
     # Absolute backstop required by Freqtrade — custom_stoploss will use ATR, this is fallback
-    stoploss = -0.194   # -4.0% absolute backstop (ATR SL should hit first)
+    stoploss = -0.010   # -1.0% absolute backstop (H-C test) (ATR SL should hit first)
     
     # Trailing stop — fixed from broken values (v0.42.0)
     # Previous values: 0.277 (27.7%!) and 0.295 (29.5%) — completely wrong
