@@ -12,9 +12,10 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.11
+Version: 0.99.12
 
 Changelog:
+- v0.99.12 (2026-03-27): H-A — ATR-based dynamic TP. TS at +0.8% clips all winners (avg win 0.79%, R/R 0.46 DANGEROUS). H-B (1.5% ROI) failed: only 1/98 trades reached it, TS intercepts first. Fix: (1) minimal_roi "0": 1.5→5.0 (TS handles normal ~0.8% winners, dynamic TP handles exceptional 2.5× ATR moves). (2) custom_exit adds dynamic_tp: if profit >= 2.5× ATR_mult × entry_atr_pct → exit. Expected: avg win increases, R/R improves toward 1.0+.
 - v0.99.11 (2026-03-27): REVERT H-C stoploss change. v0.99.10 (stoploss -0.010) CATASTROPHIC: WR crashed 88%→65%, profit negative (-$5.75), 34 stop_loss exits at -1.29% avg (all losses). Reverting stoploss to -0.194 (v0.99.6 level). H-C hypothesis REJECTED — tight SL didn't fix R/R, it destroyed it.
 - v0.99.10 (2026-03-27): H-C test — stoploss: -0.194 → -0.010. H-B (1.5% ROI floor) failed — TS still clipped winners at +0.8%. H-C hypothesis: tighter SL caps losses earlier, improves R/R from 0.46 toward 0.79.
 - v0.99.9 (2026-03-27): Trigger backtest on v0.99.8 H-B ROI floor code.
@@ -412,7 +413,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.99.4"
+    STRATEGY_VERSION = "0.99.12"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -491,8 +492,14 @@ class LiquiditySweep(IStrategy):
     # Previous: "0": 0.349 (0.349%) — too low, TS at +0.8% clipped winners early.
     # Now: "0": 1.5 forces winners to reach 1.5% before ROI exit fires.
     # Expected: avg win should rise from 0.48% → 1.5%+, flipping R/R above 1.0.
+    # H-A (v0.99.12): ATR-based dynamic TP — replaces fixed 1.5% ROI.
+    # TS at +0.8% clips all winners (avg win = 0.79%). Dynamic TP = 2.5× ATR
+    # lets big moves run while keeping normal winners to TS.
+    # H-B also failed: only 1/98 trades hit 1.5% ROI. TS intercepts first.
+    # Fix: Set "0": 5.0 — high enough that normal trades ride TS at +0.8%.
+    # Dynamic TP in custom_exit handles exceptional moves (2.5× ATR).
     minimal_roi = {
-        "0": 1.5,
+        "0": 5.0,
         "109": 0.07,
         "159": 0.10,
         "400": 0.02,
@@ -1096,7 +1103,7 @@ class LiquiditySweep(IStrategy):
                     current_profit: float, **kwargs):
         """
         Custom exit logic:
-        1. ChoCH profit guard: block ChoCH exits when trade is underwater (v0.54.0)
+        1. H-A Dynamic TP (ATR-based): let exceptional moves run 2.5× ATR (v0.99.12)
         2. Early profit exit at +2.5%: lock in exceptional winners (v0.74.0)
         3. Time-based exit: cut stale trades
         4. Target liquidity reached
@@ -1108,7 +1115,27 @@ class LiquiditySweep(IStrategy):
         last_candle = dataframe.iloc[-1]
         
         # v0.58.0: ChoCH profit guard removed — ChoCH exits fully disabled in populate_exit_trend.
-        # All exits now handled by: early_profit_take, trailing_stop, ROI, time_exit, stoploss.
+        # All exits now handled by: dynamic_tp, early_profit_take, trailing_stop, ROI, time_exit, stoploss.
+        
+        # H-A (v0.99.12): Dynamic TP — adaptive, lets big momentum runs go to 2.5× ATR.
+        # R/R problem: TS at +0.8% clips all winners (avg win = 0.79%, R/R = 0.46).
+        # H-B (1.5% ROI) failed: only 1/98 trades hit it, TS intercepts first.
+        # Dynamic TP: scale with volatility. In high vol (BTC ~1.5% ATR) → TP ~3.75%.
+        # In low vol (ETH ~0.8% ATR) → TP ~2.0%. Let winners run appropriate to market.
+        # This check runs BEFORE trailing_stop activates (custom_exit first), so we can
+        # capture big moves before the fixed +0.8% offset clips them.
+        trade_open_dt = trade.open_date_utc
+        entry_candle_df = dataframe[dataframe['date'] <= trade_open_dt]
+        if len(entry_candle_df) > 0 and 'atr_pct' in entry_candle_df.columns:
+            entry_atr_pct = entry_candle_df.iloc[-1]['atr_pct']
+            if not pd.isna(entry_atr_pct) and entry_atr_pct > 0:
+                atr_mult = self.get_param('atr_multiplier', pair, self.atr_multiplier.value)
+                # Dynamic TP = 2.5× ATR multiplier × entry ATR%
+                dynamic_tp_threshold = 2.5 * atr_mult * entry_atr_pct
+                # Require at least 3 candles hold to avoid gap/open spike exits
+                trade_duration_candles = (current_time - trade.open_date_utc).total_seconds() / 3600 / 0.25
+                if trade_duration_candles >= 3 and current_profit >= dynamic_tp_threshold:
+                    return "dynamic_tp"
         
         # 1. Early profit exit — lock in wins before TSL activates at +1.5% (v0.46.0)
         # Require at least 45min hold to avoid gap-based false exits
