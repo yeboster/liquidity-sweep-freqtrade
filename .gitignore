@@ -75,8 +75,6 @@ user_data/
 tradesv3.sqlite*
 tradesv3.dryrun.sqlite*
 backtest_results/
-# Exception: always commit the latest summary JSON
-!backtest_results/latest_summary.json
 hyperopt_results/
 *.json.example
 !config.json.example

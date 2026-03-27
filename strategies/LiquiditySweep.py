@@ -12,10 +12,14 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.6
+Version: 0.99.8
 
 Changelog:
-- v0.99.6 (2026-03-27): Remove FIL/USDT from pair whitelist — only pair with negative profit (-$1.31, 71.4% WR, PF 0.89). FIL had 7 trades with 2 big losses via TS. Backtest showed 105 trades, 87.6% WR, $176.35 profit with FIL. Removing FIL keeps 10 pairs (back to v0.99.4 level) and should improve overall PF.
+- v0.99.8 (2026-03-27): H-B ROI floor test — minimal_roi "0": 0.349% → 1.5%.
+  Problem (v0.99.6): R/R = 0.47 — avg win 0.48%, avg loss 1.69%. TS at +0.8% clips
+  winners too early. Hypothesis: force 1.5% ROI exit before TS activates, letting
+  winners run longer. If avg win increases to 1.5%+, R/R should flip above 1.0.
+  NOTE: v0.99.7 fix only updated user_data/ (wrong dir) — this is the actual fix.
 - v0.99.5 (2026-03-27): Add FIL/USDT to pair whitelist (11 pairs). Goal: increase trade frequency from ~49/yr toward 100+/yr target. FIL is high-volume storage token, not yet tested. All 10 existing pairs positive with wins — no removals needed.
 - v0.99.4 (2026-03-27): Iteration backtest — confirm v0.99.3 results stable. All 10 pairs positive with wins. No fix needed.
 - v0.99.3 (2026-03-26): Add AAVE/USDT to pair whitelist (10 pairs). Goal: increase trade frequency from ~44/yr toward 100+/yr target. AAVE is high-volume DeFi token, not yet tested in this strategy. All existing 9 pairs positive with wins — no removals needed.
@@ -480,8 +484,12 @@ class LiquiditySweep(IStrategy):
     # Fix: Raise ROI 305 to 2% AND push to 400 candles (~67h). Winners that would have
     # been cut at +1% at 76h can now run to 2% at 67h (faster timeline, higher target).
     # Trailing stop still manages risk: activates at +1.5%, exits at +1.0%.
+    # H-B (v0.99.8): Force 1.5% ROI exit before TS can activate (TS offset = 0.8%).
+    # Previous: "0": 0.349 (0.349%) — too low, TS at +0.8% clipped winners early.
+    # Now: "0": 1.5 forces winners to reach 1.5% before ROI exit fires.
+    # Expected: avg win should rise from 0.48% → 1.5%+, flipping R/R above 1.0.
     minimal_roi = {
-        "0": 0.349,
+        "0": 1.5,
         "109": 0.07,
         "159": 0.10,
         "400": 0.02,
