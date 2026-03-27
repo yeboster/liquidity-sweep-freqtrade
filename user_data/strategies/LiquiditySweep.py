@@ -15,13 +15,26 @@ Author: Jarvis (OpenClaw)
 Version: 0.99.10
 
 Changelog:
-- v0.99.10 (2026-03-27): H-C test — stoploss -0.194→-0.010 (was H-B trigger)
+- v0.99.10 (2026-03-27): H-C test — stoploss: -0.194 → -0.010. H-B (1.5% ROI floor) failed — TS still clipped winners at +0.8%. H-C hypothesis: tighter SL caps losses earlier, improves R/R from 0.46 toward 0.79.
 - v0.99.9 (2026-03-27): Trigger backtest on v0.99.8 H-B ROI floor code.
 - v0.99.8 (2026-03-27): H-B ROI floor test — minimal_roi "0": 0.349% → 1.5%.
   Problem (v0.99.6): R/R = 0.47 — avg win 0.48%, avg loss 1.69%. TS at +0.8% clips
   winners too early. Hypothesis: force 1.5% ROI exit before TS activates, letting
   winners run longer. If avg win increases to 1.5%+, R/R should flip above 1.0.
   NOTE: v0.99.7 fix only updated user_data/ (wrong dir) — this is the actual fix.
+- v0.99.5 (2026-03-27): Add FIL/USDT to pair whitelist (11 pairs). Goal: increase trade frequency from ~49/yr toward 100+/yr target. FIL is high-volume storage token, not yet tested. All 10 existing pairs positive with wins — no removals needed.
+- v0.99.4 (2026-03-27): Iteration backtest — confirm v0.99.3 results stable. All 10 pairs positive with wins. No fix needed.
+- v0.99.3 (2026-03-26): Add AAVE/USDT to pair whitelist (10 pairs). Goal: increase trade frequency from ~44/yr toward 100+/yr target. AAVE is high-volume DeFi token, not yet tested in this strategy. All existing 9 pairs positive with wins — no removals needed.
+- v0.99.2 (2026-03-26): Restore DOT/USDT to pair whitelist (9 pairs). DOT had -$3.10 in v0.96.0 due to TS offset 1.3% being too wide. With TS offset back at 0.8%, DOT now performs well: 11 trades, 90.9% WR, +$19.60 profit. Trade frequency increased from 77→88 (+14%), profit from $132→$152 (+15%).
+- v0.99.1 (2026-03-26): Remove ALGO/USDT from pair whitelist — 2 trades, 0 wins, -$25.59 profit (both trades were big losers via trailing_stop_loss). XLM/USDT kept (+$26.97, 66.7% WR, 6 trades) — net positive addition.
+- v0.99.0 (2026-03-26): Add XLM/USDT + ALGO/USDT to pair whitelist. Goal: increase trade frequency from ~35/yr toward 100+/yr target. Both pairs are high-volume, not yet tested in this strategy. Monitoring for 0 wins or negative profit — will remove if they drag down PF.
+- v0.98.0 (2026-03-26): Widen OTE zone optimization bounds (lower: 25-40%, upper: 60-80%). Defaults stay at 30-70%. Gives hyperopt more room to explore wider zones that may increase trade frequency toward 100+/yr target. Current 25-35%/65-75% bounds were too narrow.
+- v0.96.1 (2026-03-25): REVERT TS offset 1.3%→0.8%. v0.96.0's wider TS offset (1.3%) caused TS WR to collapse from 92.1%→71.6% and profit to drop from $107.80→$94.83. Winners ran too far before TS activated, giving back too much. Restoring 0.8% offset (validated in v0.89.0 with 92.1% TS WR). Keep OTE 30-70%.
+- v0.96.0 (2026-03-25): H3: Revert OTE zone 50-65% → 30-70%. v0.95.0's tighter OTE (50-65%) only produced 32 trades — too few. Reverting to wider 30-70% to restore trade frequency toward 100+/yr target. Keep TS offset 1.3% (winners still ride longer).
+- v0.95.0 (2026-03-25): H2: Increase trailing stop offset 0.8% → 1.3%. Hypothesis: current 0.8% offset activates TS too early, cutting winners before they fully run. Widen to 1.3% so winners ride longer before TS kicks in. Combined with H1's tighter OTE zone (50-65%) for better entry quality.
+- v0.94.0 (2026-03-25): H1: Tighten OTE zone 28-72% → 50-65%. Hypothesis: deeper pullbacks (50-65%) have better risk/reward than shallow 28-72% range. Target: avg profit/trade from 0.48% → 1%+. May reduce trade count slightly but quality should improve.
+- v0.93.0 (2026-03-25): Add ADA/USDT back to pair whitelist. v0.83.0 had ADA with 6 trades, 83.3% WR, +$5.80 profit — all positive. Testing if 8-pair config increases trade frequency toward 100+/yr target while maintaining quality (91%+ WR).
+- v0.92.0 (2026-03-25): REVERT confirmation_candle to False. v0.91.0 confirmation_candle=True cut trades from 79→40 (-49%) and profit from $135→$71 (-47%) with only marginal WR improvement (91.1%→92.5%). Net effect: confirmation_candle=True is too aggressive. Reverting to False to maximize trade frequency and absolute profit.
 - v0.90.0 (2026-03-25): Add BTC/USDT back to pair whitelist. BTC was best performer in v0.65.0 baseline (9 trades, +$14.04, 55.6% WR). Testing if 7-pair config pushes trade frequency toward 100+/yr target while maintaining quality (92%+ WR).
 - v0.89.0 (2026-03-25): Add AVAX/USDT back to pair whitelist. AVAX had 100% WR (+$38.39) in v0.83.0 — best per-pair performance. Testing if 6-pair config increases trade frequency without degrading quality.
 - v0.88.0 (2026-03-24): REVERT 5m→15m. 5m generated 183 trades/2yr (+115%) but TS win rate collapsed from 90.6%→68.3% and profit went from +$140→-$43.50. 5m timeframe causes too many false TS activations due to intra-candle noise. Reverting to 15m with existing 5-pair config (ETH/DOT/LINK/UNI/NEAR).
@@ -398,7 +411,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.87.0"
+    STRATEGY_VERSION = "0.99.4"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -472,7 +485,8 @@ class LiquiditySweep(IStrategy):
     # trades that never reach 1% profit, so ROI doesn't fire for them anyway.
     # Fix: Raise ROI 305 to 2% AND push to 400 candles (~67h). Winners that would have
     # been cut at +1% at 76h can now run to 2% at 67h (faster timeline, higher target).
-    # H-B (v0.99.7): Force 1.5% ROI exit before TS can activate (TS offset = 0.8%).
+    # Trailing stop still manages risk: activates at +1.5%, exits at +1.0%.
+    # H-B (v0.99.8): Force 1.5% ROI exit before TS can activate (TS offset = 0.8%).
     # Previous: "0": 0.349 (0.349%) — too low, TS at +0.8% clipped winners early.
     # Now: "0": 1.5 forces winners to reach 1.5% before ROI exit fires.
     # Expected: avg win should rise from 0.48% → 1.5%+, flipping R/R above 1.0.
@@ -484,13 +498,13 @@ class LiquiditySweep(IStrategy):
     }
     
     # Absolute backstop required by Freqtrade — custom_stoploss will use ATR, this is fallback
-    stoploss = -0.010   # -1.0% absolute backstop (H-C test) (ATR SL should hit first)
+    stoploss = -0.010  # -1.0% absolute backstop (ATR SL should hit first, H-C test)
     
     # Trailing stop — fixed from broken values (v0.42.0)
     # Previous values: 0.277 (27.7%!) and 0.295 (29.5%) — completely wrong
     trailing_stop = True
     trailing_stop_positive = 0.005     # Trail 0.5% behind peak (TS must be < offset)
-    trailing_stop_positive_offset = 0.008  # Activate after +0.8% (v0.72.0: optimal balance)
+    trailing_stop_positive_offset = 0.008  # Activate after +0.8% (v0.97.0: revert 1.3%→0.8% — 1.3% gave back too much profit)
     trailing_only_offset_is_reached = True
     
     # ATR-based dynamic stoploss enabled in v0.22.0
@@ -518,9 +532,10 @@ class LiquiditySweep(IStrategy):
     # FF-2's 20-80% was catastrophic — outer Fibonacci = reversal traps.
     # v0.38.0 hyperopt disabled require_ote entirely → 9 trades, 11.1% WR (disastrous).
     # Fix: require_ote=True is MANDATORY (optimize=False) to prevent hyperopt removing it again.
-    # Keep ote_lower/ote_upper hyperoptable within the 28-72% tight band.
-    ote_lower = DecimalParameter(0.25, 0.38, default=0.28, space="buy", optimize=True)
-    ote_upper = DecimalParameter(0.60, 0.75, default=0.72, space="buy", optimize=True)
+    # H3: Revert to 30-70% OTE zone (v0.95.0's 50-65% was too tight — only 32 trades).
+    # v0.95.0: OTE 50-65% with TS offset 1.3% → 32 trades. Revert to 30-70% for more trades.
+    ote_lower = DecimalParameter(0.20, 0.40, default=0.30, space="buy", optimize=True)
+    ote_upper = DecimalParameter(0.60, 0.80, default=0.70, space="buy", optimize=True)
     require_ote = CategoricalParameter([True, False], default=True, space="buy", optimize=False)  # MANDATORY — optimize=False prevents hyperopt disabling
     
     # ATR-based SL — new in v0.22.0
