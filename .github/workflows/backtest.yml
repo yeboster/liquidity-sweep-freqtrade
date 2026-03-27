@@ -63,8 +63,11 @@ jobs:
           from datetime import datetime
 
           # Find the latest backtest result
+          # freqtrade outputs to backtest-result-{timestamp}.json (--export-filename is deprecated)
           result_dir = 'user_data/backtest_results'
-          files = [f for f in os.listdir(result_dir) if f.startswith('backtest-trades')]
+          files = [f for f in os.listdir(result_dir)
+                   if f.startswith('backtest-result') and f.endswith('.json')
+                   and 'LiquiditySweep' not in f and 'config' not in f and 'market' not in f]
           if not files:
               print("No backtest results found!")
               sys.exit(1)
@@ -126,6 +129,7 @@ jobs:
           summary = {
               'version': data.get('strategy', {}).get('LiquiditySweep', {}).get('strategy_name', 'unknown'),
               'timestamp': datetime.utcnow().isoformat() + 'Z',
+              'latest_backtest_file': latest,
               'total_trades': total_trades,
               'trades_per_year': round(total_trades / 2, 1),
               'win_count': win_count,
