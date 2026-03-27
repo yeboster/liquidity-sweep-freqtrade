@@ -134,7 +134,7 @@ jobs:
           summary = {
               'version': data.get('strategy', {}).get('LiquiditySweep', {}).get('strategy_name', 'unknown'),
               'timestamp': datetime.utcnow().isoformat() + 'Z',
-              'latest_backtest_file': latest,
+              'latest_backtest_file': latest_name,
               'total_trades': total_trades,
               'trades_per_year': round(total_trades / 2, 1),
               'win_count': win_count,
