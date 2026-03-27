@@ -151,8 +151,8 @@ jobs:
               'pairs': sorted(pairs, key=lambda x: x['profit'], reverse=True)
           }
 
-          # Write summary
-          with open('user_data/backtest_results/latest_summary.json', 'w') as f:
+          # Write summary to repo root
+          with open('latest_summary.json', 'w') as f:
               json.dump(summary, f, indent=2)
 
           # Print for CI log
@@ -167,14 +167,14 @@ jobs:
           print("SQN: %.4f" % summary['sqn'])
           exits_str = ", ".join("%s(%d, %.4f%%)" % (ex['exit'], ex['trades'], ex['profit_mean_pct']) for ex in exits)
           print("Exits: [%s]" % exits_str)
-          print("Summary written to user_data/backtest_results/latest_summary.json")
+          print("Summary written to latest_summary.json")
           PYEOF
 
       - name: Commit Backtest Summary
         run: |
           git config --local user.email "jarvis@openclaw"
           git config --local user.name "Jarvis"
-          git add user_data/backtest_results/latest_summary.json
+          git add latest_summary.json
           git diff --staged --quiet || git commit -m "ci: update backtest summary [skip ci]" || echo "No changes to commit"
           git push || echo "Push failed (may be identical)"
 
@@ -182,4 +182,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: backtest-results
-          path: user_data/backtest_results/
+          path: |
+            user_data/backtest_results/
+            latest_summary.json
