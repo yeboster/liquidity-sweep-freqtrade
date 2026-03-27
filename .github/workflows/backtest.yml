@@ -66,9 +66,9 @@ jobs:
           result_dir = 'user_data/backtest_results'
           files = [f for f in os.listdir(result_dir) if f.startswith('backtest-trades')]
           if not files:
-            print("No backtest results found!")
-            sys.exit(1)
-          
+              print("No backtest results found!")
+              sys.exit(1)
+
           latest = sorted(files)[-1]
           with open(os.path.join(result_dir, latest)) as f:
               data = json.load(f)
@@ -112,8 +112,8 @@ jobs:
 
           # Per-pair performance
           pairs_data = strat.get('results_per_pair', [])
+          pairs = []
           if isinstance(pairs_data, list):
-              pairs = []
               for p in pairs_data:
                   pairs.append({
                       'pair': p.get('pair', 'UNKNOWN'),
@@ -121,8 +121,6 @@ jobs:
                       'wr': round(p.get('winrate', 0) * 100, 2),
                       'profit': round(p.get('profit_total_abs', 0), 2)
                   })
-          else:
-              pairs = []
 
           # Build summary
           summary = {
@@ -149,22 +147,23 @@ jobs:
               'pairs': sorted(pairs, key=lambda x: x['profit'], reverse=True)
           }
 
-          # Write summary (to user_data/backtest_results so it's in the artifact upload)
+          # Write summary
           with open('user_data/backtest_results/latest_summary.json', 'w') as f:
               json.dump(summary, f, indent=2)
 
           # Print for CI log
-          print(f"=== BACKTEST SUMMARY ===")
-          print(f"Trades: {total_trades} ({summary['trades_per_year']}/yr)")
-          print(f"Win Rate: {wr:.2f}%")
-          print(f"Profit: ${profit_abs:.2f} ({profit_pct:.2f}%)")
-          print(f"Avg profit/WIN: {avg_win_pct:.4f}%")
-          print(f"Avg loss/LOSS: {avg_loss_pct:.4f}%")
-          print(f"R/R ratio: {rr:.4f}")
-          print(f"Profit factor: {summary['profit_factor']}")
-          print(f"SQN: {summary['sqn']}")
-          print(f"Exits: {[(e['exit'], e['trades'], f\"{e['profit_mean_pct']:.4f}%\") for e in exits]}")
-          print(f"Summary written to backtest_results/latest_summary.json")
+          print("=== BACKTEST SUMMARY ===")
+          print("Trades: %d (%s/yr)" % (total_trades, summary['trades_per_year']))
+          print("Win Rate: %.2f%%" % wr)
+          print("Profit: $%.2f (%.2f%%)" % (profit_abs, profit_pct))
+          print("Avg profit/WIN: %.4f%%" % avg_win_pct)
+          print("Avg loss/LOSS: %.4f%%" % avg_loss_pct)
+          print("R/R ratio: %.4f" % rr)
+          print("Profit factor: %.4f" % summary['profit_factor'])
+          print("SQN: %.4f" % summary['sqn'])
+          exits_str = ", ".join("%s(%d, %.4f%%)" % (ex['exit'], ex['trades'], ex['profit_mean_pct']) for ex in exits)
+          print("Exits: [%s]" % exits_str)
+          print("Summary written to user_data/backtest_results/latest_summary.json")
           PYEOF
 
       - name: Commit Backtest Summary
@@ -172,14 +171,7 @@ jobs:
           git config --local user.email "jarvis@openclaw"
           git config --local user.name "Jarvis"
           git add user_data/backtest_results/latest_summary.json
-          git diff --staged --quiet || git commit -m "ci: update backtest summary [skip ci]
-          
-          $(python3 -c "
-          import json
-          with open('user_data/backtest_results/latest_summary.json') as f:
-              s = json.load(f)
-          print(f\"Trades: {s['total_trades']}, WR: {s['win_rate']}%, Profit: \${s['profit_abs']} ({s['profit_pct']}%), Avg/Win: {s['avg_profit_per_win']}%, R/R: {s['rr_ratio']}\")
-          ")" || echo "No changes to commit"
+          git diff --staged --quiet || git commit -m "ci: update backtest summary [skip ci]" || echo "No changes to commit"
           git push || echo "Push failed (may be identical)"
 
       - name: Upload Backtest Results
