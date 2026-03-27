@@ -19,10 +19,10 @@ jobs:
 
       - name: Prepare directories
         run: |
-          mkdir -p backtest_results
           mkdir -p user_data/data
           mkdir -p user_data/strategies
-          chmod -R 777 backtest_results user_data
+          mkdir -p user_data/backtest_results
+          chmod -R 777 user_data
 
       - name: Download Data
         run: |
