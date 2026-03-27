@@ -89,28 +89,67 @@ Compensate by maximizing trade frequency.
 
 ---
 
-## Current State (v0.99.5)
+## Current State (v0.99.6)
 
 | Metric | Value | Status |
 |--------|-------|--------|
-| Trades/yr | ~43 | ❌ Below 100 target |
-| Win Rate | 88.5% | ✅ |
-| Profit | $158.04 (15.80%) | ✅ |
-| Profit Factor | 3.62 | ✅ |
-| SQN | 4.18 | ✅ |
-| Avg Profit/Trade | **0.18% (0.79% avg win)** | ❌ |
+| Trades/yr | ~49 | ❌ Below 100 target |
+| Win Rate | 88.8% | ✅ |
+| Profit | $176.62 (17.66%) | ✅ |
+| Profit Factor | 3.59 | ✅ |
+| SQN | 4.49 | ✅ |
+| Avg Profit/Trade | **0.50% (0.48% avg win)** | ❌ |
 | R/R Ratio | **0.47** | ❌ Need >1.0 |
 | Realistic Live Return | ~15-18%/yr | ⚠️ Thin margin |
 
 ---
 
-## v0.99.5 (HEAD) — FIL/USDT Added (Backtest Pending)
+## v0.99.6 ✅ — FIL/USDT Removed — CONFIRMED (2026-03-27)
 
-FIL/USDT added to pairlist (11 pairs). Backtest pending. Per-pair data inherits from v0.99.4 verified results above.
+**Backtest Run:** 23646889698 (workflow_dispatch on v0.99.6 commit)
+**Result:** ✅ CONFIRMED — Removing FIL restored pairlist to 10 pairs. FIL was net negative:
+- FIL: -$1.31, 71.4% WR, PF 0.89 (7 trades, 2 big TS losses)
+- Confirms 10-pair config (back to v0.99.4 level) is optimal.
 
-**Priority for next backtest:** Validate that adding FIL increases trade count toward 100+/yr without degrading WR below 85% or PF below 2.0.
+| Metric | v0.99.6 (10 pairs) | v0.99.5 (11 pairs, FIL) | Change |
+|--------|---------------------|--------------------------|--------|
+| Trades | **98** | 98 | 0 |
+| Win Rate | **88.8%** | 87.6% | +1.2pp ✅ |
+| Profit | **$176.62 (17.66%)** | $176.35 (17.63%) | +$0.27 |
+| Profit Factor | **3.59** | 3.42 | +0.17 ✅ |
+| SQN | **4.49** | 4.38 | +0.11 |
+| Drawdown | $20.11 | $20.12 | stable |
+| TS Exit % | 95.9% | 95.2% | stable |
+| TS Win Rate | **88.3%** | 87.6% | +0.7pp |
+| Avg Hold | 4:23 | 4:18 | stable |
 
-**Strategic note:** Even with 200+ trades/yr, the 0.79% avg win / 1.69% avg loss structural issue remains. The next backtest iteration should also test one of the R/R fix hypotheses (H-A: ATR-based TP, H-B: 1.5% ROI floor, or H-C: tighter SL).
+**Per-pair (all positive, all have wins — no removals needed):**
+| Pair | Trades | WR | Profit |
+|------|--------|-----|--------|
+| AVAX/USDT | 13 | 100.0% | +$34.86 |
+| XLM/USDT | 6 | 66.7% | +$27.59 |
+| BTC/USDT | 15 | 86.7% | +$24.15 |
+| DOT/USDT | 11 | 90.9% | +$19.86 |
+| AAVE/USDT | 11 | 90.9% | +$17.08 |
+| ETH/USDT | 9 | 88.9% | +$15.77 |
+| UNI/USDT | 7 | 100.0% | +$12.91 |
+| LINK/USDT | 13 | 84.6% | +$12.51 |
+| NEAR/USDT | 7 | 85.7% | +$5.95 |
+| ADA/USDT | 6 | 83.3% | +$5.93 |
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| trailing_stop_loss | 94 | **88.3%** | +$163.12 |
+| target_liquidity_reached | 3 | 100% | +$6.89 |
+| roi | 1 | 100% | +$6.61 |
+
+**Fix criteria check:**
+- TS exits: 94/98 = 95.9% (>30%) with 88.3% WR → ✅ TS working exceptionally
+- All 10 pairs positive + have wins → no pair removals needed
+- Profit positive + PF 3.59 → exceptional performance
+- XLM/USDT lowest WR at 66.7% but still net positive (+$27.59, 6 trades) → keep
+- **Next: ⏳ Continue R/R fix hypotheses testing — H-A (ATR-based TP) or H-B (1.5% ROI floor)**
 
 ---
 
