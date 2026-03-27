@@ -1,21 +1,71 @@
 # Liquidity Sweep — Roadmap
 
-> Updated: 2026-03-26
+> Updated: 2026-03-27
 > **Goal: Increase trade frequency from ~17/yr to 100+/yr AND avg profit from 0.48% to 1-3% per trade**
 
 ---
 
 ## Current State
 
-| Metric | v0.99.3 | Target |
+| Metric | v0.99.4 | Target |
 |--------|---------|--------|
 | Trades/yr | ~49 ❌ | 100-200 |
 | Win Rate | **88.8%** ✅ | 45%+ |
 | Profit | **$176.62 (17.66%)** ✅ | 5%+ |
 | Profit Factor | **3.59** ✅ | 1.5+ |
+| SQN | **4.49** ✅ | 2.0+ |
 | Avg Profit/Trade | **0.50%** ⚠️ | 1-3% |
 
-**v0.99.3 — AAVE/USDT added (10 pairs). 98 trades/2yr, +11 vs v0.99.2. All 10 pairs positive with wins. TS 95.9% exits at 88.3% WR — no fix needed. Next: ⏳ H3 — Revert OTE to 30-70% but keep TS 0.8% offset.**
+**v0.99.4 — Iteration backtest: confirm v0.99.3 results stable (10 pairs). 98 trades/2yr, 88.8% WR, $176.62 (17.66%), PF 3.59. All 10 pairs positive with wins. TS 95.9% exits at 88.3% WR — no fix needed. Next: ⏳ Try another high-volume pair (FIL, APT, etc.) or accept ~49/yr with current config — quality is exceptional.**
+
+---
+
+## v0.99.4 ✅ — Iteration Backtest Confirms v0.99.3 Stable (2026-03-27)
+
+**Backtest Run:** 23628580657 (push-triggered on v0.99.4 commit)
+**Result:** ✅ Identical to v0.99.3 — strategy stable. All fix criteria pass.
+
+| Metric | v0.99.4 | v0.99.3 | Status |
+|--------|---------|---------|--------|
+| Trades | **98** | 98 | ✅ |
+| Win Rate | **88.8%** | 88.8% | ✅ |
+| Profit | **$176.62 (17.66%)** | $176.62 (17.66%) | ✅ |
+| Profit Factor | **3.59** | 3.59 | ✅ |
+| SQN | **4.49** | 4.49 | ✅ |
+| Drawdown | $20.11 | $20.11 | ✅ |
+| Avg Hold | **4:23** | 4:23 | ✅ |
+
+**Per-pair (all positive, all have wins — no removals needed):**
+| Pair | Trades | WR | Profit |
+|------|--------|-----|--------|
+| AVAX/USDT | 13 | 100.0% | +$34.86 |
+| XLM/USDT | 6 | 66.7% | +$27.59 |
+| BTC/USDT | 15 | 86.7% | +$24.15 |
+| DOT/USDT | 11 | 90.9% | +$19.86 |
+| AAVE/USDT | 11 | 90.9% | +$17.08 |
+| ETH/USDT | 9 | 88.9% | +$15.77 |
+| UNI/USDT | 7 | 100.0% | +$12.91 |
+| LINK/USDT | 13 | 84.6% | +$12.51 |
+| NEAR/USDT | 7 | 85.7% | +$5.95 |
+| ADA/USDT | 6 | 83.3% | +$5.93 |
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| trailing_stop_loss | 94 | **88.3%** | +$163.12 |
+| target_liquidity_reached | 3 | 100% | +$6.89 |
+| roi | 1 | 100% | +$6.61 |
+
+**Fix criteria check:**
+- TS exits: 94/98 = 95.9% (>30%) with 88.3% WR → ✅ TS working exceptionally
+- All 10 pairs positive + have wins → no pair removals needed
+- Profit positive + PF 3.59 → exceptional performance
+- **v0.99.3 results confirmed stable across 2 iterations**
+
+**Next step (⏳):** Continue trade frequency increase toward 100+/yr. Options:
+1. Try another high-volume pair (FIL, APT, etc.)
+2. Experiment with OTE zone fine-tuning within 30-70% range
+3. Accept ~49/yr with current config — excellent quality (88.8% WR, PF 3.59, SQN 4.49)
 
 ---
 
