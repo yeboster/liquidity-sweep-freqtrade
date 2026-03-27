@@ -12,9 +12,10 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.3
+Version: 0.99.5
 
 Changelog:
+- v0.99.5 (2026-03-27): Add FIL/USDT to pair whitelist (11 pairs). Goal: increase trade frequency from ~49/yr toward 100+/yr target. FIL is high-volume storage token, not yet tested. All 10 existing pairs positive with wins — no removals needed.
 - v0.99.4 (2026-03-27): Iteration backtest — confirm v0.99.3 results stable. All 10 pairs positive with wins. No fix needed.
 - v0.99.3 (2026-03-26): Add AAVE/USDT to pair whitelist (10 pairs). Goal: increase trade frequency from ~44/yr toward 100+/yr target. AAVE is high-volume DeFi token, not yet tested in this strategy. All existing 9 pairs positive with wins — no removals needed.
 - v0.99.2 (2026-03-26): Restore DOT/USDT to pair whitelist (9 pairs). DOT had -$3.10 in v0.96.0 due to TS offset 1.3% being too wide. With TS offset back at 0.8%, DOT now performs well: 11 trades, 90.9% WR, +$19.60 profit. Trade frequency increased from 77→88 (+14%), profit from $132→$152 (+15%).
