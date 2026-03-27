@@ -12,9 +12,10 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.8
+Version: 0.99.9
 
 Changelog:
+- v0.99.9 (2026-03-27): Trigger backtest on v0.99.8 H-B ROI floor code.
 - v0.99.8 (2026-03-27): H-B ROI floor test — minimal_roi "0": 0.349% → 1.5%.
   Problem (v0.99.6): R/R = 0.47 — avg win 0.48%, avg loss 1.69%. TS at +0.8% clips
   winners too early. Hypothesis: force 1.5% ROI exit before TS activates, letting
