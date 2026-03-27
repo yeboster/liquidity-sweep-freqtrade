@@ -15,6 +15,7 @@ Author: Jarvis (OpenClaw)
 Version: 0.99.3
 
 Changelog:
+- v0.99.4 (2026-03-27): Iteration backtest — confirm v0.99.3 results stable. All 10 pairs positive with wins. No fix needed.
 - v0.99.3 (2026-03-26): Add AAVE/USDT to pair whitelist (10 pairs). Goal: increase trade frequency from ~44/yr toward 100+/yr target. AAVE is high-volume DeFi token, not yet tested in this strategy. All existing 9 pairs positive with wins — no removals needed.
 - v0.99.2 (2026-03-26): Restore DOT/USDT to pair whitelist (9 pairs). DOT had -$3.10 in v0.96.0 due to TS offset 1.3% being too wide. With TS offset back at 0.8%, DOT now performs well: 11 trades, 90.9% WR, +$19.60 profit. Trade frequency increased from 77→88 (+14%), profit from $132→$152 (+15%).
 - v0.99.1 (2026-03-26): Remove ALGO/USDT from pair whitelist — 2 trades, 0 wins, -$25.59 profit (both trades were big losers via trailing_stop_loss). XLM/USDT kept (+$26.97, 66.7% WR, 6 trades) — net positive addition.
@@ -402,7 +403,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.99.2"
+    STRATEGY_VERSION = "0.99.4"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
