@@ -143,7 +143,52 @@ Winners never reach 1.5% because TS clips them at +0.8%.
 
 ---
 
-## Current State (v0.99.9)
+## v0.99.11 ✅ — H-C REVERTED — Baseline Restored (2026-03-27)
+
+**Backtest Run:** 23666666016 (push-triggered on v0.99.11 commit)
+**Result:** ✅ H-C REVERTED — baseline restored. v0.99.10 (stoploss -0.010) was CATASTROPHIC.
+
+| Metric | v0.99.11 (revert) | v0.99.10 (H-C) | Change |
+|--------|-------------------|----------------|--------|
+| Trades | **98** | 98 | — |
+| Win Rate | **88.78%** | 65.31% | **+23.5pp ✅** |
+| Profit | **$176.62 (17.66%)** | -$5.75 (-0.57%) | **+$182.37 ✅** |
+| Profit Factor | **3.59** | 0.96 | **+2.63 ✅** |
+| SQN | **4.49** | -0.18 | **+4.67 ✅** |
+| Drawdown | **$20.11** | $59.77 | **-66% ✅** |
+| TS Exit % | 95.9% | 62.2% | — |
+| TS Win Rate | **88.3%** | 0% | — |
+| R/R Ratio | **0.46** | 0.51 | — |
+| Avg Win | **0.79%** | 0.66% | — |
+| Avg Loss | **1.72%** | 1.29% | — |
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| trailing_stop_loss | 94 | **88.3%** | +$163.12 |
+| target_liquidity_reached | 3 | 100% | +$6.89 |
+| roi | 1 | 100% | +$6.61 |
+
+**Fix criteria check:**
+- TS exits: 94/98 = 95.9% (>30%) with 88.3% WR → ✅ TS working exceptionally
+- All 10 pairs positive + have wins → no pair removals needed
+- Profit positive + PF 3.59 → exceptional performance
+- **Confirmed: stoploss -0.010 (H-C) CATASTROPHIC — WR collapsed to 65%, 34 stop_loss exits (all losses). Reverting to -0.194 restores baseline.**
+
+**🔧 Fix applied:** Reverted stoploss from -0.010 → -0.194 (v0.99.6 baseline).
+
+**H-C verdict: REJECTED.** Tighter stoploss didn't fix R/R — it destroyed the strategy entirely. 34 trades hit stop_loss at -1.29% avg, all losing. The ATR-based dynamic stoploss is the correct mechanism for this strategy.
+
+**R/R ratio still 0.46 — DANGEROUS.** All R/R hypotheses (H-A, H-B, H-C) have FAILED:
+- H-A (ATR-based TP): Not tested yet
+- H-B (1.5% ROI floor): Failed — TS at +0.8% clips all winners first
+- H-C (tighter SL): REJECTED — catastrophic WR collapse
+
+**⏳ Next:** Try H-A — ATR-based dynamic TP. Let winners run 2.5× ATR before TP fires. May produce bigger avg wins and flip R/R above 1.0.
+
+---
+
+## Current State (v0.99.11)
 
 | Metric | Value | Status |
 |--------|-------|--------|
@@ -157,7 +202,7 @@ Winners never reach 1.5% because TS clips them at +0.8%.
 | R/R Ratio | **0.46** | ❌ Need >1.0 |
 | Realistic Live Return | ~15-18%/yr | ⚠️ Thin margin |
 
-**⏳ Next:** H-C — Test tighter SL floor (-0.194 → -0.010) to cap losses earlier and flip R/R above 1.0.
+**⏳ Next:** H-A — ATR-based dynamic TP. Let winners run 2.5× ATR.
 
 ---
 
