@@ -24,6 +24,14 @@ jobs:
           mkdir -p user_data/backtest_results
           chmod -R 777 user_data
 
+      - name: Cache OHLCV Data
+        uses: actions/cache@v4
+        with:
+          path: user_data/data/
+          key: ohlcv-v1-${{ hashFiles('config.json') }}
+          restore-keys: |
+            ohlcv-v1-
+
       - name: Download Data
         run: |
           docker run --rm \
