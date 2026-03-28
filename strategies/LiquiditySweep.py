@@ -12,9 +12,13 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.13
+Version: 0.99.14
 
 Changelog:
+- v0.99.14 (2026-03-28): DISABLE custom_stoploss. v0.99.13 claimed "TS disabled" but
+  use_custom_stoploss=True was still triggering 35/98 trades (35.7%) at avg -2.1%.
+  The ATR-based SL (1.5× ATR) was too tight. Fix: use_custom_stoploss=False →
+  static -19.4% stoploss. Trades now ride to dynamic_tp/ROI targets.
 - v0.99.13 (2026-03-28): FIX H-A dynamic TP — 2.5× was too high (5-11% threshold, never fires).
   v0.99.12 had dynamic_tp threshold = 2.5× atr_mult × atr_pct → BTC ~11%, ETH ~5%, XRP ~9%.
   TS disabled → dynamic TP (1.5× ATR) now primary exit. Targets: BTC ~3.4%, ETH ~1.5%.
@@ -417,7 +421,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.99.13"
+    STRATEGY_VERSION = "0.99.14"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -524,8 +528,14 @@ class LiquiditySweep(IStrategy):
     trailing_stop_positive_offset = 0.008  # Activate after +0.8%
     trailing_only_offset_is_reached = True
     
-    # ATR-based dynamic stoploss enabled in v0.22.0
-    use_custom_stoploss = True
+    # ATR-based dynamic stoploss DISABLED in v0.99.14
+    # Problem (v0.99.13): TS disabled ✓, but use_custom_stoploss=True meant the ATR-based
+    # custom_stoploss was still triggering 35/98 trades (35.7%) at avg -2.1%.
+    # The dynamic SL (1.5× ATR) was too tight for this volatility-rich strategy.
+    # Fix: Disable custom_stoploss. Freqtrade now uses static stoploss = -0.194 (19.4%).
+    # With 19.4% stop, trades can ride through volatility to hit dynamic_tp/ROI targets.
+    # v0.99.13 used: use_custom_stoploss = True (ATR-based SL at 1.5× ATR)
+    use_custom_stoploss = False
 
     # ── Timeframes ────────────────────────────────────────────────────────────
     timeframe = '15m'
