@@ -12,9 +12,18 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.21
+Version: 0.99.22
 
 Changelog:
+- v0.99.22 (2026-03-28): Widen trailing_stop_positive_offset 0.8%→1.5% (isolated test).
+  Problem (v0.99.21): R/R = 0.42 — TS at +0.8% clips ALL winners at avg 0.68%.
+  Every structural fix (H-A ATR-TP, H-B ROI floor, atr_mult changes) has failed
+  because the root cause is the TS offset being too tight.
+  Fix: ONLY change offset from 0.8% to 1.5% — keep atr_mult=4.0, TS enabled,
+  use_custom_stoploss=True, minimal_roi all identical to v0.99.21.
+  Expected: winners can run to +1.5% before TS activates, avg win increases,
+  R/R improves toward 0.6-0.8. Previous v0.95.0 (offset=1.3%) crashed WR —
+  but that combined OTE 50-65% change. This isolates ONLY the offset.
 - v0.99.21 (2026-03-28): Raise atr_mult 3.0→4.0 + remove NEAR/USDT.
   Problem (v0.99.20): R/R = 0.41 — still dangerous despite TS re-enable + atr_mult
   6.0→3.0. TS fires 76/81 trades (94%) at avg 0.35% profit. The atr_mult=3.0 is too
@@ -597,7 +606,7 @@ class LiquiditySweep(IStrategy):
     # Any trade below dynamic TP falls to ROI table (5%, 400 candles) or SL.
     trailing_stop = True  # Re-enabled in v0.99.20 — was disabled in v0.99.13 (wrong decision)
     trailing_stop_positive = 0.005     # Trail 0.5% behind peak (TS must be < offset)
-    trailing_stop_positive_offset = 0.008  # Activate after +0.8%
+    trailing_stop_positive_offset = 0.015  # Activate after +1.5% (was 0.8%)
     trailing_only_offset_is_reached = True
     
     # ATR-based dynamic stoploss RE-ENABLED in v0.99.15
