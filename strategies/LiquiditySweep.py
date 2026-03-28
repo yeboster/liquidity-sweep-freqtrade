@@ -12,9 +12,16 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.15
+Version: 0.99.16
 
 Changelog:
+- v0.99.16 (2026-03-28): Widen ATR stoploss floor -1.5%→-2.5% + increase atr_mult 3.0→5.0.
+  Problem (v0.99.15): 35/98 trades (35.7%) hit trailing_stop_loss at avg -2.1%.
+  ATR floor -1.5% was too tight: BTC atr_pct≈0.6-0.7% → 3.0×0.6%=1.8% < 1.5% floor →
+  all BTC stops capped at -1.5%, but 35 trades still hit -2.1% (TS must trail from there).
+  Fix: (1) Widen floor -1.5%→-2.5% — stops no longer capped on low-ATR pairs.
+  (2) Raise atr_mult 3.0→5.0 — ETH atr_pct≈0.9% would give -4.5% instead of -2.7%
+  (capped at old -1.5% floor). Expected: fewer stop triggers, bigger but rarer losses.
 - v0.99.15 (2026-03-28): REVERT custom_stoploss. v0.99.14 disabled ATR-based SL
   (use_custom_stoploss=False) → 6 trades hit static -19.4% stoploss at avg -19.64%.
   Total loss from stop_exits = -$389.21 on 95 trades. R/R ratio destroyed (0.11).
@@ -574,7 +581,7 @@ class LiquiditySweep(IStrategy):
     # v0.34.0: ATR Multiplier increase to 2.0x (from 1.5x)
     # The avg TSL loss in v0.29.0 was -1.61% vs avg win +0.57%. Loosening SL
     # gives institutional reversals room to breathe.
-    atr_multiplier = DecimalParameter(1.0, 4.0, default=3.0, space="buy", optimize=True)
+    atr_multiplier = DecimalParameter(1.0, 5.0, default=5.0, space="buy", optimize=True)
     atr_period = IntParameter(10, 20, default=14, space="buy", optimize=False)
     
     # Entry filters
@@ -1074,15 +1081,15 @@ class LiquiditySweep(IStrategy):
     def custom_stoploss(self, pair: str, trade: 'Trade', current_time: datetime,
                         current_rate: float, current_profit: float, **kwargs) -> float:
         """
-        ATR-based dynamic stoploss (v0.22.0).
-        
-        SL is placed at 1.5x ATR(14) below entry price (longs) or above (shorts).
+        ATR-based dynamic stoploss (v0.22.0, updated v0.99.16).
+
+        SL is placed at N× ATR(14) below entry price (longs) or above (shorts).
         This makes the stoploss:
         - Tighter in calm markets (ETH/ADA) → less loss per stop hit
         - Wider in volatile markets (BTC/SOL) → fewer premature exits
-        
-        Floor: -1.5% (don't place SL too tight — chop zone)
-        Ceiling: -4.0% (don't let it run beyond backstop SL)
+
+        Floor: -2.5% (don't place SL too tight — chop zone; v0.99.16: was -1.5%)
+        Ceiling: -10.0% (don't let it run beyond backstop SL; v0.99.16: was -4.0%)
         """
         dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
         
@@ -1110,8 +1117,8 @@ class LiquiditySweep(IStrategy):
         dynamic_sl = -(atr_mult * entry_atr_pct)
         
         # Apply floor and ceiling
-        dynamic_sl = max(dynamic_sl, -0.08)   # No worse than -8% (v0.46.0: was -6%)
-        dynamic_sl = min(dynamic_sl, -0.015)  # No tighter than -1.5%
+        dynamic_sl = max(dynamic_sl, -0.10)   # No worse than -10% (v0.99.16: was -8%)
+        dynamic_sl = min(dynamic_sl, -0.025)  # No tighter than -2.5% (v0.99.16: was -1.5%)
         
         # Return as ratio from current_rate perspective
         # Freqtrade expects: stoploss relative to current_rate (not entry)
