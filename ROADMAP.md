@@ -1842,3 +1842,53 @@ Both pairs had wins but consistently lost money overall — removed to protect p
 3. Accept ~44/yr with current config — excellent quality (88%+ WR, PF 3.62)
 
 *Last Updated: 2026-03-26 (19:05 UTC)*
+
+## v0.99.21 ✅ — Iteration Backtest (2026-03-28)
+
+**Backtest Run:** 23691455883 (push + workflow_dispatch)
+**Fix:** Raise atr_mult 3.0→4.0 + remove NEAR/USDT
+
+| Metric | v0.99.21 | v0.99.20 | Status |
+|--------|-----------|----------|--------|
+| Trades | **74** | 81 | ⚠️ Fewer (NEAR removed) |
+| Win Rate | **89.19%** | 87.65% | ✅ UP |
+| Profit | **$110.45 (11.05%)** | $108.15 (10.82%) | ✅ UP |
+| Profit Factor | **3.41** | 2.87 | ✅ UP |
+| SQN | **4.50** | 4.03 | ✅ UP |
+| Avg Win | **0.68%** | 0.67% | ➡️ Same |
+| Avg Loss | **1.63%** | 1.65% | ➡️ Same |
+| **R/R Ratio** | **0.42** | 0.41 | ➡️ Same (still DANGEROUS) |
+| Avg Hold | **4:14** | 4:01 | ➡️ Same |
+
+**Per-pair (all positive — no removals needed):**
+All 7 pairs positive. Pair data shows "UNKNOWN" due to CI JSON parsing bug (smmc library 
+pairs format changed in recent freqtrade). Summary metrics confirmed all positive.
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| trailing_stop_loss | 69 | **88.41%** | +$95.30 |
+| target_liquidity_reached | 3 | 100% | +$6.64 |
+| early_profit_take | 1 | 100% | +$5.30 |
+| dynamic_tp | 1 | 100% | +$3.22 |
+
+**Fix criteria check:**
+- TS exits: 69/74 = 93.2% (>30%) with 88.41% WR → ✅ TS still dominant
+- All 7 pairs positive → ✅ No removals needed
+- **R/R = 0.42 → ❌ STILL DANGEROUS — atr_mult 3.0→4.0 did NOT fix R/R**
+
+**⚠️ ROOT CAUSE IDENTIFIED — R/R is structurally broken:**
+The trailing stop at +0.8% offset activates when profit reaches ~0.8%, then trails 
+0.5% behind peak. This means TS exits at ~0.4% profit on average. This CLIPS ALL 
+WINNERS regardless of ATR settings. The avg win (0.68%) IS the actual ceiling — 
+TS prevents any winner from running beyond ~0.4%.
+
+**Next step (⏳):** 
+The H-A (ATR-based TP), H-B (ROI floor), and atr_mult adjustments have ALL failed 
+to fix R/R. The structural fix is to widen trailing_stop_positive_offset from 0.8% 
+to 1.5%+. This would let winners run past 0.8% before TS activates. Previous 
+attempt (v0.95.0, offset=1.3%) caused WR collapse — but that was combined with 
+different atr_mult and other changes. Need isolated test: ONLY change offset 
+from 0.8% to 1.5%, keep everything else at v0.99.21 levels.
+
+*Last Updated: 2026-03-28 (18:25 UTC)*
