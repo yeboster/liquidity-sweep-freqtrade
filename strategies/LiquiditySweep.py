@@ -12,9 +12,15 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.14
+Version: 0.99.15
 
 Changelog:
+- v0.99.15 (2026-03-28): REVERT custom_stoploss. v0.99.14 disabled ATR-based SL
+  (use_custom_stoploss=False) → 6 trades hit static -19.4% stoploss at avg -19.64%.
+  Total loss from stop_exits = -$389.21 on 95 trades. R/R ratio destroyed (0.11).
+  Fix: Re-enable use_custom_stoploss=True with wider atr_multiplier=3.0 (from 1.5×).
+  Wider multiplier = fewer triggers, but when triggered, exits are at ~-6% (ETH)
+  to ~-9% (BTC) instead of catastrophic -19.4%. Expect avg_loss ~-3-5% vs -19.4%.
 - v0.99.14 (2026-03-28): DISABLE custom_stoploss. v0.99.13 claimed "TS disabled" but
   use_custom_stoploss=True was still triggering 35/98 trades (35.7%) at avg -2.1%.
   The ATR-based SL (1.5× ATR) was too tight. Fix: use_custom_stoploss=False →
@@ -528,14 +534,13 @@ class LiquiditySweep(IStrategy):
     trailing_stop_positive_offset = 0.008  # Activate after +0.8%
     trailing_only_offset_is_reached = True
     
-    # ATR-based dynamic stoploss DISABLED in v0.99.14
-    # Problem (v0.99.13): TS disabled ✓, but use_custom_stoploss=True meant the ATR-based
-    # custom_stoploss was still triggering 35/98 trades (35.7%) at avg -2.1%.
-    # The dynamic SL (1.5× ATR) was too tight for this volatility-rich strategy.
-    # Fix: Disable custom_stoploss. Freqtrade now uses static stoploss = -0.194 (19.4%).
-    # With 19.4% stop, trades can ride through volatility to hit dynamic_tp/ROI targets.
-    # v0.99.13 used: use_custom_stoploss = True (ATR-based SL at 1.5× ATR)
-    use_custom_stoploss = False
+    # ATR-based dynamic stoploss RE-ENABLED in v0.99.15
+    # Problem (v0.99.14): use_custom_stoploss=False → static -19.4% stoploss.
+    # 6 trades hit -19.4% stop at avg -19.64% = -$389.21 total loss → R/R = 0.11 (catastrophic).
+    # Fix: use_custom_stoploss=True with wider atr_multiplier=3.0 (from 1.5×).
+    # Expected: ATR-based exits at ~-6% (ETH) to ~-9% (BTC) instead of -19.4%.
+    # Fewer stop triggers, but losses capped at ~3-9% vs -19.4% before.
+    use_custom_stoploss = True
 
     # ── Timeframes ────────────────────────────────────────────────────────────
     timeframe = '15m'
