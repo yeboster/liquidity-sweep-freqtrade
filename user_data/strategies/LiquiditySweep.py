@@ -12,9 +12,21 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.20
+Version: 0.99.23
 
 Changelog:
+- v0.99.23 (2026-03-28): Widen trailing_stop_positive_offset 0.8%→2.5% — isolate R/R fix (2nd iteration).
+  Problem (v0.99.22 backtest, offset=1.5%): R/R = 0.76 — still below 0.8 threshold.
+  Analysis: offset=1.5% TS activates at +1.5%, trails 0.5% → exits at ~+1.0% on average.
+  Avg win = 1.43% but avg loss = 1.88% — offset still too tight.
+  Fix: ONLY change offset from 0.8% to 2.5% — let BTC/ETH real moves (+2.5-4% range)
+  develop before TS activates. Keep everything else identical to current config.
+  Expected: avg win increases further (1.5-2.0% range), R/R hopefully crosses 0.8+.
+  Previous wider offsets (1.3%) crashed WR — but that was combined with OTE 50-65%
+  change. This isolates ONLY the offset. If WR drops but R/R crosses 1.0, net positive.
+- v0.99.22 (2026-03-28): Widen TS offset 0.8%→1.5% — R/R improved 0.42→0.76 (docker test).
+  Proof-of-concept validated: wider offset lets winners run. Avg win doubled 0.68%→1.43%.
+  NOTE: actual git file was NOT updated (workspace path issue) — this is the backtest result.
 - v0.99.20 (2026-03-28): RE-ENABLE trailing_stop=True + lower atr_mult 6.0→3.0.
   CRITICAL: v0.99.13 disabled TS (claiming it clipped winners), but this was wrong.
   With TS disabled and atr_mult=6.0 (4 pairs use DEFAULT 6.0!), custom_stoploss
@@ -578,16 +590,14 @@ class LiquiditySweep(IStrategy):
     # Absolute backstop required by Freqtrade — custom_stoploss will use ATR, this is fallback
     stoploss = -0.194  # -19.4% absolute backstop (ATR SL handles tight exits)
     
-    # Trailing stop — DISABLED in v0.99.13
-    # Problem (v0.99.12): TS at +0.8% clips ALL winners (avg win 0.79%). Dynamic TP
-    # (v0.99.12) had 2.5× multiplier = 5-11% threshold, NEARLY NEVER FIRES.
-    # Result: 94/98 trades exit via TS at avg 0.48% — the edge is being clipped.
-    # Fix: Disable TS. Let dynamic TP (1.5× ATR) handle winners.
-    # Dynamic TP targets: BTC ~3.4%, ETH ~1.5%, XRP ~3.8% — achievable for swings.
-    # Any trade below dynamic TP falls to ROI table (5%, 400 candles) or SL.
+    # Trailing stop — widens from +0.8% toward 2.5% (v0.99.23) to fix R/R
+    # Problem (v0.99.12): TS at +0.8% clips ALL winners (avg win 0.79%). R/R = 0.46.
+    # v0.99.22 docker test (offset=1.5%): R/R = 0.76 — meaningful improvement.
+    # v0.99.23 test (offset=2.5%): Goal is R/R > 0.8, avg win > 1.5%.
+    # Dynamic TP in custom_exit handles exceptional moves (2.0× ATR).
     trailing_stop = True  # Re-enabled in v0.99.20 — was disabled in v0.99.13 (wrong decision)
     trailing_stop_positive = 0.005     # Trail 0.5% behind peak (TS must be < offset)
-    trailing_stop_positive_offset = 0.008  # Activate after +0.8%
+    trailing_stop_positive_offset = 0.025  # Activate after +2.5% (was 0.8%, then 1.5% in v0.99.22 docker test)
     trailing_only_offset_is_reached = True
     
     # ATR-based dynamic stoploss RE-ENABLED in v0.99.15
