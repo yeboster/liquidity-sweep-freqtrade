@@ -12,9 +12,17 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.17
+Version: 0.99.18
 
 Changelog:
+- v0.99.18 (2026-03-28): Lower early_profit_take 2.5%→1.5%.
+  Problem (v0.99.17): 23/97 trades (24%) hit trailing_stop_loss at avg -3.62% = -$304.
+  trailing_stop=False, so these are custom_stoploss exits. early_profit_take at 2.5%
+  is too HIGH — many winning trades (at +1.5-2.0%) reverse before reaching 2.5%,
+  then get stopped at -3.62%. Fix: lower early_profit_take 2.5%→1.5% so it fires
+  BEFORE the reversal completes. Expected: converts many -3.62% losses into +1.5% wins.
+  Also: 33 trades via roi at 2.0% avg — suggests 1.5% early_profit_take will capture
+  these same trades (same order of magnitude) but at a lower threshold = fewer losses.
 - v0.99.17 (2026-03-28): Raise atr_mult 5.0→6.0 + lower dynamic_tp_threshold 1.5×→2.0×.
   Problem (v0.99.16): 23/97 trades (23.7%) hit custom_stoploss at avg -3.29% = -$277.74.
   These are the ONLY losing exits — all other exits (early_profit_take, roi, dynamic_tp)
@@ -1180,10 +1188,13 @@ class LiquiditySweep(IStrategy):
         # table (2%) — only the strongest trends fire it. TS still handles ~95% of exits.
         # v0.73.0: raised from 1.0% to 1.5% — but early_profit exits DROPPED (2→1 trade).
         # TS is simply too aggressive below 2%.
+        # v0.99.18: REVERT from 2.5%→1.5%. TS is now disabled, dynamic_tp threshold
+        # is too high (7.8%+). 2.5% is too high — winners reverse before reaching it,
+        # then custom_stoploss hits at -3.62%. 1.5% captures wins before reversal.
         # v0.71.0: raised from 0.8% to 1.0% — winners averaged 1.06% (100% WR), let them run
         # v0.64.0: REVERT — early_profit at 0.8% (was 1.5% in failed v0.63.0)
         trade_duration = (current_time - trade.open_date_utc).total_seconds() / 3600
-        if trade_duration >= 0.75 and current_profit >= 0.025:
+        if trade_duration >= 0.75 and current_profit >= 0.015:
             return "early_profit_take"
         
         # Time-based exit
