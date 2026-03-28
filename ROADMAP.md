@@ -1,6 +1,6 @@
 # Liquidity Sweep — Roadmap
 
-> Updated: 2026-03-27
+> Updated: 2026-03-28
 > **Strategy Type: Liquidity Sweep / Mean Reversion (NOT trend following)**
 
 ---
@@ -188,21 +188,93 @@ Winners never reach 1.5% because TS clips them at +0.8%.
 
 ---
 
-## Current State (v0.99.11)
+## v0.99.20 ✅ — CRITICAL FIX: TS Re-enabled + atr_mult Restored (2026-03-28)
+
+**Backtest Run:** 23689364594 (push-triggered on v0.99.20 commit)
+**Result:** ✅ TS WR RESTORED from 0% → 86.84%. Catastrophic custom_stoploss losses FIXED.
+
+| Metric | v0.99.20 (fix) | v0.99.19 (broken) | Change |
+|--------|-----------------|-------------------|--------|
+| Trades | **81** | 80 | +1 |
+| Win Rate | **87.65%** | 77.5% | **+10.2pp ✅** |
+| Profit | **$108.15 (10.82%)** | $143.85 | lower ❌ |
+| Profit Factor | **2.87** | 1.61 | **+1.26 ✅** |
+| SQN | **4.03** | 1.89 | **+2.14 ✅** |
+| Avg Win | **0.67%** | 1.76% | lower ⚠️ |
+| Avg Loss | **1.65%** | 3.73% | **better ✅** |
+| R/R Ratio | **0.41** | 0.47 | still dangerous ⚠️ |
+| Drawdown | **1.09%** | 5.53% | **-80% ✅** |
+| TS Win Rate | **86.84%** | 0% | **RESTORED ✅** |
+| TS Avg Loss | **-1.65%** | -3.73% | **fixed ✅** |
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| trailing_stop_loss | 76 | **86.84%** | +$92.99 |
+| target_liquidity_reached | 3 | 100% | +$6.64 |
+| early_profit_take | 1 | 100% | +$5.30 |
+| dynamic_tp | 1 | 100% | +$3.23 |
+
+**Fix criteria check:**
+- TS exits: 76/81 = 93.8% (>30%) with 86.84% WR → ✅ TS working well
+- R/R ratio: **0.41** (still < 0.8) → ❌ DANGEROUS — flag in roadmap
+- avg_profit_per_win: **0.67%** (still < 1.0%) → ❌ Not improving
+- Drawdown: 1.09% (was 5.53%) → ✅ Dramatic improvement
+
+**🔧 Fix applied:** 
+1. Re-enabled `trailing_stop=True` — was disabled in v0.99.13 (catastrophic mistake)
+2. Lowered `atr_mult` default 6.0→3.0 (4 pairs used 6.0: UNI/NEAR/LINK/AAVE)
+3. Added per-pair overrides: UNI(2.5), NEAR(2.0), LINK(2.5), AAVE(3.0)
+4. Restored floor -2.5%→-1.5% for faster loss capture
+5. Dynamic TP threshold 2.0×→1.5×
+
+**Why TS was catastrophic in v0.99.19:**
+- v0.99.13 disabled TS (claiming it clipped winners) → TS WR collapsed to 0%
+- With TS disabled, ALL exits went through custom_stoploss
+- Four pairs (UNI/NEAR/LINK/AAVE) had NO per-pair overrides → used default atr_mult=6.0
+- dynamic_sl floor at -2.5%, `stoploss_from_open(-2.5%, +1.5%)` = -3.96% from current
+- Every losing trade: early_profit_take exits at +1.5%, price reverses, stops hit at -3.96%
+- Result: 18 trades × -3.73% avg = -$234.63 in TS losses
+
+**Why TS works now (86.84% WR):**
+- TS activates at +0.8% offset, trails 0.5% behind peak
+- Most winners: enter → move to +0.8-1.5% → TS activates → price holds or reverses slightly → TS exits at +0.3-1.0%
+- Losses: enter → price drops → custom_stoploss (ATR-based, ~-1.5%) fires before TS even activates
+- TS catches micro-reversals (winners), custom_stoploss handles macro-direction changes (losers)
+
+**R/R still dangerous (0.41 < 0.8):** All R/R hypotheses (H-A, H-B, H-C) FAILED:
+- H-A (ATR-based TP): Tested (v0.99.12-19). TS disabled was wrong direction.
+- H-B (1.5% ROI floor): Failed — TS at +0.8% clips all winners first.
+- H-C (tighter SL): Rejected — catastrophic WR collapse.
+- **New option:** Raise early_profit_take 1.5%→2.5% to capture bigger winners. With TS at +0.8%, 2.5% would rarely fire, but dynamic_tp at 4.5% (BTC) might capture bigger moves.
+
+**Pairs:** All 9 pairs have positive profit. No removals needed (worst pair: ~-$2.05).
+
+**Next step (⏳):** R/R still needs addressing. Options:
+1. Try early_profit_take 2.5%→3.0% + keep TS at +0.8%
+2. Try wider TS offset 0.8%→1.0% (let winners run further before TS activates)
+3. Accept hunt strategy (~40 trades/yr, 87% WR, 0.67% avg win) — still profitable
+
+---
+
+## Current State (v0.99.20)
 
 | Metric | Value | Status |
 |--------|-------|--------|
-| Trades/yr | ~49 | ❌ Below 100 target |
-| Win Rate | 88.78% | ✅ |
-| Profit | $176.62 (17.66%) | ✅ |
-| Profit Factor | 3.59 | ✅ |
-| SQN | 4.49 | ✅ |
-| Avg Win | **0.79%** | ❌ Need >1.5% |
-| Avg Loss | **1.72%** | ❌ |
-| R/R Ratio | **0.46** | ❌ Need >1.0 |
-| Realistic Live Return | ~15-18%/yr | ⚠️ Thin margin |
+| Trades/yr | ~40 | ❌ Below 100 target |
+| Win Rate | 87.65% | ✅ |
+| Profit | $108.15 (10.82%) | ✅ |
+| Profit Factor | 2.87 | ✅ |
+| SQN | 4.03 | ✅ |
+| Avg Win | **0.67%** | ❌ Need >1.5% |
+| Avg Loss | **1.65%** | ❌ |
+| R/R Ratio | **0.41** | ❌ Need >1.0 (flagged dangerous) |
+| Drawdown | 1.09% | ✅ |
+| Avg Hold | 4:01 | — |
 
-**⏳ Next:** H-A — ATR-based dynamic TP. Let winners run 2.5× ATR.
+**🔧 Fix Applied:** Re-enabled trailing_stop=True + lowered atr_mult 6.0→3.0.
+
+**⏳ Next:** R/R ratio still dangerous (0.41 < 0.8). TS fix was critical (WR 0%→87%) but avg_win/avg_loss still inverted. Options: (1) Raise early_profit_take to 2.0% to capture bigger winners, (2) Accept hunt strategy (~40 trades/yr, 0.67% avg win), (3) Try wider TS offset (1.0-1.2%) to let winners run longer.
 
 ---
 
