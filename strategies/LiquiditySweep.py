@@ -12,9 +12,16 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.16
+Version: 0.99.17
 
 Changelog:
+- v0.99.17 (2026-03-28): Raise atr_mult 5.0→6.0 + lower dynamic_tp_threshold 1.5×→2.0×.
+  Problem (v0.99.16): 23/97 trades (23.7%) hit custom_stoploss at avg -3.29% = -$277.74.
+  These are the ONLY losing exits — all other exits (early_profit_take, roi, dynamic_tp)
+  are 100% WR. The custom_stoploss is catching reversals after early_profit_take exits.
+  Fix: (1) Raise atr_mult 5.0→6.0 — ETH stop goes from -4.5% to -5.4%, giving more
+  room for reversals. (2) Lower dynamic_tp_threshold from 1.5× to 2.0× atr_mult —
+  targets: BTC ~7.8%, ETH ~10.8% — helps capture bigger swings before reversal.
 - v0.99.16 (2026-03-28): Widen ATR stoploss floor -1.5%→-2.5% + increase atr_mult 3.0→5.0.
   Problem (v0.99.15): 35/98 trades (35.7%) hit trailing_stop_loss at avg -2.1%.
   ATR floor -1.5% was too tight: BTC atr_pct≈0.6-0.7% → 3.0×0.6%=1.8% < 1.5% floor →
@@ -581,7 +588,7 @@ class LiquiditySweep(IStrategy):
     # v0.34.0: ATR Multiplier increase to 2.0x (from 1.5x)
     # The avg TSL loss in v0.29.0 was -1.61% vs avg win +0.57%. Loosening SL
     # gives institutional reversals room to breathe.
-    atr_multiplier = DecimalParameter(1.0, 5.0, default=5.0, space="buy", optimize=True)
+    atr_multiplier = DecimalParameter(1.0, 6.0, default=6.0, space="buy", optimize=True)
     atr_period = IntParameter(10, 20, default=14, space="buy", optimize=False)
     
     # Entry filters
@@ -1159,8 +1166,8 @@ class LiquiditySweep(IStrategy):
             entry_atr_pct = entry_candle_df.iloc[-1]['atr_pct']
             if not pd.isna(entry_atr_pct) and entry_atr_pct > 0:
                 atr_mult = self.get_param('atr_multiplier', pair, self.atr_multiplier.value)
-                # Dynamic TP = 1.5× ATR multiplier × entry ATR% (v0.99.13: was 2.5×, too high)
-                dynamic_tp_threshold = 1.5 * atr_mult * entry_atr_pct
+                # Dynamic TP = 2.0× ATR multiplier × entry ATR% (v0.99.17: was 1.5×, raise to 2.0×)
+                dynamic_tp_threshold = 2.0 * atr_mult * entry_atr_pct
                 # Require at least 3 candles hold to avoid gap/open spike exits
                 trade_duration_candles = (current_time - trade.open_date_utc).total_seconds() / 3600 / 0.25
                 if trade_duration_candles >= 3 and current_profit >= dynamic_tp_threshold:
