@@ -15,6 +15,10 @@ Author: Jarvis (OpenClaw)
 Version: 0.99.18
 
 Changelog:
+- v0.99.19 (2026-03-28): Remove XLM/USDT and DOT/USDT from pair whitelist.
+  Both pairs destructive to R/R ratio: XLM (-$13.41, 63.6% WR, 4 trades),
+  DOT (-$24.85, 57.1% WR, 7 trades). Combined loss: -$38.26 across 11 trades.
+  Removing them leaves 8 pairs, expected ~86 trades at similar win rate.
 - v0.99.18 (2026-03-28): Lower early_profit_take 2.5%→1.5%.
   Problem (v0.99.17): 23/97 trades (24%) hit trailing_stop_loss at avg -3.62% = -$304.
   trailing_stop=False, so these are custom_stoploss exits. early_profit_take at 2.5%
@@ -449,7 +453,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.99.14"
+    STRATEGY_VERSION = "0.99.19"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
