@@ -1892,3 +1892,53 @@ different atr_mult and other changes. Need isolated test: ONLY change offset
 from 0.8% to 1.5%, keep everything else at v0.99.21 levels.
 
 *Last Updated: 2026-03-28 (18:25 UTC)*
+
+## v0.99.22 ✅ — TS Offset 0.8%→1.5% Isolated Test (2026-03-28)
+
+**Backtest Run:** 23693557311 (push + workflow_dispatch)
+**Fix:** Widen trailing_stop_positive_offset 0.8%→1.5% (isolated change)
+
+| Metric | v0.99.22 | v0.99.21 | Status |
+|--------|-----------|----------|--------|
+| Trades | **74** | 74 | ➡️ Same |
+| Win Rate | **71.62%** | 89.19% | ⚠️ DOWN (WR sacrifice) |
+| Profit | **$124.98 (12.5%)** | $110.45 (11.05%) | ✅ UP |
+| Profit Factor | **1.91** | 3.41 | ⚠️ DOWN |
+| SQN | **2.59** | 4.50 | ⚠️ DOWN |
+| **Avg Win** | **1.43%** | 0.68% | ✅ +110% (winners run!) |
+| Avg Loss | **1.88%** | 1.63% | ➡️ Slightly higher |
+| **R/R Ratio** | **0.76** | 0.42 | ✅ +81% (meaningful progress) |
+| Avg Hold | **8:10** | 4:14 | ➡️ 2× longer |
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| trailing_stop_loss | 59 | **64.41%** | +$49.56 |
+| roi | 5 | 100% | +$34.36 |
+| dynamic_tp | 4 | 100% | +$17.54 |
+| early_profit_take | 3 | 100% | +$16.86 |
+| target_liquidity_reached | 3 | 100% | +$6.65 |
+
+**Fix criteria check:**
+- TS exits: 59/74 = 79.7% (still >30%) with 64.41% WR → TS still dominant
+- All 8 pairs positive → ✅ No removals needed
+- **R/R = 0.76 → ⚠️ IMPROVED but still below 0.8 threshold**
+
+**🔍 ANALYSIS — Offset widening PARTIALLY works:**
+The offset increase (0.8%→1.5%) PROOF-OF-CONCEPT validated:
+1. ✅ **Avg win DOUBLED:** 0.68% → 1.43% (+110%) — winners can finally run
+2. ✅ **R/R improved significantly:** 0.42 → 0.76 (+81%) — moving in right direction
+3. ✅ **Avg hold time doubled:** 4:14 → 8:10 — trades have room to develop
+4. ⚠️ **Win rate dropped:** 89.19% → 71.62% — some winners now ride to higher targets
+5. ⚠️ **TS still clips at low profits:** 59/74 TS exits avg only 0.24% — offset still too tight
+
+**⚠️ ROOT CAUSE STILL ACTIVE — offset 1.5% still too low:**
+TS activates at +1.5%, trails 0.5% behind. When BTC makes a quick +1.5-1.8% move
+then reverses, TS exits at +0.5-1.0%. The avg loss (1.88%) shows the trailing
+stop is still getting hit by reversals rather than letting winners fully develop.
+
+**Next step (⏳):** 
+Try offset 2.5% — gives BTC/ETH real room to move (+2.5% is ~4× ATR for BTC).
+Alternative: try offset 3.0% or disable TS entirely (but this failed in v0.99.13).
+
+*Last Updated: 2026-03-28 (20:25 UTC)*
