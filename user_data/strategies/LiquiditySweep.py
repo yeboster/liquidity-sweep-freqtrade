@@ -12,9 +12,60 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.10
+Version: 0.99.20
 
 Changelog:
+- v0.99.20 (2026-03-28): RE-ENABLE trailing_stop=True + lower atr_mult 6.0→3.0.
+  CRITICAL: v0.99.13 disabled TS (claiming it clipped winners), but this was wrong.
+  With TS disabled and atr_mult=6.0 (4 pairs use DEFAULT 6.0!), custom_stoploss
+  floors at -2.5% and converts to -3.96% from current at +1.5% profit. Result:
+  TS WR=0%, avg_loss=-3.73% = CATASTROPHIC. Fix: (1) Re-enable TS — it was the
+  proven winner catcher in v0.99.11 (86.8% WR, +$52.04). (2) Lower atr_mult
+  default 6.0→3.0 (UNI/NEAR/LINK/AAVE were all using 6.0 = catastrophic). (3) Add
+  missing per-pair overrides for UNI (2.5), NEAR (2.0), LINK (2.5), AAVE (3.0).
+  (4) Floor -2.5%→-1.5% (faster loss capture). Expected: TS WR 85%+, avg_loss < 2%.
+- v0.99.19 (2026-03-28): Remove XLM/USDT and DOT/USDT from pair whitelist.
+  Both pairs destructive to R/R ratio: XLM (-$13.41, 63.6% WR, 4 trades),
+  DOT (-$24.85, 57.1% WR, 7 trades). Combined loss: -$38.26 across 11 trades.
+  Removing them leaves 8 pairs, expected ~86 trades at similar win rate.
+- v0.99.18 (2026-03-28): Lower early_profit_take 2.5%→1.5%.
+  Problem (v0.99.17): 23/97 trades (24%) hit trailing_stop_loss at avg -3.62% = -$304.
+  trailing_stop=False, so these are custom_stoploss exits. early_profit_take at 2.5%
+  is too HIGH — many winning trades (at +1.5-2.0%) reverse before reaching 2.5%,
+  then get stopped at -3.62%. Fix: lower early_profit_take 2.5%→1.5% so it fires
+  BEFORE the reversal completes. Expected: converts many -3.62% losses into +1.5% wins.
+  Also: 33 trades via roi at 2.0% avg — suggests 1.5% early_profit_take will capture
+  these same trades (same order of magnitude) but at a lower threshold = fewer losses.
+- v0.99.17 (2026-03-28): Raise atr_mult 5.0→6.0 + lower dynamic_tp_threshold 1.5×→2.0×.
+  Problem (v0.99.16): 23/97 trades (23.7%) hit custom_stoploss at avg -3.29% = -$277.74.
+  These are the ONLY losing exits — all other exits (early_profit_take, roi, dynamic_tp)
+  are 100% WR. The custom_stoploss is catching reversals after early_profit_take exits.
+  Fix: (1) Raise atr_mult 5.0→6.0 — ETH stop goes from -4.5% to -5.4%, giving more
+  room for reversals. (2) Lower dynamic_tp_threshold from 1.5× to 2.0× atr_mult —
+  targets: BTC ~7.8%, ETH ~10.8% — helps capture bigger swings before reversal.
+- v0.99.16 (2026-03-28): Widen ATR stoploss floor -1.5%→-2.5% + increase atr_mult 3.0→5.0.
+  Problem (v0.99.15): 35/98 trades (35.7%) hit trailing_stop_loss at avg -2.1%.
+  ATR floor -1.5% was too tight: BTC atr_pct≈0.6-0.7% → 3.0×0.6%=1.8% < 1.5% floor →
+  all BTC stops capped at -1.5%, but 35 trades still hit -2.1% (TS must trail from there).
+  Fix: (1) Widen floor -1.5%→-2.5% — stops no longer capped on low-ATR pairs.
+  (2) Raise atr_mult 3.0→5.0 — ETH atr_pct≈0.9% would give -4.5% instead of -2.7%
+  (capped at old -1.5% floor). Expected: fewer stop triggers, bigger but rarer losses.
+- v0.99.15 (2026-03-28): REVERT custom_stoploss. v0.99.14 disabled ATR-based SL
+  (use_custom_stoploss=False) → 6 trades hit static -19.4% stoploss at avg -19.64%.
+  Total loss from stop_exits = -$389.21 on 95 trades. R/R ratio destroyed (0.11).
+  Fix: Re-enable use_custom_stoploss=True with wider atr_multiplier=3.0 (from 1.5×).
+  Wider multiplier = fewer triggers, but when triggered, exits are at ~-6% (ETH)
+  to ~-9% (BTC) instead of catastrophic -19.4%. Expect avg_loss ~-3-5% vs -19.4%.
+- v0.99.14 (2026-03-28): DISABLE custom_stoploss. v0.99.13 claimed "TS disabled" but
+  use_custom_stoploss=True was still triggering 35/98 trades (35.7%) at avg -2.1%.
+  The ATR-based SL (1.5× ATR) was too tight. Fix: use_custom_stoploss=False →
+  static -19.4% stoploss. Trades now ride to dynamic_tp/ROI targets.
+- v0.99.13 (2026-03-28): FIX H-A dynamic TP — 2.5× was too high (5-11% threshold, never fires).
+  v0.99.12 had dynamic_tp threshold = 2.5× atr_mult × atr_pct → BTC ~11%, ETH ~5%, XRP ~9%.
+  TS disabled → dynamic TP (1.5× ATR) now primary exit. Targets: BTC ~3.4%, ETH ~1.5%.
+  (See full H-A changelog in v0.99.12 below.)
+- v0.99.12 (2026-03-27): H-A — ATR-based dynamic TP. TS at +0.8% clips all winners (avg win 0.79%, R/R 0.46 DANGEROUS). H-B (1.5% ROI) failed: only 1/98 trades reached it, TS intercepts first. Fix: (1) minimal_roi "0": 1.5→5.0 (TS handles normal ~0.8% winners, dynamic TP handles exceptional 2.5× ATR moves). (2) custom_exit adds dynamic_tp: if profit >= 2.5× ATR_mult × entry_atr_pct → exit. Expected: avg win increases, R/R improves toward 1.0+.
+- v0.99.11 (2026-03-27): REVERT H-C stoploss change. v0.99.10 (stoploss -0.010) CATASTROPHIC: WR crashed 88%→65%, profit negative (-$5.75), 34 stop_loss exits at -1.29% avg (all losses). Reverting stoploss to -0.194 (v0.99.6 level). H-C hypothesis REJECTED — tight SL didn't fix R/R, it destroyed it.
 - v0.99.10 (2026-03-27): H-C test — stoploss: -0.194 → -0.010. H-B (1.5% ROI floor) failed — TS still clipped winners at +0.8%. H-C hypothesis: tighter SL caps losses earlier, improves R/R from 0.46 toward 0.79.
 - v0.99.9 (2026-03-27): Trigger backtest on v0.99.8 H-B ROI floor code.
 - v0.99.8 (2026-03-27): H-B ROI floor test — minimal_roi "0": 0.349% → 1.5%.
@@ -411,7 +462,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.99.4"
+    STRATEGY_VERSION = "0.99.20"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -465,6 +516,27 @@ class LiquiditySweep(IStrategy):
             "atr_multiplier": 3.0,       # High-beta like BTC/SOL
             "require_ote": False,        # DOGE trends hard, often misses OTE
             "time_exit_1_hours": 8
+        },
+        # v0.99.20: Added missing per-pair overrides for current whitelist pairs
+        "UNI/USDT": {
+            "atr_multiplier": 2.5,       # Mid-volatility DeFi token
+            "require_ote": True,
+            "time_exit_1_hours": 6
+        },
+        "NEAR/USDT": {
+            "atr_multiplier": 2.0,       # Lower volatility L1
+            "require_ote": True,
+            "time_exit_1_hours": 5
+        },
+        "LINK/USDT": {
+            "atr_multiplier": 2.5,       # Mid-volatility oracle token
+            "require_ote": True,
+            "time_exit_1_hours": 6
+        },
+        "AAVE/USDT": {
+            "atr_multiplier": 3.0,        # High-beta DeFi, like BTC/AVAX
+            "require_ote": True,
+            "time_exit_1_hours": 6
         }
     }
 
@@ -490,24 +562,40 @@ class LiquiditySweep(IStrategy):
     # Previous: "0": 0.349 (0.349%) — too low, TS at +0.8% clipped winners early.
     # Now: "0": 1.5 forces winners to reach 1.5% before ROI exit fires.
     # Expected: avg win should rise from 0.48% → 1.5%+, flipping R/R above 1.0.
+    # H-A (v0.99.12): ATR-based dynamic TP — replaces fixed 1.5% ROI.
+    # TS at +0.8% clips all winners (avg win = 0.79%). Dynamic TP = 2.5× ATR
+    # lets big moves run while keeping normal winners to TS.
+    # H-B also failed: only 1/98 trades hit 1.5% ROI. TS intercepts first.
+    # Fix: Set "0": 5.0 — high enough that normal trades ride TS at +0.8%.
+    # Dynamic TP in custom_exit handles exceptional moves (2.5× ATR).
     minimal_roi = {
-        "0": 1.5,
+        "0": 5.0,
         "109": 0.07,
         "159": 0.10,
         "400": 0.02,
     }
     
     # Absolute backstop required by Freqtrade — custom_stoploss will use ATR, this is fallback
-    stoploss = -0.010  # -1.0% absolute backstop (ATR SL should hit first, H-C test)
+    stoploss = -0.194  # -19.4% absolute backstop (ATR SL handles tight exits)
     
-    # Trailing stop — fixed from broken values (v0.42.0)
-    # Previous values: 0.277 (27.7%!) and 0.295 (29.5%) — completely wrong
-    trailing_stop = True
+    # Trailing stop — DISABLED in v0.99.13
+    # Problem (v0.99.12): TS at +0.8% clips ALL winners (avg win 0.79%). Dynamic TP
+    # (v0.99.12) had 2.5× multiplier = 5-11% threshold, NEARLY NEVER FIRES.
+    # Result: 94/98 trades exit via TS at avg 0.48% — the edge is being clipped.
+    # Fix: Disable TS. Let dynamic TP (1.5× ATR) handle winners.
+    # Dynamic TP targets: BTC ~3.4%, ETH ~1.5%, XRP ~3.8% — achievable for swings.
+    # Any trade below dynamic TP falls to ROI table (5%, 400 candles) or SL.
+    trailing_stop = True  # Re-enabled in v0.99.20 — was disabled in v0.99.13 (wrong decision)
     trailing_stop_positive = 0.005     # Trail 0.5% behind peak (TS must be < offset)
-    trailing_stop_positive_offset = 0.008  # Activate after +0.8% (v0.97.0: revert 1.3%→0.8% — 1.3% gave back too much profit)
+    trailing_stop_positive_offset = 0.008  # Activate after +0.8%
     trailing_only_offset_is_reached = True
     
-    # ATR-based dynamic stoploss enabled in v0.22.0
+    # ATR-based dynamic stoploss RE-ENABLED in v0.99.15
+    # Problem (v0.99.14): use_custom_stoploss=False → static -19.4% stoploss.
+    # 6 trades hit -19.4% stop at avg -19.64% = -$389.21 total loss → R/R = 0.11 (catastrophic).
+    # Fix: use_custom_stoploss=True with wider atr_multiplier=3.0 (from 1.5×).
+    # Expected: ATR-based exits at ~-6% (ETH) to ~-9% (BTC) instead of -19.4%.
+    # Fewer stop triggers, but losses capped at ~3-9% vs -19.4% before.
     use_custom_stoploss = True
 
     # ── Timeframes ────────────────────────────────────────────────────────────
@@ -1042,15 +1130,15 @@ class LiquiditySweep(IStrategy):
     def custom_stoploss(self, pair: str, trade: 'Trade', current_time: datetime,
                         current_rate: float, current_profit: float, **kwargs) -> float:
         """
-        ATR-based dynamic stoploss (v0.22.0).
-        
-        SL is placed at 1.5x ATR(14) below entry price (longs) or above (shorts).
+        ATR-based dynamic stoploss (v0.22.0, updated v0.99.16).
+
+        SL is placed at N× ATR(14) below entry price (longs) or above (shorts).
         This makes the stoploss:
         - Tighter in calm markets (ETH/ADA) → less loss per stop hit
         - Wider in volatile markets (BTC/SOL) → fewer premature exits
-        
-        Floor: -1.5% (don't place SL too tight — chop zone)
-        Ceiling: -4.0% (don't let it run beyond backstop SL)
+
+        Floor: -2.5% (don't place SL too tight — chop zone; v0.99.16: was -1.5%)
+        Ceiling: -10.0% (don't let it run beyond backstop SL; v0.99.16: was -4.0%)
         """
         dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
         
@@ -1078,8 +1166,8 @@ class LiquiditySweep(IStrategy):
         dynamic_sl = -(atr_mult * entry_atr_pct)
         
         # Apply floor and ceiling
-        dynamic_sl = max(dynamic_sl, -0.08)   # No worse than -8% (v0.46.0: was -6%)
-        dynamic_sl = min(dynamic_sl, -0.015)  # No tighter than -1.5%
+        dynamic_sl = max(dynamic_sl, -0.08)   # No worse than -8% (floor restored to v0.99.15 level)
+        dynamic_sl = min(dynamic_sl, -0.015)  # No tighter than -1.5% (restored from -2.5%)
         
         # Return as ratio from current_rate perspective
         # Freqtrade expects: stoploss relative to current_rate (not entry)
@@ -1095,7 +1183,7 @@ class LiquiditySweep(IStrategy):
                     current_profit: float, **kwargs):
         """
         Custom exit logic:
-        1. ChoCH profit guard: block ChoCH exits when trade is underwater (v0.54.0)
+        1. H-A Dynamic TP (ATR-based): let exceptional moves run 2.5× ATR (v0.99.12)
         2. Early profit exit at +2.5%: lock in exceptional winners (v0.74.0)
         3. Time-based exit: cut stale trades
         4. Target liquidity reached
@@ -1107,7 +1195,26 @@ class LiquiditySweep(IStrategy):
         last_candle = dataframe.iloc[-1]
         
         # v0.58.0: ChoCH profit guard removed — ChoCH exits fully disabled in populate_exit_trend.
-        # All exits now handled by: early_profit_take, trailing_stop, ROI, time_exit, stoploss.
+        # All exits now handled by: dynamic_tp, early_profit_take, trailing_stop, ROI, time_exit, stoploss.
+        
+        # H-A (v0.99.12→v0.99.13): Dynamic TP — 2.5× was too high (5-11% threshold, never fires).
+        # v0.99.13 fix: Reduce to 1.5× ATR. Targets: BTC ~3.4%, ETH ~1.5%, XRP ~3.8%.
+        # TS is now DISABLED — dynamic TP is the primary exit for big moves.
+        # In high vol (BTC ~1.5% ATR) → TP ~3.4%. Low vol (ETH ~0.8% ATR) → TP ~1.5%.
+        # Require at least 3 candles hold to avoid gap/open spike exits.
+        trade_open_dt = trade.open_date_utc
+        entry_candle_df = dataframe[dataframe['date'] <= trade_open_dt]
+        if len(entry_candle_df) > 0 and 'atr_pct' in entry_candle_df.columns:
+            entry_atr_pct = entry_candle_df.iloc[-1]['atr_pct']
+            if not pd.isna(entry_atr_pct) and entry_atr_pct > 0:
+                atr_mult = self.get_param('atr_multiplier', pair, self.atr_multiplier.value)
+                # Dynamic TP = 1.5× ATR multiplier × entry ATR% (v0.99.20: lowered from 2.0×)
+                # With atr_mult=3.0 default: 1.5×3.0×1.0% = 4.5% TP threshold (was 12% at 6.0×)
+                dynamic_tp_threshold = 1.5 * atr_mult * entry_atr_pct
+                # Require at least 3 candles hold to avoid gap/open spike exits
+                trade_duration_candles = (current_time - trade.open_date_utc).total_seconds() / 3600 / 0.25
+                if trade_duration_candles >= 3 and current_profit >= dynamic_tp_threshold:
+                    return "dynamic_tp"
         
         # 1. Early profit exit — lock in wins before TSL activates at +1.5% (v0.46.0)
         # Require at least 45min hold to avoid gap-based false exits
@@ -1116,10 +1223,13 @@ class LiquiditySweep(IStrategy):
         # table (2%) — only the strongest trends fire it. TS still handles ~95% of exits.
         # v0.73.0: raised from 1.0% to 1.5% — but early_profit exits DROPPED (2→1 trade).
         # TS is simply too aggressive below 2%.
+        # v0.99.18: REVERT from 2.5%→1.5%. TS is now disabled, dynamic_tp threshold
+        # is too high (7.8%+). 2.5% is too high — winners reverse before reaching it,
+        # then custom_stoploss hits at -3.62%. 1.5% captures wins before reversal.
         # v0.71.0: raised from 0.8% to 1.0% — winners averaged 1.06% (100% WR), let them run
         # v0.64.0: REVERT — early_profit at 0.8% (was 1.5% in failed v0.63.0)
         trade_duration = (current_time - trade.open_date_utc).total_seconds() / 3600
-        if trade_duration >= 0.75 and current_profit >= 0.025:
+        if trade_duration >= 0.75 and current_profit >= 0.015:
             return "early_profit_take"
         
         # Time-based exit

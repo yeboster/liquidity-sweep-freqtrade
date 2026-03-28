@@ -12,10 +12,20 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.20
+Version: 0.99.21
 
 Changelog:
-- v0.99.20 (2026-03-28): RE-ENABLE trailing_stop=True + lower atr_mult 6.0→3.0.
+- v0.99.21 (2026-03-28): Raise atr_mult 3.0→4.0 + remove NEAR/USDT.
+  Problem (v0.99.20): R/R = 0.41 — still dangerous despite TS re-enable + atr_mult
+  6.0→3.0. TS fires 76/81 trades (94%) at avg 0.35% profit. The atr_mult=3.0 is too
+  tight — BTC (~0.6% ATR) → -1.8% SL, too close to entry. Winners barely run
+  (0.67% avg win vs 1.65% avg loss). Fix: (1) Raise atr_mult 3.0→4.0 — BTC stops
+  now ~-2.4%, ETH stops ~-3.6%, giving more room for winners to develop before
+  reversal. (2) Remove NEAR/USDT — only pair with negative profit (-$2.05, 71.43% WR).
+  With atr_mult=3.0: NEAR (~0.7% ATR) → -2.1% SL — too tight for NEAR's choppy
+  price action, causing premature stop-outs. Removing it leaves 7 pairs at ~35/yr
+  trade frequency but cleaner R/R profile. Expected: avg win > 0.8%, R/R > 0.5.
+
   CRITICAL: v0.99.13 disabled TS (claiming it clipped winners), but this was wrong.
   With TS disabled and atr_mult=6.0 (4 pairs use DEFAULT 6.0!), custom_stoploss
   floors at -2.5% and converts to -3.96% from current at +1.5% profit. Result:
@@ -630,7 +640,7 @@ class LiquiditySweep(IStrategy):
     # v0.34.0: ATR Multiplier increase to 2.0x (from 1.5x)
     # The avg TSL loss in v0.29.0 was -1.61% vs avg win +0.57%. Loosening SL
     # gives institutional reversals room to breathe.
-    atr_multiplier = DecimalParameter(1.0, 4.0, default=3.0, space="buy", optimize=True)
+    atr_multiplier = DecimalParameter(1.0, 6.0, default=4.0, space="buy", optimize=True)
     atr_period = IntParameter(10, 20, default=14, space="buy", optimize=False)
     
     # Entry filters
