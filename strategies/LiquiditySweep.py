@@ -12,9 +12,18 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.18
+Version: 0.99.20
 
 Changelog:
+- v0.99.20 (2026-03-28): RE-ENABLE trailing_stop=True + lower atr_mult 6.0→3.0.
+  CRITICAL: v0.99.13 disabled TS (claiming it clipped winners), but this was wrong.
+  With TS disabled and atr_mult=6.0 (4 pairs use DEFAULT 6.0!), custom_stoploss
+  floors at -2.5% and converts to -3.96% from current at +1.5% profit. Result:
+  TS WR=0%, avg_loss=-3.73% = CATASTROPHIC. Fix: (1) Re-enable TS — it was the
+  proven winner catcher in v0.99.11 (86.8% WR, +$52.04). (2) Lower atr_mult
+  default 6.0→3.0 (UNI/NEAR/LINK/AAVE were all using 6.0 = catastrophic). (3) Add
+  missing per-pair overrides for UNI (2.5), NEAR (2.0), LINK (2.5), AAVE (3.0).
+  (4) Floor -2.5%→-1.5% (faster loss capture). Expected: TS WR 85%+, avg_loss < 2%.
 - v0.99.19 (2026-03-28): Remove XLM/USDT and DOT/USDT from pair whitelist.
   Both pairs destructive to R/R ratio: XLM (-$13.41, 63.6% WR, 4 trades),
   DOT (-$24.85, 57.1% WR, 7 trades). Combined loss: -$38.26 across 11 trades.
@@ -453,7 +462,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.99.19"
+    STRATEGY_VERSION = "0.99.20"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -507,6 +516,27 @@ class LiquiditySweep(IStrategy):
             "atr_multiplier": 3.0,       # High-beta like BTC/SOL
             "require_ote": False,        # DOGE trends hard, often misses OTE
             "time_exit_1_hours": 8
+        },
+        # v0.99.20: Added missing per-pair overrides for current whitelist pairs
+        "UNI/USDT": {
+            "atr_multiplier": 2.5,       # Mid-volatility DeFi token
+            "require_ote": True,
+            "time_exit_1_hours": 6
+        },
+        "NEAR/USDT": {
+            "atr_multiplier": 2.0,       # Lower volatility L1
+            "require_ote": True,
+            "time_exit_1_hours": 5
+        },
+        "LINK/USDT": {
+            "atr_multiplier": 2.5,       # Mid-volatility oracle token
+            "require_ote": True,
+            "time_exit_1_hours": 6
+        },
+        "AAVE/USDT": {
+            "atr_multiplier": 3.0,        # High-beta DeFi, like BTC/AVAX
+            "require_ote": True,
+            "time_exit_1_hours": 6
         }
     }
 
@@ -555,7 +585,7 @@ class LiquiditySweep(IStrategy):
     # Fix: Disable TS. Let dynamic TP (1.5× ATR) handle winners.
     # Dynamic TP targets: BTC ~3.4%, ETH ~1.5%, XRP ~3.8% — achievable for swings.
     # Any trade below dynamic TP falls to ROI table (5%, 400 candles) or SL.
-    trailing_stop = False
+    trailing_stop = True  # Re-enabled in v0.99.20 — was disabled in v0.99.13 (wrong decision)
     trailing_stop_positive = 0.005     # Trail 0.5% behind peak (TS must be < offset)
     trailing_stop_positive_offset = 0.008  # Activate after +0.8%
     trailing_only_offset_is_reached = True
@@ -600,7 +630,7 @@ class LiquiditySweep(IStrategy):
     # v0.34.0: ATR Multiplier increase to 2.0x (from 1.5x)
     # The avg TSL loss in v0.29.0 was -1.61% vs avg win +0.57%. Loosening SL
     # gives institutional reversals room to breathe.
-    atr_multiplier = DecimalParameter(1.0, 6.0, default=6.0, space="buy", optimize=True)
+    atr_multiplier = DecimalParameter(1.0, 4.0, default=3.0, space="buy", optimize=True)
     atr_period = IntParameter(10, 20, default=14, space="buy", optimize=False)
     
     # Entry filters
@@ -1136,8 +1166,8 @@ class LiquiditySweep(IStrategy):
         dynamic_sl = -(atr_mult * entry_atr_pct)
         
         # Apply floor and ceiling
-        dynamic_sl = max(dynamic_sl, -0.10)   # No worse than -10% (v0.99.16: was -8%)
-        dynamic_sl = min(dynamic_sl, -0.025)  # No tighter than -2.5% (v0.99.16: was -1.5%)
+        dynamic_sl = max(dynamic_sl, -0.08)   # No worse than -8% (floor restored to v0.99.15 level)
+        dynamic_sl = min(dynamic_sl, -0.015)  # No tighter than -1.5% (restored from -2.5%)
         
         # Return as ratio from current_rate perspective
         # Freqtrade expects: stoploss relative to current_rate (not entry)
@@ -1178,8 +1208,9 @@ class LiquiditySweep(IStrategy):
             entry_atr_pct = entry_candle_df.iloc[-1]['atr_pct']
             if not pd.isna(entry_atr_pct) and entry_atr_pct > 0:
                 atr_mult = self.get_param('atr_multiplier', pair, self.atr_multiplier.value)
-                # Dynamic TP = 2.0× ATR multiplier × entry ATR% (v0.99.17: was 1.5×, raise to 2.0×)
-                dynamic_tp_threshold = 2.0 * atr_mult * entry_atr_pct
+                # Dynamic TP = 1.5× ATR multiplier × entry ATR% (v0.99.20: lowered from 2.0×)
+                # With atr_mult=3.0 default: 1.5×3.0×1.0% = 4.5% TP threshold (was 12% at 6.0×)
+                dynamic_tp_threshold = 1.5 * atr_mult * entry_atr_pct
                 # Require at least 3 candles hold to avoid gap/open spike exits
                 trade_duration_candles = (current_time - trade.open_date_utc).total_seconds() / 3600 / 0.25
                 if trade_duration_candles >= 3 and current_profit >= dynamic_tp_threshold:
