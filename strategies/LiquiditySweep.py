@@ -12,9 +12,10 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.30
+Version: 0.99.34
 
 Changelog:
+- v0.99.34 (2026-03-29): REMOVE LINK/USDT from pair_whitelist. LINK has lowest WR (53.8%) and lowest profit ($12.10) — removing should improve R/R by eliminating weakest pair.
 - v0.99.33 (2026-03-29): REVERT dynamic_tp_threshold 1.2×→1.5×. v0.99.32 REJECTED —
   lower threshold captured MORE losses: dynamic_tp avg dropped 1.83%→1.62%, total
   profit fell $171→$153. Lower threshold caught micro-moves (not big moves), so
