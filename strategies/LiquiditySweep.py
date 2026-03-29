@@ -15,6 +15,13 @@ Author: Jarvis (OpenClaw)
 Version: 0.99.30
 
 Changelog:
+- v0.99.32 (2026-03-29): LOWER dynamic_tp_threshold 1.5×→1.2× atr_mult.
+  v0.99.31 identical to v0.99.28 (R/R 0.99) — floor revert produced no change.
+  New hypothesis: dynamic_tp at 1.5× (BTC ~3.15%, ETH ~4.05%) is too high — only
+  12 trades captured at 1.83% avg. Lowering to 1.2× (BTC ~2.52%, ETH ~3.24%)
+  should capture more "big move" wins before early_profit_take (1.5%) fires.
+  Expected: more dynamic_tp exits, higher avg win, R/R > 1.0.
+
 - v0.99.31 (2026-03-29): REVERT floor -3.0%→-1.5%. v0.99.30 wider floor caused
   avg_loss -3.13% vs -1.82% in v0.99.28. The -1.5% floor was already optimal for BTC's
   ~0.5-0.7% ATR (dynamic_sl ≈ -1.5% to -2.1%). Doge removed (only negative pair).
@@ -1259,9 +1266,11 @@ class LiquiditySweep(IStrategy):
             entry_atr_pct = entry_candle_df.iloc[-1]['atr_pct']
             if not pd.isna(entry_atr_pct) and entry_atr_pct > 0:
                 atr_mult = self.get_param('atr_multiplier', pair, self.atr_multiplier.value)
-                # Dynamic TP = 1.5× ATR multiplier × entry ATR% (v0.99.20: lowered from 2.0×)
-                # With atr_mult=3.0 default: 1.5×3.0×1.0% = 4.5% TP threshold (was 12% at 6.0×)
-                dynamic_tp_threshold = 1.5 * atr_mult * entry_atr_pct
+                # Dynamic TP = 1.2× ATR multiplier × entry ATR% (v0.99.32: lowered from 1.5×)
+                # v0.99.31 showed dynamic_tp 100% WR at 1.83% avg — lower threshold should
+                # capture more wins before early_profit_take (1.5%). At 1.5×: BTC ~3.15%, ETH ~4.05%.
+                # At 1.2×: BTC ~2.52%, ETH ~3.24% — closer to early_profit level.
+                dynamic_tp_threshold = 1.2 * atr_mult * entry_atr_pct
                 # Require at least 3 candles hold to avoid gap/open spike exits
                 trade_duration_candles = (current_time - trade.open_date_utc).total_seconds() / 3600 / 0.25
                 if trade_duration_candles >= 3 and current_profit >= dynamic_tp_threshold:
