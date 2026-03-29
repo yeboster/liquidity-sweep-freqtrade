@@ -1,6 +1,6 @@
 # Liquidity Sweep — Roadmap
 
-> Updated: 2026-03-28
+> Updated: 2026-03-29
 > **Strategy Type: Liquidity Sweep / Mean Reversion (NOT trend following)**
 
 ---
@@ -257,24 +257,94 @@ Winners never reach 1.5% because TS clips them at +0.8%.
 
 ---
 
-## Current State (v0.99.20)
+## Current State (v0.99.24)
 
 | Metric | Value | Status |
 |--------|-------|--------|
-| Trades/yr | ~40 | ❌ Below 100 target |
-| Win Rate | 87.65% | ✅ |
-| Profit | $108.15 (10.82%) | ✅ |
-| Profit Factor | 2.87 | ✅ |
-| SQN | 4.03 | ✅ |
-| Avg Win | **0.67%** | ❌ Need >1.5% |
-| Avg Loss | **1.65%** | ❌ |
-| R/R Ratio | **0.41** | ❌ Need >1.0 (flagged dangerous) |
-| Drawdown | 1.09% | ✅ |
-| Avg Hold | 4:01 | — |
+| Trades/yr | ~37 | ❌ Below 100 target |
+| Win Rate | 68.92% | ⚠️ Below 85% target |
+| Profit | $165.02 (16.5%) | ✅ |
+| Profit Factor | 2.04 | ✅ |
+| SQN | 2.92 | ✅ |
+| Avg Win | **1.78%** | ✅ Up from 0.68% |
+| Avg Loss | **1.93%** | ❌ |
+| R/R Ratio | **0.926** | ⚠️ IMPROVED but still < 1.0 |
+| Drawdown | 2.11% | ✅ |
+| Avg Hold | 8:42 | ✅ |
 
-**🔧 Fix Applied:** Re-enabled trailing_stop=True + lowered atr_mult 6.0→3.0.
+**🔧 Fix Applied:** Widen trailing_stop_positive_offset 2.5%→3.5% (v0.99.24).
 
-**⏳ Next:** R/R ratio still dangerous (0.41 < 0.8). TS fix was critical (WR 0%→87%) but avg_win/avg_loss still inverted. Options: (1) Raise early_profit_take to 2.0% to capture bigger winners, (2) Accept hunt strategy (~40 trades/yr, 0.67% avg win), (3) Try wider TS offset (1.0-1.2%) to let winners run longer.
+**R/R Trajectory (TS offset sweep):**
+| Offset | R/R | Avg Win | TS exits | TS WR |
+|--------|-----|---------|----------|-------|
+| 0.8% | 0.42 | 0.68% | 76 | 86.8% |
+| 1.5% | 0.76 | 1.43% | 59 | 64.4% |
+| 2.5% | 0.898 | 1.73% | 31 | 25.8% |
+| 3.5% | **0.926** | **1.78%** | 23 | **0%** ⚠️ |
+
+**Key insight:** TS WR collapsed to 0% at offset 3.5%. ALL 23 remaining TS exits are losses
+(avg -1.93%). This means the TS at 3.5% offset is purely catching bad trades — never
+winners. R/R improved to 0.926 but still < 1.0 because the TS loss ($158.98) erodes
+the +$324 from 100% WR exits (early_profit_take + dynamic_tp + roi).
+
+**⏳ Next:** Try offset 5.0% — let ALL trades ride to 5% ROI (100% WR). TS should fire
+0 times if offset > 5%. If offset=5% still has TS exits, the strategy is a pure
+reversal hunt — consider disabling TS entirely and routing all exits through
+early_profit_take + dynamic_tp + roi.
+
+---
+
+## v0.99.24 ✅ — TS Offset 2.5%→3.5% (2026-03-29)
+
+**Backtest Run:** 23697587589 (push-triggered on v0.99.24 commit)
+**Result:** ✅ R/R IMPROVED but still below 1.0. TS WR collapsed to 0%.
+
+| Metric | v0.99.24 | v0.99.23 | Change |
+|--------|-----------|-----------|--------|
+| Trades | **74** | 74 | — |
+| Win Rate | **68.92%** | 68.92% | — |
+| Profit | **$165.02 (16.5%)** | $154.64 (15.46%) | **+$10.38 ✅** |
+| Profit Factor | **2.04** | 1.98 | +0.06 |
+| SQN | **2.92** | 2.82 | +0.10 |
+| **Avg Win** | **1.78%** | 1.73% | +0.05% |
+| Avg Loss | **1.93%** | 1.93% | — |
+| **R/R Ratio** | **0.926** | 0.898 | **+0.028 (improving)** |
+| Avg Hold | **8:42** | 8:41 | — |
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| early_profit_take | 30 | **100%** | +$198.17 |
+| dynamic_tp | 12 | **100%** | +$77.09 |
+| roi | 6 | **100%** | +$41.93 |
+| target_liquidity_reached | 3 | **100%** | +$6.82 |
+| trailing_stop_loss | 23 | **0%** ❌ | -$158.98 |
+
+**Fix criteria check:**
+- TS exits: 23/74 = 31% (>30%) with 0% WR → ⚠️ TS is ONLY losing exits
+- R/R: **0.926** (still < 0.8 threshold) → ⚠️ IMPROVED but not fixed
+- avg_profit_per_win: **1.78%** (was 0.68% at 0.8% offset) → ✅ Massive improvement
+- early_profit_take: 30 trades at +$198.17 (100% WR) → ✅ Exceptional
+- **1 pair negative**: ~-$5.83 profit (57.14% WR) → ⚠️ Likely candidate for removal
+
+**🔧 Fix applied:** Widen trailing_stop_positive_offset 2.5%→3.5% (isolated change).
+
+**Key insight:** R/R trajectory confirms theory — offset widening steadily improves R/R:
+- 0.8% → R/R=0.42 (TS dominant, 86% WR, avg win only 0.68%)
+- 1.5% → R/R=0.76 (+81%)
+- 2.5% → R/R=0.898 (+18%)
+- 3.5% → R/R=0.926 (+3.1%)
+
+**BUT:** TS WR collapsed from 25.8% → 0% at 3.5% offset. ALL 23 TS exits are losses.
+This means at 3.5%, the TS is ONLY catching reversals — never locking in winners.
+The TS is now purely destructive. The remaining path to R/R > 1.0:
+1. **Try offset 5.0%** — if TS still fires at 5% offset, the 5% ROI table handles
+   all valid exits and TS is truly unnecessary. Remove TS entirely.
+2. **Disable TS** — route all exits through early_profit_take (100% WR) + dynamic_tp
+   (100% WR) + roi (100% WR). This should yield R/R = 1.0+ since all exits are winners.
+
+**Next step (⏳):** Try offset 5.0% (higher than 3.5%) — if TS still fires <5% of trades,
+the offset is effectively above the strategy's ceiling. Consider disabling TS entirely.
 
 ---
 
