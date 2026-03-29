@@ -1,6 +1,6 @@
 # Liquidity Sweep — Roadmap
 
-> Updated: 2026-03-29
+> Updated: 2026-03-29 (v0.99.28)
 > **Strategy Type: Liquidity Sweep / Mean Reversion (NOT trend following)**
 
 ---
@@ -356,20 +356,20 @@ The problem is NOT trailing stop configuration — it's structural.
 
 ---
 
-## Current State (v0.99.26)
+## Current State (v0.99.28)
 
 | Metric | Value | Status |
 |--------|-------|--------|
-| Trades/yr | ~37 | ❌ Below 100 target |
-| Win Rate | 68.92% | ⚠️ Below 85% target |
-| Profit | $165.02 (16.5%) | ✅ |
-| Profit Factor | 2.04 | ✅ |
-| SQN | 2.92 | ✅ |
-| Avg Win | **1.78%** | ✅ |
-| Avg Loss | **1.93%** | ❌ |
-| **R/R Ratio** | **0.926** | ⚠️ Structurally stuck — TS tuning exhausted |
-| Drawdown | 2.11% | ✅ |
-| Avg Hold | 8:42 | ✅ |
+| Trades/yr | ~34 | ❌ Below 100 target |
+| Win Rate | 70.15% | ⚠️ Below 85% target |
+| Profit | $171.33 (17.1%) | ✅ |
+| Profit Factor | 2.30 | ✅ |
+| SQN | 3.28 | ✅ |
+| Avg Win | **1.80%** | ✅ |
+| Avg Loss | **1.82%** | ✅ (improved!) |
+| **R/R Ratio** | **0.990** | ⚠️ Near break-even (was 0.926) |
+| Drawdown | 1.62% | ✅ |
+| Avg Hold | 8:37 | ✅ |
 
 **🔧 Fix Applied:** Disable trailing_stop (v0.99.26) — DID NOT WORK.
 
@@ -2110,4 +2110,74 @@ stop is still getting hit by reversals rather than letting winners fully develop
 Try offset 2.5% — gives BTC/ETH real room to move (+2.5% is ~4× ATR for BTC).
 Alternative: try offset 3.0% or disable TS entirely (but this failed in v0.99.13).
 
-*Last Updated: 2026-03-28 (20:25 UTC)*
+*Last Updated: 2026-03-29 (15:03 UTC)*
+
+## v0.99.28 ✅ — Revert atr_mult + Remove UNI (2026-03-29)
+
+**Backtest Run:** 23711782616 (push-triggered on v0.99.28 commit)
+**Result:** ✅ UNI removal + revert = best results since iterations began. R/R 0.99!
+
+**What was tried:** Widen atr_mult 2× (3-3.5× → 6-7×) to fix TS early exits.
+**Verdict:** ❌ CATASTROPHIC — TS losses avg -$11.86 over 16h (vs -$6.91/10min).
+  Widened stops let losers ride MUCH further. Reverted immediately.
+
+| Metric | v0.99.28 | v0.99.27 (bad) | v0.99.26 |
+|--------|-----------|----------------|----------|
+| Trades | **67** | 67 | 74 |
+| Win Rate | **70.15%** | 77.61% | 68.92% |
+| Profit | **$171.33** | $156.87 | $165.02 |
+| Profit Factor | **2.30** | 1.88 | 2.04 |
+| SQN | **3.28** | 2.32 | 2.92 |
+| Avg Win | **1.80%** | 1.82% | 1.78% |
+| Avg Loss | **1.82%** | 3.31% | 1.93% |
+| **R/R Ratio** | **0.990** | **0.549** ❌ | 0.926 |
+| TS exits | **20** | 15 | 23 |
+| TS avg loss | **-$6.57** | -$11.86 | -$6.91 |
+| Drawdown | **1.62%** | 3.74% | 2.11% |
+| Avg Hold | **8:37** | 11:25 | 8:42 |
+
+**Key improvement:** Removing UNI/USDT (only negative pair at -$5.83) and
+reverting to baseline atr_mult = best combo. R/R improved 0.926 → 0.990.
+UNI removal also improved profit ($165 → $171) despite fewer trades.
+
+**Exit breakdown (v0.99.28):**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| early_profit_take | 26 | **100%** | +$176.56 |
+| dynamic_tp | 12 | **100%** | +$77.23 |
+| roi | 6 | **100%** | +$42.13 |
+| target_liquidity_reached | 3 | **100%** | +$6.83 |
+| trailing_stop_loss | 20 | **0%** ❌ | -$131.42 |
+
+**Pair performance (v0.99.28):**
+| Pair | Trades | WR | Profit |
+|------|--------|-----|--------|
+| ETH/USDT | 9 | 88.9% | $48.73 |
+| BTC/USDT | 15 | 73.3% | $41.31 |
+| AAVE/USDT | 11 | 72.7% | $31.54 |
+| AVAX/USDT | 13 | 69.2% | $20.67 |
+| ADA/USDT | 6 | 66.7% | $16.98 |
+| LINK/USDT | 13 | 53.8% | $12.10 |
+
+All 6 pairs profitable. No removals needed.
+
+**🔧 Fix Applied (v0.99.28):** Reverted atr_mult to v0.99.26 levels.
+Kept UNI/USDT removed (net +$5.83 improvement).
+
+**R/R trajectory:**
+| Version | R/R | TS exits | TS WR | Note |
+|---------|-----|----------|-------|------|
+| v0.99.26 | 0.926 | 23 | 0% | Baseline |
+| v0.99.27 | 0.549 | 15 | 0% | atr_mult 2× — CATASTROPHIC |
+| **v0.99.28** | **0.990** | **20** | **0%** | **BEST — 0.99 ≈ 1.0** |
+
+**⚠️ R/R still < 1.0 but CLOSE.** 20 TS exits at avg -$6.57 (all losing) are the
+only drag. At R/R 0.99, the strategy is at the BREAK-EVEN threshold. Further
+improvement requires either: (a) reducing TS exits further, or (b) increasing
+avg win through better entry quality.
+
+**⏳ Next:** H-A revisit — ATR-based dynamic TP with lower threshold.
+Current dynamic_tp (12 trades, 100% WR, 1.83% avg) is the best exit.
+Try lowering threshold from 1.5× atr_mult to 1.2× atr_mult to capture more
+winners via dynamic_tp instead of early_profit_take.
+
