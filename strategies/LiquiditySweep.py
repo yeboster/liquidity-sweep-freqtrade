@@ -12,9 +12,12 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.26
+Version: 0.99.27
 
 Changelog:
+- v0.99.27 (2026-03-29): Widen atr_mult 2× (3-3.5× → 6-7×) — ATR stop too tight, causing
+  23 custom_stoploss exits (ALL losing, avg -$6.91). Fix: double all atr_mult values.
+  Also: Remove UNI/USDT (only pair with negative profit: -$5.83, 57.1% WR, 7 trades).
 - v0.99.26 (2026-03-29): DISABLE trailing_stop — 5th R/R fix iteration.
   Problem (v0.99.25, offset=5.0%): R/R = 0.926, TS WR = 0% — IDENTICAL to v0.99.24.
   Confirmed: offset=5.0% produces SAME results as offset=3.5% (23 TS exits, 0% WR).
@@ -504,71 +507,66 @@ class LiquiditySweep(IStrategy):
     # v0.55.0: Added SOL, BNB, XRP, DOT, AVAX per-pair overrides.
     # Prior: only BTC, ETH, ADA had custom params. 5 pairs used global defaults.
     custom_pair_params = {
+        # v0.99.27: atr_mult doubled (3-3.5× → 6-7×) — prior values were triggering
+        # custom_stoploss at 1-2% BTC moves → 23 TS exits all losing (avg -$6.91).
         "BTC/USDT": {
-            "atr_multiplier": 3.0,       # Dynamic SL 3x ATR for BTC
+            "atr_multiplier": 6.0,       # v0.99.27: was 3.0
             "require_ote": False,        # BTC trends hard, often misses OTE
-            "time_exit_1_hours": 8       # More time for BTC
+            "time_exit_1_hours": 8
         },
         "ETH/USDT": {
-            "atr_multiplier": 2.5,       # Intermediate volatility
+            "atr_multiplier": 5.0,       # v0.99.27: was 2.5
             "require_ote": True,
             "time_exit_1_hours": 6
         },
         "ADA/USDT": {
-            "atr_multiplier": 2.0,       # Low volatility (v0.43.0: was 1.2, too tight)
+            "atr_multiplier": 4.0,       # v0.99.27: was 2.0
             "require_ote": True,
             "time_exit_1_hours": 4
         },
-        # v0.55.0: Per-pair optimization — SOL/BNB trend like BTC, XRP mean-reverts
         "SOL/USDT": {
-            "atr_multiplier": 3.0,       # High-beta like BTC, needs room
+            "atr_multiplier": 6.0,       # v0.99.27: was 3.0
             "require_ote": False,        # SOL trends hard, often misses OTE
-            "time_exit_1_hours": 8       # SOL needs time like BTC
+            "time_exit_1_hours": 8
         },
         "BNB/USDT": {
-            "atr_multiplier": 2.5,       # Binance ecosystem, similar to ETH
+            "atr_multiplier": 5.0,       # v0.99.27: was 2.5
             "require_ote": True,
             "time_exit_1_hours": 6
         },
         "XRP/USDT": {
-            "atr_multiplier": 3.5,       # v0.57.0: Widen from 2.0 — XRP was 0/4 WR, ChoCH exits
-            "require_ote": False,        #     at losses. Give trades more room + let entries happen
-            "time_exit_1_hours": 6       #     outside OTE (XRP often misses retracements)
+            "atr_multiplier": 7.0,       # v0.99.27: was 3.5
+            "require_ote": False,        # Give trades room outside OTE
+            "time_exit_1_hours": 6
         },
         "DOT/USDT": {
-            "atr_multiplier": 3.0,       # High volatility like BTC
+            "atr_multiplier": 6.0,       # v0.99.27: was 3.0
             "require_ote": True,
             "time_exit_1_hours": 6
         },
         "AVAX/USDT": {
-            "atr_multiplier": 3.0,       # High volatility
+            "atr_multiplier": 6.0,       # v0.99.27: was 3.0
             "require_ote": True,
             "time_exit_1_hours": 6
         },
-        # v0.57.0: Added DOGE back (was in v0.55.0 — 1 trade, 1 win, +114%)
         "DOGE/USDT": {
-            "atr_multiplier": 3.0,       # High-beta like BTC/SOL
+            "atr_multiplier": 6.0,       # v0.99.27: was 3.0
             "require_ote": False,        # DOGE trends hard, often misses OTE
             "time_exit_1_hours": 8
         },
-        # v0.99.20: Added missing per-pair overrides for current whitelist pairs
-        "UNI/USDT": {
-            "atr_multiplier": 2.5,       # Mid-volatility DeFi token
-            "require_ote": True,
-            "time_exit_1_hours": 6
-        },
+        # v0.99.27: UNI/USDT removed — only pair with negative profit (-$5.83, 57.1% WR)
         "NEAR/USDT": {
-            "atr_multiplier": 2.0,       # Lower volatility L1
+            "atr_multiplier": 4.0,       # v0.99.27: was 2.0
             "require_ote": True,
             "time_exit_1_hours": 5
         },
         "LINK/USDT": {
-            "atr_multiplier": 2.5,       # Mid-volatility oracle token
+            "atr_multiplier": 5.0,       # v0.99.27: was 2.5
             "require_ote": True,
             "time_exit_1_hours": 6
         },
         "AAVE/USDT": {
-            "atr_multiplier": 3.0,        # High-beta DeFi, like BTC/AVAX
+            "atr_multiplier": 6.0,       # v0.99.27: was 3.0
             "require_ote": True,
             "time_exit_1_hours": 6
         }
@@ -665,7 +663,7 @@ class LiquiditySweep(IStrategy):
     # v0.34.0: ATR Multiplier increase to 2.0x (from 1.5x)
     # The avg TSL loss in v0.29.0 was -1.61% vs avg win +0.57%. Loosening SL
     # gives institutional reversals room to breathe.
-    atr_multiplier = DecimalParameter(1.0, 6.0, default=4.0, space="buy", optimize=True)
+    atr_multiplier = DecimalParameter(1.0, 12.0, default=8.0, space="buy", optimize=True)
     atr_period = IntParameter(10, 20, default=14, space="buy", optimize=False)
     
     # Entry filters
