@@ -257,6 +257,61 @@ Winners never reach 1.5% because TS clips them at +0.8%.
 
 ---
 
+## v0.99.25 ✅ — TS Offset 3.5%→5.0% (2026-03-29)
+
+**Backtest Run:** 23708146124 + 23708140176 (push + workflow_dispatch on v0.99.25 commit 2e40dd4)
+**Result:** ✅ OFFSET=5.0% CONFIRMED — but produces IDENTICAL results to offset=3.5%.
+
+| Metric | v0.99.25 (offset=5.0%) | v0.99.24 (offset=3.5%) | Change |
+|--------|-------------------------|------------------------|--------|
+| Trades | **74** | 74 | — |
+| Win Rate | **68.92%** | 68.92% | — |
+| Profit | **$165.02 (16.5%)** | $165.02 | — |
+| Profit Factor | **2.038** | 2.038 | — |
+| SQN | **2.92** | 2.92 | — |
+| **Avg Win** | **1.78%** | 1.78% | — |
+| Avg Loss | **1.93%** | 1.93% | — |
+| **R/R Ratio** | **0.926** | 0.926 | — IDENTICAL |
+| TS Exit % | 31% | 31% | — IDENTICAL |
+| TS Win Rate | **0%** | 0% | — IDENTICAL |
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| early_profit_take | 30 | **100%** | +$198.17 |
+| dynamic_tp | 12 | **100%** | +$77.09 |
+| roi | 6 | **100%** | +$41.93 |
+| target_liquidity_reached | 3 | **100%** | +$6.82 |
+| trailing_stop_loss | 23 | **0%** ❌ | -$158.98 |
+
+**Fix criteria check:**
+- TS exits: 23/74 = 31% (>30%) with 0% WR → ⚠️ TS is ONLY losing exits
+- R/R: **0.926** (still < 0.8 threshold) → ⚠️ NOT FIXED — identical to v0.99.24
+- avg_profit_per_win: **1.78%** → ✅ Good
+- **⚠️ IDENTICAL results to v0.99.24** — offset=5.0% did NOT change anything
+
+**🔍 KEY INSIGHT — Offset change has NO EFFECT:**
+Offset=5.0% produces IDENTICAL results to offset=3.5% (23 TS exits, 0% WR, R/R=0.926).
+This strongly suggests:
+1. The `trailing_only_offset_is_reached=True` setting may not be working as expected
+2. OR freqtrade's TS activation logic differs from the documented behavior
+3. OR the ROI at 5.0% + custom_stoploss are overriding TS in ways that make offset irrelevant
+
+**R/R trajectory (CONFIRMED):**
+| Offset | R/R | TS exits | TS WR | Status |
+|--------|-----|----------|-------|--------|
+| 0.8% | 0.42 | 76 | 86.8% | TS catches winners |
+| 1.5% | 0.76 | 59 | 64.4% | TS catches some winners |
+| 2.5% | 0.898 | 31 | 25.8% | TS mostly catches losers |
+| 3.5% | 0.926 | 23 | 0% | TS ONLY catches losers |
+| **5.0%** | **0.926** | **23** | **0%** | **NO CHANGE** |
+
+**🔧 Fix Applied (v0.99.26):** DISABLE trailing_stop entirely.
+Next: if v0.99.26 produces better R/R → keep TS disabled.
+If v0.99.26 fails → the problem is structural (entry quality), not TS.
+
+---
+
 ## Current State (v0.99.24)
 
 | Metric | Value | Status |
