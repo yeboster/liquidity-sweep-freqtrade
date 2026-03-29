@@ -12,9 +12,13 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.24
+Version: 0.99.25
 
 Changelog:
+- v0.99.25 (2026-03-29): Widen trailing_stop_positive_offset 3.5%→5.0% — 4th R/R fix iteration.
+  Problem (v0.99.24, offset=3.5%): R/R = 0.926, TS WR = 0% — ALL 23 TS exits are losses.
+  TS at 3.5% is purely catching reversals, never winners. Fix: raise offset to 5.0%.
+  Expected: TS fires on fewer trades, more ride to 100% WR exits (roi/dynamic_tp/early_profit_take).
 - v0.99.23 (2026-03-28): Widen trailing_stop_positive_offset 0.8%→2.5% — isolate R/R fix (2nd iteration).
   Problem (v0.99.22 backtest, offset=1.5%): R/R = 0.76 — still below 0.8 threshold.
   Analysis: offset=1.5% TS activates at +1.5%, trails 0.5% → exits at ~+1.0% on average.
@@ -583,17 +587,10 @@ class LiquiditySweep(IStrategy):
     # trades that never reach 1% profit, so ROI doesn't fire for them anyway.
     # Fix: Raise ROI 305 to 2% AND push to 400 candles (~67h). Winners that would have
     # been cut at +1% at 76h can now run to 2% at 67h (faster timeline, higher target).
-    # Trailing stop still manages risk: activates at +1.5%, exits at +1.0%.
-    # H-B (v0.99.8): Force 1.5% ROI exit before TS can activate (TS offset = 0.8%).
-    # Previous: "0": 0.349 (0.349%) — too low, TS at +0.8% clipped winners early.
-    # Now: "0": 1.5 forces winners to reach 1.5% before ROI exit fires.
-    # Expected: avg win should rise from 0.48% → 1.5%+, flipping R/R above 1.0.
-    # H-A (v0.99.12): ATR-based dynamic TP — replaces fixed 1.5% ROI.
-    # TS at +0.8% clips all winners (avg win = 0.79%). Dynamic TP = 2.5× ATR
-    # lets big moves run while keeping normal winners to TS.
-    # H-B also failed: only 1/98 trades hit 1.5% ROI. TS intercepts first.
-    # Fix: Set "0": 5.0 — high enough that normal trades ride TS at +0.8%.
-    # Dynamic TP in custom_exit handles exceptional moves (2.5× ATR).
+    # ROI table — "0": 5.0 means initial ROI at 5% profit (waits for TS or dynamic_tp first).
+    # TS offset is 5.0% (v0.99.25) — TS activates and trails from +5% peak.
+    # If TS never activates (price drops back), ROI exit fires at 5% profit.
+    # Dynamic TP in custom_exit handles exceptional moves (1.5× ATR).
     minimal_roi = {
         "0": 5.0,
         "109": 0.07,
@@ -607,15 +604,18 @@ class LiquiditySweep(IStrategy):
     # Trailing stop — widens from +0.8% toward 2.5% (v0.99.23) to fix R/R
     # Problem (v0.99.12): TS at +0.8% clips ALL winners (avg win 0.79%). R/R = 0.46.
     # v0.99.22 docker test (offset=1.5%): R/R = 0.76 — meaningful improvement.
-    # v0.99.24 test (offset=3.5%): R/R = 0.898 at 2.5% offset — very close but still < 0.8.
-    # TS at 2.5% offset still clips winners prematurely — 31 TS exits, 25.81% WR, avg -0.82%.
-    # Trend: 0.8%→R/R=0.42, 1.5%→R/R=0.76, 2.5%→R/R=0.898.
-    # Fix: ONLY change offset from 2.5% to 3.5% — let BTC/ETH real trending moves
-    # develop (+3.5-5% range) before TS activates. More trades ride to ROI at 5%,
-    # which has 100% WR. Expected: R/R > 1.0, avg win > 2.0%.
-    trailing_stop = True  # Re-enabled in v0.99.20 — was disabled in v0.99.13 (wrong decision)
+    # v0.99.25: Widen trailing_stop_positive_offset 3.5%→5.0% — 4th R/R fix iteration.
+    # Problem (v0.99.24, offset=3.5%): R/R = 0.926, TS WR = 0% — ALL 23 TS exits are losses.
+    # TS at 3.5% activates after +3.5% profit, trails 0.5% → exits at ~+3.0%.
+    # At this offset, TS is PURELY catching losing trades (0% WR), never winners.
+    # Trend: 0.8%→R/R=0.42/TS=86.8%, 1.5%→R/R=0.76/TS=64.4%, 2.5%→R/R=0.898/TS=25.8%, 3.5%→R/R=0.926/TS=0%.
+    # Fix: Only change offset from 3.5% to 5.0%. At 5%, TS activates at +5% profit.
+    # Expected: (1) TS fires on fewer trades (3.5%→5% is above most pair's ATR ceiling).
+    # (2) More trades ride to roi/dynamic_tp/early_profit_take (all 100% WR exits).
+    # (3) If TS fires <5% of trades → disable TS entirely, route all through 100% WR exits.
+    trailing_stop = True
     trailing_stop_positive = 0.005     # Trail 0.5% behind peak (TS must be < offset)
-    trailing_stop_positive_offset = 0.035  # Activate after +3.5% (was 2.5% in v0.99.23)
+    trailing_stop_positive_offset = 0.050  # Activate after +5.0% (was 3.5% in v0.99.24)
     trailing_only_offset_is_reached = True
     
     # ATR-based dynamic stoploss RE-ENABLED in v0.99.15
