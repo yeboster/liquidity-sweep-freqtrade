@@ -1,6 +1,6 @@
 # Liquidity Sweep — Roadmap
 
-> Updated: 2026-03-29 (v0.99.33)
+> Updated: 2026-03-29 (v0.99.34)
 > **Strategy Type: Liquidity Sweep / Mean Reversion (NOT trend following)**
 
 ---
@@ -356,39 +356,38 @@ The problem is NOT trailing stop configuration — it's structural.
 
 ---
 
-## Current State (v0.99.28)
+## Current State (v0.99.34 — LINK removed)
 
 | Metric | Value | Status |
 |--------|-------|--------|
-| Trades/yr | ~33 | ❌ Below 100 target |
-| Win Rate | **70.15%** | ⚠️ Below 85% target |
-| Profit | $171.33 (17.1%) | ✅ |
-| Profit Factor | 2.30 | ✅ |
-| SQN | 3.37 | ✅ |
-| Avg Win | **1.80%** | ✅ |
-| Avg Loss | **1.82%** | ❌ |
-| **R/R Ratio** | **0.99** | ⚠️ Almost at 1.0 — best yet |
+| Trades/yr | ~27 | ❌ Below 100 target |
+| Win Rate | **74.07%** | ⚠️ Below 85% target |
+| Profit | $157.62 (15.76%) | ✅ |
+| Profit Factor | 2.69 | ✅ |
+| SQN | 3.51 | ✅ |
+| Avg Win | **1.78%** | ✅ |
+| Avg Loss | **1.89%** | ❌ |
+| **R/R Ratio** | **0.94** | ⚠️ Below 1.0 (LINK rm didn't help) |
 | Drawdown | 1.62% | ✅ |
-| Avg Hold | ~7h | ✅ |
+| Avg Hold | ~8.8h | ✅ |
 
-**🔧 Fix Applied:** atr_mult reverted to v0.99.26 levels (3.0/2.5/2.0×).
+**🔧 Fix Applied:** atr_mult reverted to v0.99.26 levels (3.0/2.5/2.0×). LINK removed in v0.99.34.
 
-**Pairs (v0.99.28, from actual trades):**
+**Pairs (v0.99.34, 5 pairs — LINK removed):**
 | Pair | Trades | WR | Profit |
 |------|--------|-----|--------|
-| ETH/USDT | 9 | 88.9% | +$48.73 |
-| BTC/USDT | 15 | 73.3% | +$41.31 |
-| AAVE/USDT | 11 | 72.7% | +$31.54 |
-| AVAX/USDT | 13 | 69.2% | +$20.67 |
-| ADA/USDT | 6 | 66.7% | +$16.98 |
-| LINK/USDT | 13 | 53.8% | +$12.10 |
+| ETH/USDT | 9 | 88.9% | +$48.16 |
+| BTC/USDT | 15 | 73.3% | +$41.03 |
+| AAVE/USDT | 11 | 72.7% | +$31.19 |
+| AVAX/USDT | 13 | 69.2% | +$20.38 |
+| ADA/USDT | 6 | 66.7% | +$16.85 |
 
 **⏳ Next options:**
-1. **Remove LINK/USDT** (lowest WR at 53.8%, only $12.10 profit) — may improve R/R
-2. Try raising early_profit_take 1.5%→2.5% (let winners ride further)
-3. Try custom_stoploss with wider floor -3.0% (already tried — REGRESSED to R/R=0.56)
-4. Disable use_custom_stoploss entirely (already tried — CATASTROPHIC, R/R=0.09)
-5. Investigate: why trailing_stop_loss exits persist despite trailing_stop=False
+1. LINK removal didn't fix R/R (0.94 vs 0.99 with 6 pairs) — pair removal is NOT the answer
+2. Try adding a new, higher-quality pair (e.g., SOL/USDT) to improve mix
+3. Revisit entry quality — tighten entry filters to improve WR and avg win
+4. Revisit early_profit_take 1.5%→2.5% (let winners ride further before TS activates)
+5. Accept R/R ≈ 0.94 as the achievable ceiling — strategy still profitable at 2.69 PF
 
 **🔑 Key insight from v0.99.28:** `trailing_stop_loss` exits are triggered by
 `custom_stoploss` (use_custom_stoploss=True), NOT by freqtrade's trailing_stop feature.
@@ -530,6 +529,36 @@ The floor is hit on every BTC trade → causes micro-loss exits labeled `trailin
 | LINK/USDT | 13 | 53.8% | +$12.10 |
 
 **⏳ Next: Remove LINK/USDT (lowest WR 53.8%) → expect R/R > 1.0.**
+
+---
+
+## v0.99.34 ❌ — LINK REMOVED — R/R Regressed (2026-03-29)
+
+**Backtest Run:** 23718644777 (push-triggered on v0.99.34 commit)
+**Result:** ❌ R/R REGRESSED. Removing LINK reduced trades from 67→54 but didn't improve R/R.
+
+| Metric | v0.99.34 (LINK rm) | v0.99.33 (baseline) | Change |
+|--------|---------------------|---------------------|--------|
+| Trades | **54** | 67 | -13 (-19%) |
+| Win Rate | **74.07%** | 70.15% | +3.9pp ✅ |
+| Profit | **$157.62 (15.76%)** | $171.33 (17.13%) | -$13.71 |
+| Profit Factor | **2.69** | 2.30 | +0.39 ✅ |
+| SQN | **3.51** | 3.28 | +0.23 ✅ |
+| Avg Win | **1.78%** | 1.80% | stable |
+| Avg Loss | **1.89%** | 1.82% | +0.07% |
+| **R/R Ratio** | **0.94** | 0.99 | **-0.05 ❌** |
+| TS Exit % | 25.9% | 29.9% | -4pp |
+
+**Why R/R regressed:** LINK had 13 trades (53.8% WR, +$12.10) but avg win was
+likely close to avg loss (0.79%/0.79% = 1.0 R/R). Removing LINK removed these
+near-breakeven trades, shifting the mix toward more BTC/ETH which have worse
+R/R profiles. The 5-pair mix is slightly worse than 6-pair.
+
+**⏳ Next:** LINK removal didn't fix R/R. Remaining options:
+1. Accept R/R ≈ 0.94 as the achievable ceiling (still profitable at 2.69 PF)
+2. Try adding a new pair (higher quality than LINK) to improve mix
+3. Revisit entry quality — tighten entry filters to improve WR and avg win
+4. Focus on increasing trade frequency (27/yr → 100+ target)
 
 ---
 
