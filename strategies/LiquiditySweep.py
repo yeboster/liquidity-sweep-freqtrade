@@ -15,6 +15,7 @@ Author: Jarvis (OpenClaw)
 Version: 0.99.34
 
 Changelog:
+- v0.99.35 (2026-03-29): RAISE early_profit_take 1.5%→2.0%. R/R=0.94 still below 1.0; TS losses (14 exits, -1.89% avg) drag it down. Raising from 1.5% to 2.0% lets winners ride longer before locking in. dynamic_tp (1.5× ATR) and roi (5%) capture bigger moves; 2.0% early profit handles medium winners.
 - v0.99.34 (2026-03-29): REMOVE LINK/USDT from pair_whitelist. LINK has lowest WR (53.8%) and lowest profit ($12.10) — removing should improve R/R by eliminating weakest pair.
 - v0.99.33 (2026-03-29): REVERT dynamic_tp_threshold 1.2×→1.5×. v0.99.32 REJECTED —
   lower threshold captured MORE losses: dynamic_tp avg dropped 1.83%→1.62%, total
@@ -525,7 +526,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.99.20"
+    STRATEGY_VERSION = "0.99.35"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -1291,8 +1292,12 @@ class LiquiditySweep(IStrategy):
         # then custom_stoploss hits at -3.62%. 1.5% captures wins before reversal.
         # v0.71.0: raised from 0.8% to 1.0% — winners averaged 1.06% (100% WR), let them run
         # v0.64.0: REVERT — early_profit at 0.8% (was 1.5% in failed v0.63.0)
+        # v0.99.35: RAISE 1.5%→2.0%. Current 1.5% locks in wins at +1.81% avg but
+        # trailing_stop_loss still generates 14 losses at -1.89%. Raising to 2.0%
+        # lets winners ride further — dynamic_tp (1.5× ATR) and roi (5%) will
+        # handle bigger moves while 2.0% locks in medium winners.
         trade_duration = (current_time - trade.open_date_utc).total_seconds() / 3600
-        if trade_duration >= 0.75 and current_profit >= 0.015:
+        if trade_duration >= 0.75 and current_profit >= 0.020:
             return "early_profit_take"
         
         # Time-based exit
