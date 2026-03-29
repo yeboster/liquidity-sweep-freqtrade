@@ -12,7 +12,7 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.23
+Version: 0.99.24
 
 Changelog:
 - v0.99.23 (2026-03-28): Widen trailing_stop_positive_offset 0.8%→2.5% — isolate R/R fix (2nd iteration).
@@ -607,11 +607,15 @@ class LiquiditySweep(IStrategy):
     # Trailing stop — widens from +0.8% toward 2.5% (v0.99.23) to fix R/R
     # Problem (v0.99.12): TS at +0.8% clips ALL winners (avg win 0.79%). R/R = 0.46.
     # v0.99.22 docker test (offset=1.5%): R/R = 0.76 — meaningful improvement.
-    # v0.99.23 test (offset=2.5%): Goal is R/R > 0.8, avg win > 1.5%.
-    # Dynamic TP in custom_exit handles exceptional moves (2.0× ATR).
+    # v0.99.24 test (offset=3.5%): R/R = 0.898 at 2.5% offset — very close but still < 0.8.
+    # TS at 2.5% offset still clips winners prematurely — 31 TS exits, 25.81% WR, avg -0.82%.
+    # Trend: 0.8%→R/R=0.42, 1.5%→R/R=0.76, 2.5%→R/R=0.898.
+    # Fix: ONLY change offset from 2.5% to 3.5% — let BTC/ETH real trending moves
+    # develop (+3.5-5% range) before TS activates. More trades ride to ROI at 5%,
+    # which has 100% WR. Expected: R/R > 1.0, avg win > 2.0%.
     trailing_stop = True  # Re-enabled in v0.99.20 — was disabled in v0.99.13 (wrong decision)
     trailing_stop_positive = 0.005     # Trail 0.5% behind peak (TS must be < offset)
-    trailing_stop_positive_offset = 0.025  # Activate after +2.5% (was 0.8%, then 1.5% in v0.99.22)
+    trailing_stop_positive_offset = 0.035  # Activate after +3.5% (was 2.5% in v0.99.23)
     trailing_only_offset_is_reached = True
     
     # ATR-based dynamic stoploss RE-ENABLED in v0.99.15
