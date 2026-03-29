@@ -1,6 +1,6 @@
 # Liquidity Sweep — Roadmap
 
-> Updated: 2026-03-29 (v0.99.28)
+> Updated: 2026-03-29 (v0.99.33)
 > **Strategy Type: Liquidity Sweep / Mean Reversion (NOT trend following)**
 
 ---
@@ -2320,4 +2320,34 @@ avg win through better entry quality.
 Current dynamic_tp (12 trades, 100% WR, 1.83% avg) is the best exit.
 Try lowering threshold from 1.5× atr_mult to 1.2× atr_mult to capture more
 winners via dynamic_tp instead of early_profit_take.
+
+---
+
+## v0.99.33 ✅ — REVERT dynamic_tp_threshold 1.2×→1.5× (2026-03-29)
+
+**Backtest Run:** efc83d9 (push on cac4a64)
+**Result:** ✅ Confirmed back to v0.99.28 baseline — profit $171.33, R/R 0.99.
+
+**R/R trajectory (updated):**
+| Version | R/R | TS exits | Avg Win | Avg Loss | Profit |
+|---------|-----|----------|---------|----------|--------|
+| v0.99.28 | 0.990 | 20 | 1.80% | -1.82% | $171.33 |
+| **v0.99.31** | **0.990** | **20** | **1.80%** | **-1.82%** | **$171.33** |
+| v0.99.32 | 0.933 ❌ | 20 | 1.70% | -1.82% | $152.84 ❌ |
+| **v0.99.33** | **0.990** | **20** | **1.80%** | **-1.82%** | **$171.33** ✅ |
+
+**🔧 Fix: Reverted dynamic_tp_threshold 1.2×→1.5×.** v0.99.32 lower threshold
+captured micro-moves, not big moves — dynamic_tp avg dropped 1.83%→1.62%,
+total profit fell $171→$153. 1.5× threshold is optimal.
+
+**Note:** v0.99.31 was IDENTICAL to v0.99.28 — the -1.5% floor was already in
+place in v0.99.28, so no change occurred. Both show 20 TS exits, R/R 0.99.
+
+**⚠️ All 6 pairs positive. No removals needed.**
+
+**⏳ Next:** Strategy appears structurally optimized. Options:
+1. Try trailing_stop re-enable with offset 1.0-1.5% (below early_profit 1.5%)
+   to capture reversals as winners instead of letting them ride to stoploss
+2. Add more pairs for frequency increase
+3. Accept R/R 0.99 ≈ break-even and focus on slippage minimization
 
