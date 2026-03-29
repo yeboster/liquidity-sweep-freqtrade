@@ -312,7 +312,51 @@ If v0.99.26 fails → the problem is structural (entry quality), not TS.
 
 ---
 
-## Current State (v0.99.24)
+## v0.99.26 ❌ — Disable Trailing Stop (2026-03-29)
+
+**Backtest Run:** 23708308163 (push-triggered on v0.99.26 commit)
+**Result:** ❌ FIX DID NOT WORK — IDENTICAL results to v0.99.25/v0.99.24.
+
+| Metric | v0.99.26 (TS=False) | v0.99.25 (TS=True) |
+|--------|----------------------|---------------------|
+| Trades | **74** | 74 |
+| Win Rate | **68.92%** | 68.92% |
+| Profit | **$165.02** | $165.02 |
+| R/R Ratio | **0.926** | 0.926 |
+| Avg Win | **1.78%** | 1.78% |
+| Avg Loss | **1.93%** | 1.93% |
+| TS exits | **23** | 23 |
+| TS WR | **0%** | 0% |
+
+**🔑 CRITICAL DISCOVERY:** `trailing_stop=False` STILL produces 23 `trailing_stop_loss` exits!
+This means the exit reason `trailing_stop_loss` is triggered by something OTHER than the
+`trailing_stop` config flag. Likely: the `custom_stoploss` function or `custom_exit`
+logic is generating these exits independently of the TS setting.
+
+**Confirmed R/R trajectory:**
+| Offset | R/R | TS exits | TS WR | Notes |
+|--------|-----|----------|-------|-------|
+| 0.8% | 0.42 | 76 | 86.8% | |
+| 1.5% | 0.76 | 59 | 64.4% | |
+| 2.5% | 0.898 | 31 | 25.8% | |
+| 3.5% | 0.926 | 23 | 0% | |
+| 5.0% | 0.926 | 23 | 0% | NO CHANGE |
+| **TS=False** | **0.926** | **23** | **0%** | NO CHANGE |
+
+**⚠️ R/R is structurally stuck at ~0.93 — not fixable by TS tuning.**
+The problem is NOT trailing stop configuration — it's structural.
+
+**⏳ Next options:**
+1. Remove/replace custom_stoploss — investigate why TS-loss exits persist
+2. Tighten entry quality (higher OTE zone, stronger confluence)
+3. Reduce to fewer pairs — 37 trades/yr with 2.04 PF is insufficient scale
+4. Reject this strategy design — liquidity sweeps may not be suitable for this market regime
+
+**🏁 CONCLUSION: TS tuning iterations are EXHAUSTED. Focus on entry quality or redesign.**
+
+---
+
+## Current State (v0.99.26)
 
 | Metric | Value | Status |
 |--------|-------|--------|
@@ -321,13 +365,13 @@ If v0.99.26 fails → the problem is structural (entry quality), not TS.
 | Profit | $165.02 (16.5%) | ✅ |
 | Profit Factor | 2.04 | ✅ |
 | SQN | 2.92 | ✅ |
-| Avg Win | **1.78%** | ✅ Up from 0.68% |
+| Avg Win | **1.78%** | ✅ |
 | Avg Loss | **1.93%** | ❌ |
-| R/R Ratio | **0.926** | ⚠️ IMPROVED but still < 1.0 |
+| **R/R Ratio** | **0.926** | ⚠️ Structurally stuck — TS tuning exhausted |
 | Drawdown | 2.11% | ✅ |
 | Avg Hold | 8:42 | ✅ |
 
-**🔧 Fix Applied:** Widen trailing_stop_positive_offset 2.5%→3.5% (v0.99.24).
+**🔧 Fix Applied:** Disable trailing_stop (v0.99.26) — DID NOT WORK.
 
 **R/R Trajectory (TS offset sweep):**
 | Offset | R/R | Avg Win | TS exits | TS WR |
