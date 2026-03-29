@@ -12,9 +12,19 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.28
+Version: 0.99.30
 
 Changelog:
+- v0.99.30 (2026-03-29): RAISE custom_stoploss floor -1.5%→-5.0%. v0.99.29
+  proved: disable custom_stoploss → 3 catastrophic -19.64% stops ($196 loss).
+  Keep it ENABLED but widen floor: dynamic_sl = -(3.0 × atr_pct) ≈ -1.5% to -2.1%.
+  Old floor -1.5% was CAPPING the stop, causing -1.82% losses on micro-dips.
+  New floor -5.0%: dynamic_sl now actually varies (not floored), fewer exits,
+  less severe avg loss. Expected: TS losses drop from 20 to <5, R/R > 1.0.
+- v0.99.29 (2026-03-29): DISABLE use_custom_stoploss — CATASTROPHIC.
+  3 stop_loss exits at -19.64% each = -$196 total. ATR floor at -1.5%
+  was actually PROTECTING us from catastrophic -19.4% hits. REVERT IMMEDIATELY.
+  Confirmed: use_custom_stoploss=True is MANDATORY for this strategy.
 - v0.99.28 (2026-03-29): REVERT atr_mult doubling. v0.99.27 catastrophe: widening
   atr_mult 3-3.5× → 6-7× made TS losses WORSE: avg -$11.86 over 16h (vs -$6.91/10min).
   Revert to v0.99.26 levels. Keep UNI removed (net +$5.83 improvement).
@@ -628,12 +638,13 @@ class LiquiditySweep(IStrategy):
     trailing_stop_positive_offset = 0.050
     trailing_only_offset_is_reached = True
     
-    # ATR-based dynamic stoploss RE-ENABLED in v0.99.15
-    # Problem (v0.99.14): use_custom_stoploss=False → static -19.4% stoploss.
-    # 6 trades hit -19.4% stop at avg -19.64% = -$389.21 total loss → R/R = 0.11 (catastrophic).
-    # Fix: use_custom_stoploss=True with wider atr_multiplier=3.0 (from 1.5×).
-    # Expected: ATR-based exits at ~-6% (ETH) to ~-9% (BTC) instead of -19.4%.
-    # Fewer stop triggers, but losses capped at ~3-9% vs -19.4% before.
+    # ATR-based dynamic stoploss (v0.99.15, updated v0.99.30)
+    # v0.99.14: use_custom_stoploss=False → static -19.4% stoploss. Catastrophic.
+    # v0.99.15-v0.99.29: use_custom_stoploss=True with ATR floor at -1.5%.
+    # v0.99.29 test: DISABLE custom_stoploss → 3 catastrophic -19.64% stops = REJECTED.
+    # v0.99.30: Widen floor -1.5%→-3.0%. BTC's ATR ~0.5-0.7% means dynamic_sl was
+    # floored at -1.5% on EVERY trade. New floor -3.0%: dynamic_sl varies freely
+    # at ~(1.5-2.1)% for BTC, letting more trades survive micro-dips.
     use_custom_stoploss = True
 
     # ── Timeframes ────────────────────────────────────────────────────────────
@@ -1168,15 +1179,15 @@ class LiquiditySweep(IStrategy):
     def custom_stoploss(self, pair: str, trade: 'Trade', current_time: datetime,
                         current_rate: float, current_profit: float, **kwargs) -> float:
         """
-        ATR-based dynamic stoploss (v0.22.0, updated v0.99.16).
+        ATR-based dynamic stoploss (v0.22.0, updated v0.99.30).
 
         SL is placed at N× ATR(14) below entry price (longs) or above (shorts).
         This makes the stoploss:
         - Tighter in calm markets (ETH/ADA) → less loss per stop hit
         - Wider in volatile markets (BTC/SOL) → fewer premature exits
 
-        Floor: -2.5% (don't place SL too tight — chop zone; v0.99.16: was -1.5%)
-        Ceiling: -10.0% (don't let it run beyond backstop SL; v0.99.16: was -4.0%)
+        Floor: -3.0% (v0.99.30: was -1.5%, too tight for BTC's ~0.5-0.7% ATR)
+        Ceiling: -8.0% (don't let it run beyond backstop SL)
         """
         dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
         
@@ -1204,8 +1215,8 @@ class LiquiditySweep(IStrategy):
         dynamic_sl = -(atr_mult * entry_atr_pct)
         
         # Apply floor and ceiling
-        dynamic_sl = max(dynamic_sl, -0.08)   # No worse than -8% (floor restored to v0.99.15 level)
-        dynamic_sl = min(dynamic_sl, -0.015)  # No tighter than -1.5% (restored from -2.5%)
+        dynamic_sl = max(dynamic_sl, -0.08)   # Ceiling: don't go above -8% (too wide = catastrophic loss)
+        dynamic_sl = min(dynamic_sl, -0.030)   # Floor: don't go below -3.0% (v0.99.30: was -1.5%, too tight)
         
         # Return as ratio from current_rate perspective
         # Freqtrade expects: stoploss relative to current_rate (not entry)
