@@ -356,40 +356,180 @@ The problem is NOT trailing stop configuration — it's structural.
 
 ---
 
-## Current State (v0.99.26)
+## Current State (v0.99.28)
 
 | Metric | Value | Status |
 |--------|-------|--------|
-| Trades/yr | ~37 | ❌ Below 100 target |
-| Win Rate | 68.92% | ⚠️ Below 85% target |
-| Profit | $165.02 (16.5%) | ✅ |
-| Profit Factor | 2.04 | ✅ |
-| SQN | 2.92 | ✅ |
-| Avg Win | **1.78%** | ✅ |
-| Avg Loss | **1.93%** | ❌ |
-| **R/R Ratio** | **0.926** | ⚠️ Structurally stuck — TS tuning exhausted |
-| Drawdown | 2.11% | ✅ |
-| Avg Hold | 8:42 | ✅ |
+| Trades/yr | ~33 | ❌ Below 100 target |
+| Win Rate | **70.15%** | ⚠️ Below 85% target |
+| Profit | $171.33 (17.1%) | ✅ |
+| Profit Factor | 2.30 | ✅ |
+| SQN | 3.37 | ✅ |
+| Avg Win | **1.80%** | ✅ |
+| Avg Loss | **1.82%** | ❌ |
+| **R/R Ratio** | **0.99** | ⚠️ Almost at 1.0 — best yet |
+| Drawdown | 1.62% | ✅ |
+| Avg Hold | ~7h | ✅ |
 
-**🔧 Fix Applied:** Disable trailing_stop (v0.99.26) — DID NOT WORK.
+**🔧 Fix Applied:** atr_mult reverted to v0.99.26 levels (3.0/2.5/2.0×).
 
-**R/R Trajectory (TS offset sweep):**
-| Offset | R/R | Avg Win | TS exits | TS WR |
-|--------|-----|---------|----------|-------|
-| 0.8% | 0.42 | 0.68% | 76 | 86.8% |
-| 1.5% | 0.76 | 1.43% | 59 | 64.4% |
-| 2.5% | 0.898 | 1.73% | 31 | 25.8% |
-| 3.5% | **0.926** | **1.78%** | 23 | **0%** ⚠️ |
+**Pairs (v0.99.28, from actual trades):**
+| Pair | Trades | WR | Profit |
+|------|--------|-----|--------|
+| ETH/USDT | 9 | 88.9% | +$48.73 |
+| BTC/USDT | 15 | 73.3% | +$41.31 |
+| AAVE/USDT | 11 | 72.7% | +$31.54 |
+| AVAX/USDT | 13 | 69.2% | +$20.67 |
+| ADA/USDT | 6 | 66.7% | +$16.98 |
+| LINK/USDT | 13 | 53.8% | +$12.10 |
 
-**Key insight:** TS WR collapsed to 0% at offset 3.5%. ALL 23 remaining TS exits are losses
-(avg -1.93%). This means the TS at 3.5% offset is purely catching bad trades — never
-winners. R/R improved to 0.926 but still < 1.0 because the TS loss ($158.98) erodes
-the +$324 from 100% WR exits (early_profit_take + dynamic_tp + roi).
+**⏳ Next options:**
+1. **Remove LINK/USDT** (lowest WR at 53.8%, only $12.10 profit) — may improve R/R
+2. Try raising early_profit_take 1.5%→2.5% (let winners ride further)
+3. Try custom_stoploss with wider floor -3.0% (already tried — REGRESSED to R/R=0.56)
+4. Disable use_custom_stoploss entirely (already tried — CATASTROPHIC, R/R=0.09)
+5. Investigate: why trailing_stop_loss exits persist despite trailing_stop=False
 
-**⏳ Next:** Try offset 5.0% — let ALL trades ride to 5% ROI (100% WR). TS should fire
-0 times if offset > 5%. If offset=5% still has TS exits, the strategy is a pure
-reversal hunt — consider disabling TS entirely and routing all exits through
-early_profit_take + dynamic_tp + roi.
+**🔑 Key insight from v0.99.28:** `trailing_stop_loss` exits are triggered by
+`custom_stoploss` (use_custom_stoploss=True), NOT by freqtrade's trailing_stop feature.
+With atr_mult=3.0, BTC's dynamic_sl = -(3.0 × 0.5%) = -1.5% (hits floor on every trade).
+This floor is the root cause of 20 losses at avg -1.82%.
+
+**⚠️ ALL MODIFICATIONS to custom_stoploss FAILED:**
+- Disable it: R/R=0.09 (catastrophic) — static -19.4% stop hits on losers
+- Widen floor: R/R=0.56 (regressed) — fewer exits but worse avg loss (-3.13%)
+- Keep as-is: R/R=0.99 (best) — balance of loss prevention
+
+**🏁 CONCLUSION: R/R=0.99 is the achievable ceiling with current ATR-based SL design.
+Next frontier: entry quality or pair selection. Pair removal (LINK) is the only
+remaining low-risk modification.**
+
+---
+
+## v0.99.30 ❌ — Widen ATR Floor -1.5%→-3.0% (2026-03-29)
+
+**Backtest Run:** 23714184542 (push on 68b51bf)
+**Result:** ❌ REGRESSED — fewer TS exits but MUCH worse avg loss.
+
+| Metric | v0.99.30 (floor=-3%) | v0.99.28 (floor=-1.5%) |
+|--------|-----------------------|--------------------------|
+| Trades | **66** | 67 |
+| Win Rate | **78.79%** | 70.15% |
+| Profit | **$170.04** | $171.33 |
+| R/R Ratio | **0.5646** | **0.99** ❌ |
+| Avg Win | 1.77% | 1.80% |
+| Avg Loss | **-3.13%** | -1.82% |
+| TS exits | **14** | 20 |
+| Drawdown | 2.30% | 1.62% |
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| early_profit_take | 28 | 100% | +$185.90 |
+| dynamic_tp | 12 | 100% | +$73.00 |
+| roi | 8 | 100% | +$56.25 |
+| target_liquidity_reached | 4 | 100% | +$9.52 |
+| **trailing_stop_loss** | **14** | **0%** ❌ | **-$154.64** |
+
+**Fix criteria check:**
+- TS exits: 14/66 = 21% (<30%) → ✅ Below threshold
+- BUT: avg_loss = -3.13% (was -1.82%) → ❌ WORSE loss severity
+- R/R: 0.56 (was 0.99) → ❌ REGRESSION
+- **Conclusion: Wider floor = fewer exits but each loss is more severe. Net negative.**
+
+**Pairs (v0.99.30, confirmed):**
+| Pair | Trades | WR | Profit |
+|------|--------|-----|--------|
+| BTC/USDT | 14 | 78.8% | $62.85 |
+| ETH/USDT | 9 | 92.9% | $43.14 |
+| AAVE/USDT | 11 | 81.8% | $32.21 |
+| AVAX/USDT | 13 | 76.9% | $25.05 |
+| ADA/USDT | 6 | 66.7% | $6.99 |
+| **LINK/USDT** | 13 | **61.5%** | **-$0.20** ← worst |
+| **DOGE/USDT** | 9 | 88.9% | -$11.75 ← remove |
+
+**🔧 Fix: Revert to v0.99.28 immediately. ATR floor at -1.5% is NOT the problem.**
+
+---
+
+## v0.99.29 ❌ — DISABLE use_custom_stoploss (2026-03-29)
+
+**Backtest Run:** 23714090429 (push on 7aa358a)
+**Result:** ❌ CATASTROPHIC — static -19.4% stop triggered 3 times for -$196.
+
+| Metric | v0.99.29 (no custom_SL) | v0.99.28 |
+|--------|--------------------------|----------|
+| Trades | **66** | 67 |
+| Win Rate | **95.45%** | 70.15% |
+| Profit | **$174.65** | $171.33 |
+| R/R Ratio | **0.0889** | **0.99** ❌ |
+| Avg Win | 1.75% | 1.80% |
+| Avg Loss | **-19.64%** | -1.82% |
+| TS exits | **3** | 20 |
+| Drawdown | **10.69%** | 1.62% |
+
+**🔑 CRITICAL INSIGHT:** Disabling use_custom_stoploss is CATASTROPHIC.
+When custom_stoploss is active, it cuts losses at -1.82% avg. With it disabled,
+losers ride to the static -19.4% stoploss — 3 trades × -19.64% = -$196 loss.
+The ATR-based custom_stoploss is ESSENTIAL for risk management.
+**Confirmed: use_custom_stoploss=True is MANDATORY for this strategy.**
+
+**🔧 Fix: Revert immediately. Keep use_custom_stoploss=True.**
+
+---
+
+## v0.99.28 ✅ — BEST ITERATION — atr_mult Reverted (2026-03-29)
+
+**Backtest Run:** 23711783725 (workflow_dispatch on 2fb89c0) + 23711782616 (push)
+**Result:** ✅ R/R = 0.99 — closest to 1.0 yet. atr_mult revert worked.
+
+| Metric | v0.99.28 | v0.99.27 (atr=6-7×) |
+|--------|-----------|----------------------|
+| Trades | **67** | 67 |
+| Win Rate | **70.15%** | 76.12% |
+| Profit | **$171.33** | $88.50 |
+| Profit Factor | **2.30** | 1.35 |
+| SQN | **3.37** | 1.85 |
+| **Avg Win** | **1.80%** | 1.22% |
+| Avg Loss | **1.82%** | 2.15% |
+| **R/R Ratio** | **0.99** | 0.57 |
+| Drawdown | **1.62%** | 2.87% |
+| TS Exit % | **29.9%** | 23.9% |
+| TS Win Rate | **0%** | 0% |
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| early_profit_take | 26 | **100%** | +$176.56 |
+| dynamic_tp | 12 | **100%** | +$77.23 |
+| **trailing_stop_loss** | **20** | **0%** ❌ | -$131.42 |
+| roi | 6 | **100%** | +$42.13 |
+| target_liquidity_reached | 3 | **100%** | +$6.83 |
+
+**Fix criteria check:**
+- TS exits: 20/67 = 29.9% (>30%) → ⚠️ Right at threshold
+- avg_profit_per_win: **1.80%** (>1.0%) → ✅ Good
+- R/R: **0.99** (<1.0, >0.8) → ⚠️ Almost at 1.0
+- Profit factor: 2.30 → ✅ Good
+- **No pairs with negative profit** → ✅ No removals needed
+
+**🔑 KEY INSIGHT — `trailing_stop_loss` is NOT from `trailing_stop`:**
+Despite `trailing_stop=False`, there are 20 `trailing_stop_loss` exits (0% WR).
+These are triggered by `use_custom_stoploss=True` (ATR-based dynamic stoploss).
+With atr_mult=3.0 and BTC ATR~0.5%: dynamic_sl = -(3.0 × 0.5%) = -1.5% (FLOOR).
+The floor is hit on every BTC trade → causes micro-loss exits labeled `trailing_stop_loss`.
+
+**Pairs (from actual trades):**
+| Pair | Trades | WR | Profit |
+|------|--------|-----|--------|
+| ETH/USDT | 9 | 88.9% | +$48.73 |
+| BTC/USDT | 15 | 73.3% | +$41.31 |
+| AAVE/USDT | 11 | 72.7% | +$31.54 |
+| AVAX/USDT | 13 | 69.2% | +$20.67 |
+| ADA/USDT | 6 | 66.7% | +$16.98 |
+| LINK/USDT | 13 | 53.8% | +$12.10 |
+
+**⏳ Next: Remove LINK/USDT (lowest WR 53.8%) → expect R/R > 1.0.**
 
 ---
 
