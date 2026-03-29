@@ -12,9 +12,13 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.25
+Version: 0.99.26
 
 Changelog:
+- v0.99.26 (2026-03-29): DISABLE trailing_stop — 5th R/R fix iteration.
+  Problem (v0.99.25, offset=5.0%): R/R = 0.926, TS WR = 0% — IDENTICAL to v0.99.24.
+  Confirmed: offset=5.0% produces SAME results as offset=3.5% (23 TS exits, 0% WR).
+  TS produces ONLY losses. Fix: disable trailing_stop, route all through 100% WR exits.
 - v0.99.25 (2026-03-29): Widen trailing_stop_positive_offset 3.5%→5.0% — 4th R/R fix iteration.
   Problem (v0.99.24, offset=3.5%): R/R = 0.926, TS WR = 0% — ALL 23 TS exits are losses.
   TS at 3.5% is purely catching reversals, never winners. Fix: raise offset to 5.0%.
@@ -602,20 +606,23 @@ class LiquiditySweep(IStrategy):
     stoploss = -0.194  # -19.4% absolute backstop (ATR SL handles tight exits)
     
     # Trailing stop — widens from +0.8% toward 2.5% (v0.99.23) to fix R/R
-    # Problem (v0.99.12): TS at +0.8% clips ALL winners (avg win 0.79%). R/R = 0.46.
-    # v0.99.22 docker test (offset=1.5%): R/R = 0.76 — meaningful improvement.
-    # v0.99.25: Widen trailing_stop_positive_offset 3.5%→5.0% — 4th R/R fix iteration.
-    # Problem (v0.99.24, offset=3.5%): R/R = 0.926, TS WR = 0% — ALL 23 TS exits are losses.
-    # TS at 3.5% activates after +3.5% profit, trails 0.5% → exits at ~+3.0%.
-    # At this offset, TS is PURELY catching losing trades (0% WR), never winners.
-    # Trend: 0.8%→R/R=0.42/TS=86.8%, 1.5%→R/R=0.76/TS=64.4%, 2.5%→R/R=0.898/TS=25.8%, 3.5%→R/R=0.926/TS=0%.
-    # Fix: Only change offset from 3.5% to 5.0%. At 5%, TS activates at +5% profit.
-    # Expected: (1) TS fires on fewer trades (3.5%→5% is above most pair's ATR ceiling).
-    # (2) More trades ride to roi/dynamic_tp/early_profit_take (all 100% WR exits).
-    # (3) If TS fires <5% of trades → disable TS entirely, route all through 100% WR exits.
-    trailing_stop = True
-    trailing_stop_positive = 0.005     # Trail 0.5% behind peak (TS must be < offset)
-    trailing_stop_positive_offset = 0.050  # Activate after +5.0% (was 3.5% in v0.99.24)
+    # v0.99.26: DISABLE trailing_stop — 5th R/R fix iteration.
+    # Problem (v0.99.25, offset=5.0%): R/R = 0.926, TS WR = 0% — IDENTICAL to v0.99.24.
+    # Confirmed: offset=5.0% produces SAME results as offset=3.5% (23 TS exits, 0% WR).
+    # TS at ANY offset above ~3% is purely catching reversals, never winners.
+    # TS produces ONLY losses: 23 trades × avg -$6.91 = -$158.98 total.
+    # Fix: Disable trailing_stop=True → route ALL exits through 100% WR mechanisms:
+    #   - early_profit_take (30 trades, 100% WR, +$198.17)
+    #   - dynamic_tp (12 trades, 100% WR, +$77.09)
+    #   - roi (6 trades, 100% WR, +$41.93)
+    #   - target_liquidity_reached (3 trades, 100% WR, +$6.82)
+    #   - custom_stoploss (handles remaining losers — ATR-based, ~-1.5% avg)
+    # Expected: (1) 23 losing TS exits eliminated → R/R should flip above 1.0.
+    # (2) Win rate may drop as some winners now ride to custom_stoploss.
+    # (3) Net result should be positive: winners bigger, fewer catastrophic losses.
+    trailing_stop = False  # DISABLED — was only producing losses
+    trailing_stop_positive = 0.005
+    trailing_stop_positive_offset = 0.050
     trailing_only_offset_is_reached = True
     
     # ATR-based dynamic stoploss RE-ENABLED in v0.99.15
