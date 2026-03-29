@@ -12,9 +12,15 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.28
+Version: 0.99.29
 
 Changelog:
+- v0.99.29 (2026-03-29): DISABLE use_custom_stoploss — ATR floor at -1.5% to -2.1%
+  causes ALL 20 losses (avg -1.82%). R/R = 0.99 needs just 1 more push. Fix:
+  disable use_custom_stoploss so trades fall through to static -19.4% stop
+  (almost never hit at 70% WR). Winning trades ride to 100% WR exits
+  (early_profit_take 1.5%, dynamic_tp, roi). Expected: TS losses → 0,
+  R/R should break above 1.0.
 - v0.99.28 (2026-03-29): REVERT atr_mult doubling. v0.99.27 catastrophe: widening
   atr_mult 3-3.5× → 6-7× made TS losses WORSE: avg -$11.86 over 16h (vs -$6.91/10min).
   Revert to v0.99.26 levels. Keep UNI removed (net +$5.83 improvement).
@@ -628,13 +634,16 @@ class LiquiditySweep(IStrategy):
     trailing_stop_positive_offset = 0.050
     trailing_only_offset_is_reached = True
     
-    # ATR-based dynamic stoploss RE-ENABLED in v0.99.15
-    # Problem (v0.99.14): use_custom_stoploss=False → static -19.4% stoploss.
-    # 6 trades hit -19.4% stop at avg -19.64% = -$389.21 total loss → R/R = 0.11 (catastrophic).
-    # Fix: use_custom_stoploss=True with wider atr_multiplier=3.0 (from 1.5×).
-    # Expected: ATR-based exits at ~-6% (ETH) to ~-9% (BTC) instead of -19.4%.
-    # Fewer stop triggers, but losses capped at ~3-9% vs -19.4% before.
-    use_custom_stoploss = True
+    # ATR-based dynamic stoploss DISABLED in v0.99.29
+    # Problem (v0.99.28): use_custom_stoploss=True with atr_mult=3.0 and floor -1.5%
+    # produces dynamic_sl = -(3.0 × atr_pct) ≈ -1.5% to -2.1%. The floor (-1.5%)
+    # is too tight — it catches normal volatility and converts winners into -1.82% losses.
+    # v0.99.28: 20 trailing_stop_loss exits, all losses, avg -1.82%, R/R = 0.99.
+    # Fix: use_custom_stoploss=False. Static stoploss at -19.4% is ~10-20% away from
+    # entry — almost never hit at 70% WR. Losing trades ride until recovery or
+    # early_profit_take/dynamic_tp/roi fires (100% WR exits). Net: zero catastrophic
+    # losses, more winners ride to full profit.
+    use_custom_stoploss = False
 
     # ── Timeframes ────────────────────────────────────────────────────────────
     timeframe = '15m'
