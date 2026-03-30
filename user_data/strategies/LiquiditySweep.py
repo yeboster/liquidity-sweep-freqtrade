@@ -12,9 +12,10 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.24
+Version: 0.99.37
 
 Changelog:
+- v0.99.37 (2026-03-30): REMOVE DOT/USDT — DOT was 54.55% WR, +$3.25 (worst pair). v0.99.35 with 5 pairs had R/R 1.035 (better than v0.99.36's 0.977 with DOT). Restoring 5-pair config (BTC, ETH, ADA, AVAX, AAVE).
 - v0.99.23 (2026-03-28): Widen trailing_stop_positive_offset 0.8%→2.5% — isolate R/R fix (2nd iteration).
   Problem (v0.99.22 backtest, offset=1.5%): R/R = 0.76 — still below 0.8 threshold.
   Analysis: offset=1.5% TS activates at +1.5%, trails 0.5% → exits at ~+1.0% on average.
