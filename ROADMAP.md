@@ -1,96 +1,124 @@
 # Liquidity Sweep — Roadmap
 
-> Updated: 2026-03-29 (v0.99.34)
-> **Strategy Type: Liquidity Sweep / Mean Reversion (NOT trend following)**
+> Updated: 2026-03-30 (Marco review)
+> **Strategy Type: Liquidity Sweep / Mean Reversion**
+> **Goals: R/R ≥ 1.5 | Profit ≥ 30-40% in 2 years**
 
 ---
 
-## ⚠️ CRITICAL FINDING: R/R Ratio is Inverted
+## 🎯 NEW TARGETS (2026-03-30)
 
-**Verified from trade-level analysis (backtest-result-2026-03-26_19-05-08.json):**
+**Marco's directive:**
+- R/R ratio must reach **≥ 1.5** (currently ~1.0 — not enough margin)
+- Profit must reach **≥ 30-40% in 2 years** (currently ~15-17%)
 
-| Metric | Value | Verdict |
-|--------|-------|---------|
-| Trades | **87** | ~43/yr |
-| Win Rate | **88.5%** ✅ | High, but misleading |
-| Avg Win | **0.79%** | Too small |
-| Avg Loss | **1.69%** | 2.1× avg win |
-| **R/R Ratio** | **0.47** | ❌ DANGEROUS — need >1.0 |
-| Avg Profit/Trade | **0.18%** | ❌ Below 1% threshold |
-| **Realistic Live Return** | **~15-18%/yr** | ⚠️ Before slippage |
+**Current ceiling (v0.99.28-v0.99.37, best runs):**
+| Metric | Current | Target | Gap |
+|--------|---------|--------|-----|
+| R/R Ratio | ~1.0 | ≥ 1.5 | -0.5 |
+| Profit/2yr | ~17% | ≥ 30% | -13pp |
+| Trades/yr | ~27-37 | 100+ | massive |
+| Avg Win | 1.8% | >2.0% | small |
+| Avg Loss | 1.8% | <1.2% | big |
 
-**Win distribution (77 wins):**
-| Range | Count | % |
-|-------|-------|---|
-| < 0.5% | 31 | 40% |
-| 0.5–1% | 32 | 42% |
-| 1–2% | 10 | 13% |
-| 2–5% | 3 | 4% |
-| > 5% | 1 | 1% |
-
-**Loss distribution (10 losses, ALL via TS):**
-- Cluster: -1.45% to -2.06%
-- Every loss wipes ~2 wins
-
-**Why this matters for live trading:**
-- Slippage 0.1–0.2% per trade erodes the 0.18% avg significantly
-- In live markets with wider spreads: edge could disappear entirely
-- The 88.5% WR is only impressive until you see the R/R ratio
-
-**Root cause:** TS at +0.8% offset clips winners at their peak micro-movements.
-This is a QUICK REVERSAL hunt strategy, not a trend follower. The 0.79% avg win
-IS the actual edge. But R/R < 1.0 means the strategy is structurally fragile.
+**Why this matters:**
+- Live trading has slippage (0.1-0.2%/trade), spreads, fees
+- At R/R ~1.0, slippage erases all edge → strategy breaks even at best
+- At R/R 1.5: 0.2% slippage leaves net R/R 1.3 → real edge
+- 30-40% in 2yr = ~15-20%/yr on $1000 = $150-200/yr (vs current ~$85/yr)
 
 ---
 
-## Strategic Roadmap (New Priority Order)
+## 🔴 Priority 1: Fix R/R to ≥ 1.5
 
-### Goal: Either fix R/R or maximize the hunt strategy
+**The structural problem:** `trailing_stop_loss` exits are ALL losers (~20-23 per run, 0% WR).
+Every TS exit costs ~$6-8. These losses drag R/R below 1.0.
 
-#### 🔴 Priority 1: Fix R/R Ratio (Avg Win must exceed Avg Loss)
+**Solution requires ONE of:**
+1. **Eliminate TS exits** — make them win via better entry or exit logic
+2. **Reduce TS frequency** — fewer false signals triggering TS
+3. **Cap TS losses smaller** — tighten stop so losers exit faster/better
 
-**Problem:** R/R = 0.47. Every loss costs 2× what each win gains.
+**What has been tried and failed:**
+- H-A (ATR-based TP): Dynamic TP thresholds — not yet fully explored with new TS-off baseline
+- H-B (1.5% ROI floor): ❌ Failed — TS clips winners before ROI fires
+- H-C (tighter -1% stoploss): ❌ CATASTROPHIC — WR collapsed to 65%
+- Widening TS offset (0.8%→1.5%→2.5%→3.5%): Partial improvement (0.42→0.99), but ceiling at ~1.0
+- Disabling trailing_stop: TS exits still appear (driven by custom_stoploss)
+- ATR mult adjustments: Wider stops → catastrophic losses; tighter → no change
+- Pair removals (UNI, LINK, DOT): Mixed results, not a structural fix
 
-**Hypothesis H-A: ATR-based dynamic exits**
-- TP = entry + 2.5× ATR (adaptive, lets big moves run)
-- SL = entry - 1.5× ATR (tighter, cuts losses earlier)
-- In high volatility: bigger wins. In low volatility: small wins, fast exit.
-- **Test:** Run backtest with `trailing_stop_positive_offset` replaced by dynamic ATR TP
+**Hypothesis H-D: Entry Quality Filter (NEW)**
+- The TS 0% WR exits are entries that looked valid but reversed immediately
+- Hypothesis: add a momentum/Volume confirmation filter at entry
+- E.g., require RSI > 40 on 15m for long entries (not just liquidity sweep)
+- E.g., require volume > 1.5× 20-period average on entry candle
+- **Goal:** reduce total entries by 20-30%, but eliminate most TS losers
+- **Risk:** may also filter valid winners → trade frequency drops further
 
-**Hypothesis H-B: Fixed TP floor at 1.5%** ❌ TESTED — FAILED
-- Force all exits to achieve at least 1.5% before TS can exit
-- Winners below 1.5% → hold until 1.5% or stop
-- **Test:** Modify ROI table so early TP fires at 1.5% before TS activates
-- **Result (v0.99.9):** Only 1/98 trades hit 1.5% ROI. TS at +0.8% clips all winners first.
+**Hypothesis H-E: Disable custom_stoploss + use static tight stop**
+- v0.99.29 proved: custom_stoploss is mandatory (cuts -1.82% avg vs -19.4%)
+- But maybe the combination: disable TS + very tight static stop (-2%)
+- Trade-off: fewer large losses, but more small stoploss hits
+- **Test:** `stoploss=-0.02`, `trailing_stop=False`, see if R/R improves
 
-**Hypothesis H-C: Tighter SL floor** ⏳ NEXT
-- Current: stoploss at -19.4%, losses average -1.69% (TS forces exit)
-- Hypothesis: if SL is -1.0%, losses would be capped earlier
-- **Risk:** Could reduce WR if trades get stopped out prematurely
-- **Test:** Lower stoploss from -0.194 to -0.010
-- Current: stoploss at -19.4%, losses average -1.69% (TS forces exit)
-- Hypothesis: if SL is -1.0%, losses would be capped earlier
-- **Risk:** Could reduce WR if trades get stopped out prematurely
-- **Test:** Lower stoploss from -0.194 to -0.010
+**Hypothesis H-F: Exit hierarchy rethink**
+- Currently: TS is dominant (forces exit even on small reversals)
+- ROI/dynamic_TP/early_profit_take all fire correctly (100% WR each)
+- Problem: TS overrides them on reversals → turns winners into losers
+- **New approach:** Instead of TS managing exits, let ROI/early profit take manage
+- Use `hold_timeout` to force exit after X hours regardless of TS
+- **Test:** Set `hold_timeout=12h` on all exits, very high `roi` points
 
-#### 🟡 Priority 2: Increase Trade Frequency (if R/R can't be fixed)
+#### 🟡 Priority 2: Increase Trade Frequency to 100+/yr
 
-**If H-A/B/C fail:** Accept this is a hunt strategy with 0.79% avg win.
-Compensate by maximizing trade frequency.
+**Current:** ~27-37 trades/yr (with 5-6 pairs on 15m)
+**Target:** 100+ trades/yr
 
-- Current: 87 trades/2yr = 43/yr
-- Target: 200+ trades/yr
-- Each trade: net ~0.4% after slippage
-- 200 trades × 0.4% = 80% annual return potential
+**Options:**
+- **5m timeframe data:** Already cached on CI runner. Try `timeframe="5m"` in config.json.
+- **More pairs:** Currently 5-6 pairs. Add SOL, MATIC, ATOM, etc. for more signals.
+- **Looser entry filters:** Allow more trades (at cost of quality)
+- **Reduce minimum equity:** Allow more concurrent trades
 
-**How:** Add more pairs, shorter timeframe (5m with proper data), loosen entry filters.
+**Risk:** More trades at current R/R ~1.0 = more losses. Must fix R/R first.
 
-#### 🟢 Priority 3: Live Trading Readiness
+---
 
-- Verify exchange execution quality (Kraken vs Binance)
-- Paper trade for 1 month to validate slippage assumptions
-- Build position sizing model (current: $354 avg stake on $1000 wallet = 35% per trade)
-- Risk: 3 concurrent trades × 35% × potential 1.69% loss = 1.78% of wallet per bad cycle
+## 📊 Current Best Baseline (v0.99.37)
+
+| Metric | Value |
+|--------|-------|
+| Total Trades | 54 (27/yr) |
+| Win Rate | 70.37% |
+| Profit | $155.27 (15.53%) |
+| Avg Profit/WIN | 1.95% |
+| Avg Loss/LOSS | 1.89% |
+| R/R Ratio | **1.035** ✅ |
+| Profit Factor | 2.43 |
+| SQN | 3.14 |
+| Drawdown | 1.62% |
+| Avg Hold | 9:21 |
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| early_profit_take | 26 | 100% | +$176.56 |
+| dynamic_tp | 12 | 100% | +$77.23 |
+| roi | 6 | 100% | +$42.13 |
+| trailing_stop_loss | **20** | **0%** ❌ | -$131.42 |
+
+**Pair performance:**
+| Pair | Trades | WR | Profit |
+|------|--------|-----|--------|
+| ETH/USDT | 9 | 88.9% | $48.73 |
+| BTC/USDT | 15 | 73.3% | $41.31 |
+| AAVE/USDT | 11 | 72.7% | $31.54 |
+| AVAX/USDT | 13 | 69.2% | $20.67 |
+| ADA/USDT | 6 | 66.7% | $16.98 |
+| LINK/USDT | 13 | 53.8% | $12.10 |
+
+*Last Updated: 2026-03-30*
 
 ---
 
