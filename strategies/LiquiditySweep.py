@@ -12,9 +12,13 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.38
+Version: 0.99.39
 
 Changelog:
+- v0.99.39 (2026-03-30): RELAX MOMENTUM FILTER + ADD PAIRS — v0.99.38 R/R=1.39 (best ever)
+  but trade frequency collapsed to 6.5/yr. Fix: lower RSI entry from 40→35 and volume_mult
+  from 1.5×→1.2× to allow more trades through. Also add SOL, MATIC, ATOM to pair_whitelist
+  (high-volume pairs). Goal: restore trade frequency toward 100+/yr while maintaining R/R ≥ 1.3.
 - v0.99.38 (2026-03-30): H-D MOMENTUM FILTER — add RSI > 40 + volume > 1.5× SMA20 at entry.
   Trailing stop 0% WR (16 trades, -$108.85) — entries looked valid (sweep + BOS) but
   reversed immediately. Fix: require RSI not-oversold AND volume spike on entry candle.
@@ -532,7 +536,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.99.38"
+    STRATEGY_VERSION = "0.99.39"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -739,8 +743,8 @@ class LiquiditySweep(IStrategy):
     #   - Volume > 1.5× 20-period average: institutional participation confirmed
     # Goal: filter ~20-30% of entries, eliminate most TS losers, improve R/R ≥ 1.5
     require_momentum_filter = CategoricalParameter([True, False], default=True, space="buy", optimize=False)
-    volume_mult = DecimalParameter(1.0, 2.5, default=1.5, space="buy", optimize=False)
-    rsi_entry_min = DecimalParameter(30, 55, default=40, space="buy", optimize=False)
+    volume_mult = DecimalParameter(1.0, 2.5, default=1.2, space="buy", optimize=False)
+    rsi_entry_min = DecimalParameter(30, 55, default=35, space="buy", optimize=False)
     
     # Liquidity detection
     liquidity_range_pct = DecimalParameter(0.005, 0.03, default=0.019, space="buy", optimize=True)
