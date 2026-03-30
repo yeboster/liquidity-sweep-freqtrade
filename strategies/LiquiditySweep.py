@@ -12,9 +12,10 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.34
+Version: 0.99.36
 
 Changelog:
+- v0.99.36 (2026-03-30): ADD DOT/USDT back to pair_whitelist. Goal: increase trade frequency from 27/yr toward 100+/yr target. DOT had 90.9% WR, +$19.60 in v0.99.2 (before TS offset changes). With current config (TS disabled, early_profit_take 2.0%, atr_mult 3.0×), DOT should perform well. R/R=1.035 is above 1.0 — structural threshold crossed.
 - v0.99.35 (2026-03-29): RAISE early_profit_take 1.5%→2.0%. R/R=0.94 still below 1.0; TS losses (14 exits, -1.89% avg) drag it down. Raising from 1.5% to 2.0% lets winners ride longer before locking in. dynamic_tp (1.5× ATR) and roi (5%) capture bigger moves; 2.0% early profit handles medium winners.
 - v0.99.34 (2026-03-29): REMOVE LINK/USDT from pair_whitelist. LINK has lowest WR (53.8%) and lowest profit ($12.10) — removing should improve R/R by eliminating weakest pair.
 - v0.99.33 (2026-03-29): REVERT dynamic_tp_threshold 1.2×→1.5×. v0.99.32 REJECTED —
