@@ -12,9 +12,13 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.37
+Version: 0.99.38
 
 Changelog:
+- v0.99.38 (2026-03-30): H-D MOMENTUM FILTER — add RSI > 40 + volume > 1.5× SMA20 at entry.
+  Trailing stop 0% WR (16 trades, -$108.85) — entries looked valid (sweep + BOS) but
+  reversed immediately. Fix: require RSI not-oversold AND volume spike on entry candle.
+  Goal: filter 20-30% of entries, eliminate most TS losers → R/R ≥ 1.5.
 - v0.99.37 (2026-03-30): REMOVE DOT/USDT — restore 5-pair config (R/R 1.035 from v0.99.35). DOT was added back in v0.99.36 but config.json had already been changed to remove it — version mismatch corrected.
 - v0.99.36 (2026-03-30): ADD DOT/USDT back to pair_whitelist. Goal: increase trade frequency from 27/yr toward 100+/yr target. DOT had 90.9% WR, +$19.60 in v0.99.2 (before TS offset changes). With current config (TS disabled, early_profit_take 2.0%, atr_mult 3.0×), DOT should perform well. R/R=1.035 is above 1.0 — structural threshold crossed.
 - v0.99.35 (2026-03-29): RAISE early_profit_take 1.5%→2.0%. R/R=0.94 still below 1.0; TS losses (14 exits, -1.89% avg) drag it down. Raising from 1.5% to 2.0% lets winners ride longer before locking in. dynamic_tp (1.5× ATR) and roi (5%) capture bigger moves; 2.0% early profit handles medium winners.
@@ -726,6 +730,17 @@ class LiquiditySweep(IStrategy):
     # ICT Silver Bullet setups require high-liquidity sessions — weekends are choppy/low-volume.
     # v0.49.0: Testing with filter ENABLED (was disabled in v0.48.0).
     require_weekend_filter = CategoricalParameter([True, False], default=True, space="buy", optimize=False)
+
+    # v0.99.38: Entry Quality Filter — H-D from roadmap
+    # Root cause of trailing_stop_loss 0% WR: entries that looked valid (sweep + BOS)
+    # but reversed immediately after entry → TS had to exit at loss.
+    # Fix: Require momentum confirmation at entry.
+    #   - RSI > 40 on entry candle (longs): not oversold, some upward momentum
+    #   - Volume > 1.5× 20-period average: institutional participation confirmed
+    # Goal: filter ~20-30% of entries, eliminate most TS losers, improve R/R ≥ 1.5
+    require_momentum_filter = CategoricalParameter([True, False], default=True, space="buy", optimize=False)
+    volume_mult = DecimalParameter(1.0, 2.5, default=1.5, space="buy", optimize=False)
+    rsi_entry_min = DecimalParameter(30, 55, default=40, space="buy", optimize=False)
     
     # Liquidity detection
     liquidity_range_pct = DecimalParameter(0.005, 0.03, default=0.019, space="buy", optimize=True)
@@ -949,6 +964,13 @@ class LiquiditySweep(IStrategy):
         # Normalize ATR as % of close for cross-asset comparison
         dataframe['atr_pct'] = dataframe['atr'] / dataframe['close']
 
+        # v0.99.38: Entry Quality Filter indicators (H-D)
+        # RSI: momentum confirmation — avoid entries in oversold territory (TS trap)
+        dataframe['rsi'] = ta.RSI(dataframe, timeperiod=14)
+        # Volume: institutional confirmation — volume spike at entry = real move
+        dataframe['volume_sma20'] = dataframe['volume'].rolling(window=20, min_periods=1).mean()
+        dataframe['volume_spike'] = dataframe['volume'] > (dataframe['volume_sma20'] * self.volume_mult.value)
+
         # 8. Session Filter (v0.45.0) — Disabled by default, was too aggressive
         # Freqtrade 'date' column is a UTC DatetimeIndex — use .dt accessor
         # London: 08:00-11:00 UTC | NY: 13:30-16:00 UTC
@@ -1117,6 +1139,18 @@ class LiquiditySweep(IStrategy):
         confirm_long = (dataframe['close'] > dataframe['open']) if req_confirm else True
         confirm_short = (dataframe['close'] < dataframe['open']) if req_confirm else True
 
+        # v0.99.38: H-D Momentum Filter — require RSI + volume confirmation at entry
+        # Eliminates entries where price is oversold or lacking volume (TS traps)
+        if self.require_momentum_filter.value:
+            rsi_ok_long = dataframe['rsi'] > self.rsi_entry_min.value
+            rsi_ok_short = dataframe['rsi'] < (100 - self.rsi_entry_min.value)
+            vol_ok = dataframe['volume_spike']
+            momentum_long = rsi_ok_long & vol_ok
+            momentum_short = rsi_ok_short & vol_ok
+        else:
+            momentum_long = True
+            momentum_short = True
+
         # ── Short Entry ───────────────────────────────────────────────────────
         # Double confirmation: (1) Liquidity sweep above highs, (2) Bearish BOS confirms structure broken.
         # BOS is more reliable than ChoCH for entry confirmation — it confirms the trend structure
@@ -1131,6 +1165,7 @@ class LiquiditySweep(IStrategy):
             (ob_check_short) &                                       # Order Block (if required)
             (safe_short) &                                           # No imbalance magnet beyond SL (v0.28.0)
             (confirm_short) &                                        # Confirmation candle (v0.40.0)
+            (momentum_short) &                                       # Momentum filter: RSI + volume spike (v0.99.38 H-D)
             (dataframe['rr_short'] >= self.min_rr.value) &           # Min R:R (v0.28.0 default=1.5)
             (session_check) &                                         # Session filter — v0.45.0 disabled by default
             (weekend_check),                                         # Weekend filter — v0.48.0 disabled by default
@@ -1149,6 +1184,7 @@ class LiquiditySweep(IStrategy):
             (ob_check_long) &                                        # Order Block (if required)
             (safe_long) &                                            # No imbalance magnet beyond SL (v0.28.0)
             (confirm_long) &                                         # Confirmation candle (v0.40.0)
+            (momentum_long) &                                        # Momentum filter: RSI + volume spike (v0.99.38 H-D)
             (dataframe['rr_long'] >= self.min_rr.value) &           # Min R:R (v0.28.0 default=1.5)
             (session_check) &                                         # Session filter — v0.45.0 disabled by default
             (weekend_check),                                         # Weekend filter — v0.48.0 disabled by default
