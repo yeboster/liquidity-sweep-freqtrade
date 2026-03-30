@@ -2380,3 +2380,58 @@ place in v0.99.28, so no change occurred. Both show 20 TS exits, R/R 0.99.
 2. Add more pairs for frequency increase
 3. Accept R/R 0.99 ≈ break-even and focus on slippage minimization
 
+
+## v0.99.36 ❌ — DOT ADDED — R/R Regressed Below 1.0 (2026-03-30)
+
+**Backtest Run:** c136c02 (push-triggered on v0.99.36 commit)
+**Result:** ⚠️ Mixed — more trades but R/R fell below 1.0 threshold.
+
+| Metric | v0.99.36 (6 pairs) | v0.99.35 (5 pairs) | Change |
+|--------|---------------------|---------------------|--------|
+| Trades | **65** | 54 | **+11 ✅** |
+| Win Rate | **67.69%** | 70.37% | -2.68pp ⚠️ |
+| Profit | **$157.89 (15.79%)** | $155.27 (15.53%) | +$2.62 ✅ |
+| Profit Factor | **2.03** | 2.43 | -0.41 ⚠️ |
+| SQN | **2.67** | 3.14 | -0.47 ⚠️ |
+| **Avg Win** | **1.99%** | 1.95% | +0.04% |
+| Avg Loss | **2.04%** | 1.89% | +0.15% ⚠️ |
+| **R/R Ratio** | **0.977** | 1.035 | **-0.058 ❌** |
+| TS Exit % | **32.3%** | 29.6% | +2.7pp |
+| Drawdown | **2.51%** | 1.62% | higher ⚠️ |
+| Avg Hold | **9:06** | 9:21 | stable |
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| roi | 15 | **100%** | +$106.71 |
+| dynamic_tp | 15 | **100%** | +$98.07 |
+| early_profit_take | 11 | **100%** | +$98.12 |
+| target_liquidity_reached | 3 | **100%** | +$7.91 |
+| **trailing_stop_loss** | **21** | **0%** ❌ | **-$152.93** |
+
+**Fix criteria check:**
+- TS exits: 21/65 = 32.3% (>30%) with 0% WR → ⚠️ Above threshold, TS only catching losers
+- R/R: **0.977** (<1.0) → ❌ Regressed below 1.0 — structural problem returns
+- Profit: +$157.89 (positive) → ✅ Still profitable
+- **DOT appears to be the weakest pair** — introduced additional TS losses
+
+**Analysis:** Adding DOT increased trades from 54→65 (+20%) and profit $155→$158 (+1.7%),
+but R/R regressed 1.035→0.977. The 11 extra trades (including DOT) appear to be lower quality
+than the existing 5-pair set. TS exits jumped from 16→21, dragging avg loss up to -2.04%.
+
+**🔍 Pair performance (CI parsing shows UNKNOWN):**
+- One pair: 88.89% WR, +$51.94 → likely ETH
+- One pair: 73.33% WR, +$43.77 → likely BTC
+- One pair: 72.73% WR, +$38.43 → likely AAVE
+- One pair: 67.69% WR, +$157.89 (TOTAL)
+- One pair: 66.67% WR, +$17.81 → likely ADA
+- One pair: **54.55% WR, +$3.25** → likely DOT
+- One pair: **53.85% WR, +$2.69** → possibly LINK (from v0.99.35) or other
+
+**DOT verdict:** DOT at 54.55% WR, +$3.25 is likely the weakest pair. Next iteration:
+either DOT removal OR trial of a different pair (e.g., UNI/USDT) with higher historical WR.
+
+**⏳ Next:** Try removing DOT and adding UNI instead (UNI had 100% WR, +$12.83 in v0.99.28).
+OR accept 65 trades/yr with current set — still below 100 target but improving.
+
+*Last Updated: 2026-03-30 (00:49 UTC)*
