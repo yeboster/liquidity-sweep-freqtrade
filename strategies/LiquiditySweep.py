@@ -12,12 +12,18 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.39
+Version: 0.99.40
 
 Changelog:
+- v0.99.40 (2026-03-30): ENABLE time_exit_2 — catch stale trades before custom_stoploss reverses.
+  Problem (v0.99.39): 5 TS losers (-26.72 USDT) drag R/R from ~1.69→1.24. These are
+  trades that briefly went positive but reversed before reaching early_profit_take (2.0%).
+  Fix: widen time_exit_2_profit range to 0.0-0.04, enable it at 1.5%/8h. This catches
+  trades stuck in the +0.5-2.0% dead zone before they reverse into custom_stoploss.
+  Goal: eliminate TS losers, push R/R toward 1.5+.
 - v0.99.39 (2026-03-30): RELAX MOMENTUM FILTER + ADD PAIRS — v0.99.38 R/R=1.39 (best ever)
   but trade frequency collapsed to 6.5/yr. Fix: lower RSI entry from 40→35 and volume_mult
-  from 1.5×→1.2× to allow more trades through. Also add SOL, MATIC, ATOM to pair_whitelist
+  from 1.5×→1.2× to allow more trades through. Also add SOL, MATIC, ATON to pair_whitelist
   (high-volume pairs). Goal: restore trade frequency toward 100+/yr while maintaining R/R ≥ 1.3.
 - v0.99.38 (2026-03-30): H-D MOMENTUM FILTER — add RSI > 40 + volume > 1.5× SMA20 at entry.
   Trailing stop 0% WR (16 trades, -$108.85) — entries looked valid (sweep + BOS) but
@@ -536,7 +542,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.99.39"
+    STRATEGY_VERSION = "0.99.40"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -757,9 +763,9 @@ class LiquiditySweep(IStrategy):
     time_exit_1_hours = IntParameter(2, 6, default=4, space="sell", optimize=True)
     time_exit_1_profit = DecimalParameter(-0.02, 0.01, default=0.0, space="sell", optimize=True)
     
-    time_exit_2_enabled = CategoricalParameter([True, False], default=False, space="sell", optimize=True)
-    time_exit_2_hours = IntParameter(5, 12, default=6, space="sell", optimize=True)
-    time_exit_2_profit = DecimalParameter(0.0, 0.02, default=0.005, space="sell", optimize=True)
+    time_exit_2_enabled = CategoricalParameter([True, False], default=True, space="sell", optimize=False)
+    time_exit_2_hours = IntParameter(5, 12, default=8, space="sell", optimize=False)
+    time_exit_2_profit = DecimalParameter(0.0, 0.04, default=0.015, space="sell", optimize=False)
 
     # ── Plotting ──────────────────────────────────────────────────────────────
     plot_config = {
