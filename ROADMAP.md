@@ -356,38 +356,37 @@ The problem is NOT trailing stop configuration — it's structural.
 
 ---
 
-## Current State (v0.99.34 — LINK removed)
+## Current State (v0.99.37 — 5 pairs, R/R ✅ 1.035)
 
 | Metric | Value | Status |
 |--------|-------|--------|
 | Trades/yr | ~27 | ❌ Below 100 target |
-| Win Rate | **74.07%** | ⚠️ Below 85% target |
-| Profit | $157.62 (15.76%) | ✅ |
-| Profit Factor | 2.69 | ✅ |
-| SQN | 3.51 | ✅ |
-| Avg Win | **1.78%** | ✅ |
+| Win Rate | **70.37%** | ⚠️ Below 85% target |
+| Profit | $155.27 (15.53%) | ✅ |
+| Profit Factor | 2.43 | ✅ |
+| SQN | 3.14 | ✅ |
+| Avg Win | **1.95%** | ✅ |
 | Avg Loss | **1.89%** | ❌ |
-| **R/R Ratio** | **0.94** | ⚠️ Below 1.0 (LINK rm didn't help) |
+| **R/R Ratio** | **1.035** | ✅ Above 1.0 (structural threshold crossed!) |
 | Drawdown | 1.62% | ✅ |
-| Avg Hold | ~8.8h | ✅ |
+| Avg Hold | 9:21 | ✅ |
 
-**🔧 Fix Applied:** atr_mult reverted to v0.99.26 levels (3.0/2.5/2.0×). LINK removed in v0.99.34.
+**🔧 Fix Applied (v0.99.37):** Removed DOT — confirmed v0.99.35's 5-pair config is optimal.
 
-**Pairs (v0.99.34, 5 pairs — LINK removed):**
-| Pair | Trades | WR | Profit |
-|------|--------|-----|--------|
-| ETH/USDT | 9 | 88.9% | +$48.16 |
-| BTC/USDT | 15 | 73.3% | +$41.03 |
-| AAVE/USDT | 11 | 72.7% | +$31.19 |
-| AVAX/USDT | 13 | 69.2% | +$20.38 |
-| ADA/USDT | 6 | 66.7% | +$16.85 |
+**Exit breakdown (v0.99.37):**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| roi | 14 | 100% | +$100.49 |
+| dynamic_tp | 14 | 100% | +$89.89 |
+| early_profit_take | 8 | 100% | +$69.41 |
+| target_liquidity_reached | 2 | 100% | +$4.34 |
+| **trailing_stop_loss** | **16** | **0%** ❌ | **-$108.85** |
 
 **⏳ Next options:**
-1. LINK removal didn't fix R/R (0.94 vs 0.99 with 6 pairs) — pair removal is NOT the answer
-2. Try adding a new, higher-quality pair (e.g., SOL/USDT) to improve mix
-3. Revisit entry quality — tighten entry filters to improve WR and avg win
-4. Revisit early_profit_take 1.5%→2.5% (let winners ride further before TS activates)
-5. Accept R/R ≈ 0.94 as the achievable ceiling — strategy still profitable at 2.69 PF
+1. Reduce TS losses (16 exits, -1.89% avg) → tighten ATR floor or per-pair overrides
+2. Increase trade frequency → add 1-2 high-WR pairs (e.g., SOL/USDT, BNB/USDT)
+3. Revisit entry quality — tighten OTE zone or add confluence filters
+4. Accept ~27 trades/yr ceiling with current 5 pairs — profitable but infrequent
 
 **🔑 Key insight from v0.99.28:** `trailing_stop_loss` exits are triggered by
 `custom_stoploss` (use_custom_stoploss=True), NOT by freqtrade's trailing_stop feature.
