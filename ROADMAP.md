@@ -2520,3 +2520,46 @@ Options:
 4. **Combine 1+2+3** — try 5m with relaxed filters
 
 *Last Updated: 2026-03-30 (14:46 UTC)*
+
+---
+
+## v0.99.40 ✅ — R/R SURGES TO 1.53 — TARGET ACHIEVED (2026-03-30)
+
+**Backtest Run:** 1559969 (push-triggered on v0.99.40 commit)
+**Result:** ✅ R/R crosses 1.5 target for first time. TS exits halved.
+
+| Metric | v0.99.40 (time_exit_2) | v0.99.39 (baseline) | Change |
+|--------|------------------------|---------------------|--------|
+| Total Trades | 21 | 21 | 0 |
+| Trades/yr | 10.5 | 10.5 | 0 |
+| Win Rate | **80.95%** | 76.19% | **+4.76pp ✅** |
+| Profit | $74.15 (7.42%) | $78.44 (7.84%) | -$4.29 |
+| **Avg Profit/WIN** | 1.51% | 1.92% | -0.41% ⚠️ |
+| **Avg Loss/LOSS** | **0.98%** | 1.55% | **-0.57pp ✅** |
+| **R/R Ratio** | **1.53** | 1.24 | **+0.29 ✅ TARGET!** |
+| Profit Factor | 6.62 | 3.94 | **+2.68 ✅** |
+| SQN | 3.70 | 3.12 | +0.58 ✅ |
+| Drawdown | 0.59% | 0.59% | 0 |
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| early_profit_take | 4 | 100% | +$33.07 |
+| dynamic_tp | 4 | 100% | +$26.44 |
+| **time_exit_8h** | **8** | **75%** | **+$11.96** |
+| roi | 1 | 100% | +$6.95 |
+| target_liquidity_reached | 2 | 100% | +$6.55 |
+| **trailing_stop_loss** | **2** | **0%** ❌ | **-$10.82** |
+
+**Fix criteria check:**
+- TS exits: 2/21 = **9.5%** (< 30%) → ✅ Well below threshold
+- R/R: **1.53** (≥ 1.5 target) → ✅ **TARGET ACHIEVED!**
+- Avg Win: **1.51%** (> 1.0%) → ✅ Strong
+
+**⚠️ Trade-off:** Avg Win dropped 1.92%→1.51% because time_exit_8h captures trades in the +0.5-1.5% range that previously rode to bigger profits. Net effect: R/R improved dramatically (1.53 vs 1.24) because smaller avg losses (0.98% vs 1.55%) more than compensate.
+
+**🔧 Fix Applied (v0.99.40):** Enabled `time_exit_2` (8h, 1.5% profit threshold). Time exit catches stale trades before `custom_stoploss` reverses them. Halved TS exits (5→2) and cut avg loss by 37%.
+
+**⏳ Next:** Trade frequency still 10.5/yr vs 100 target. Options: (1) Try 5m timeframe with current config; (2) Add more pairs; (3) Relax momentum filter slightly (RSI 35→32, vol 1.2→1.1). R/R structural fix now complete — shift focus to frequency.
+
+*Last Updated: 2026-03-30 (18:52 UTC)*
