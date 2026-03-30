@@ -1,92 +1,99 @@
 {
   "version": "LiquiditySweep",
-  "timestamp": "2026-03-30T16:50:36.649758Z",
-  "latest_backtest_file": "backtest-result-2026-03-30_16-50-35",
+  "timestamp": "2026-03-30T18:52:09.693471Z",
+  "latest_backtest_file": "backtest-result-2026-03-30_18-52-08",
   "total_trades": 21,
   "trades_per_year": 10.5,
-  "win_count": 16,
-  "loss_count": 5,
-  "win_rate": 76.19,
-  "profit_abs": 78.44,
-  "profit_pct": 7.84,
-  "avg_profit_per_trade": 3.735,
-  "avg_profit_per_win": 1.9198,
-  "avg_loss_per_loss": 1.5486,
-  "rr_ratio": 1.2397,
-  "expectancy": 3.735,
-  "profit_factor": 3.9357,
-  "sqn": 3.1246,
+  "win_count": 17,
+  "loss_count": 4,
+  "win_rate": 80.95,
+  "profit_abs": 74.15,
+  "profit_pct": 7.42,
+  "avg_profit_per_trade": 3.5311,
+  "avg_profit_per_win": 1.5102,
+  "avg_loss_per_loss": 0.9841,
+  "rr_ratio": 1.5346,
+  "expectancy": 3.5311,
+  "profit_factor": 6.6179,
+  "sqn": 3.7037,
   "drawdown_abs": 5.86,
   "drawdown_pct": 0.5862,
-  "holding_avg": "10:49:00",
+  "holding_avg": "5:33:00",
   "exits": [
-    {
-      "exit": "dynamic_tp",
-      "trades": 7,
-      "wr": 100.0,
-      "profit_mean_pct": 1.87,
-      "profit_abs": 44.4
-    },
     {
       "exit": "early_profit_take",
       "trades": 4,
       "wr": 100.0,
       "profit_mean_pct": 2.43,
-      "profit_abs": 33.25
+      "profit_abs": 33.07
+    },
+    {
+      "exit": "dynamic_tp",
+      "trades": 4,
+      "wr": 100.0,
+      "profit_mean_pct": 1.98,
+      "profit_abs": 26.44
+    },
+    {
+      "exit": "time_exit_8h",
+      "trades": 8,
+      "wr": 75.0,
+      "profit_mean_pct": 0.43,
+      "profit_abs": 11.96
     },
     {
       "exit": "roi",
-      "trades": 3,
+      "trades": 1,
       "wr": 100.0,
       "profit_mean_pct": 2.0,
-      "profit_abs": 20.88
+      "profit_abs": 6.95
     },
     {
       "exit": "target_liquidity_reached",
       "trades": 2,
       "wr": 100.0,
       "profit_mean_pct": 0.93,
-      "profit_abs": 6.62
+      "profit_abs": 6.55
     },
     {
       "exit": "trailing_stop_loss",
-      "trades": 5,
+      "trades": 2,
       "wr": 0.0,
-      "profit_mean_pct": -1.55,
-      "profit_abs": -26.72
+      "profit_mean_pct": -1.62,
+      "profit_abs": -10.82
     },
     {
       "exit": "TOTAL",
       "trades": 21,
-      "wr": 76.19,
-      "profit_mean_pct": 1.09,
-      "profit_abs": 78.44
+      "wr": 80.95,
+      "profit_mean_pct": 1.04,
+      "profit_abs": 74.15
     }
   ],
   "pairs": [
     {
       "pair": "UNKNOWN",
       "trades": 0,
-      "wr": 76.19,
-      "profit": 78.44
+      "wr": 80.95,
+      "profit": 74.15
     },
     {
       "pair": "UNKNOWN",
       "trades": 0,
       "wr": 85.71,
-      "profit": 34.11
-    },
-    {
-      "pair": "UNKNOWN",
-      "trades": 0,
-      "wr": 100.0,
-      "profit": 13.95
+      "profit": 30.53
     },
     {
       "pair": "UNKNOWN",
       "trades": 0,
       "wr": 75.0,
-      "profit": 12.57
+      "profit": 13.86
+    },
+    {
+      "pair": "UNKNOWN",
+      "trades": 0,
+      "wr": 100.0,
+      "profit": 9.32
     },
     {
       "pair": "UNKNOWN",
@@ -97,20 +104,20 @@
     {
       "pair": "UNKNOWN",
       "trades": 0,
+      "wr": 75.0,
+      "profit": 5.03
+    },
+    {
+      "pair": "UNKNOWN",
+      "trades": 0,
       "wr": 100.0,
-      "profit": 3.77
+      "profit": 3.73
     },
     {
       "pair": "UNKNOWN",
       "trades": 0,
       "wr": 50.0,
       "profit": 3.36
-    },
-    {
-      "pair": "UNKNOWN",
-      "trades": 0,
-      "wr": 50.0,
-      "profit": 2.36
     }
   ]
 }
