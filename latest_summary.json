@@ -1,7 +1,7 @@
 {
   "version": "LiquiditySweep",
-  "timestamp": "2026-03-30T18:52:09.693471Z",
-  "latest_backtest_file": "backtest-result-2026-03-30_18-52-08",
+  "timestamp": "2026-03-30T20:46:31.509120Z",
+  "latest_backtest_file": "backtest-result-2026-03-30_20-46-30",
   "total_trades": 21,
   "trades_per_year": 10.5,
   "win_count": 17,
