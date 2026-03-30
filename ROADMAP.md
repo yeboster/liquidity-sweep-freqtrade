@@ -15,11 +15,11 @@
 **Current ceiling (v0.99.28-v0.99.37, best runs):**
 | Metric | Current | Target | Gap |
 |--------|---------|--------|-----|
-| R/R Ratio | ~1.0 | ≥ 1.5 | -0.5 |
-| Profit/2yr | ~17% | ≥ 30% | -13pp |
-| Trades/yr | ~27-37 | 100+ | massive |
-| Avg Win | 1.8% | >2.0% | small |
-| Avg Loss | 1.8% | <1.2% | big |
+| R/R Ratio | **1.39** | ≥ 1.5 | -0.11 | ✅ close! |
+| Profit/2yr | ~5.5% | ≥ 30% | -24.5pp | ⚠️ fewer trades |
+| Trades/yr | **6.5** | 100+ | massive | ❌ |
+| Avg Win | **2.08%** | >2.0% | ✅ exceeded | ✅ |
+| Avg Loss | 1.49% | <1.2% | -0.29pp | ⚠️ |
 
 **Why this matters:**
 - Live trading has slippage (0.1-0.2%/trade), spreads, fees
@@ -85,20 +85,24 @@ Every TS exit costs ~$6-8. These losses drag R/R below 1.0.
 
 ---
 
-## 📊 Current Best Baseline (v0.99.37)
+## 📊 Current Best Baseline (v0.99.38)
 
 | Metric | Value |
 |--------|-------|
-| Total Trades | 54 (27/yr) |
-| Win Rate | 70.37% |
-| Profit | $155.27 (15.53%) |
-| Avg Profit/WIN | 1.95% |
-| Avg Loss/LOSS | 1.89% |
-| R/R Ratio | **1.035** ✅ |
-| Profit Factor | 2.43 |
-| SQN | 3.14 |
-| Drawdown | 1.62% |
-| Avg Hold | 9:21 |
+| Total Trades | 13 (6.5/yr) ⚠️ |
+| Win Rate | **76.92%** ✅ |
+| Profit | $55.02 (5.5%) |
+| Avg Profit/WIN | **2.08%** ✅ |
+| Avg Loss/LOSS | 1.49% |
+| **R/R Ratio** | **1.39** ✅ |
+| Profit Factor | **4.56** ✅ |
+| SQN | 2.72 |
+| Drawdown | **0.50%** ✅ |
+| Avg Hold | 12:01 |
+
+⚠️ **WARNING: Trade frequency collapsed to 6.5/yr.** R/R is best-ever but trades are
+too few. Next priority: increase frequency toward 100+/yr via 5m timeframe or
+relaxed momentum filters.
 
 **Exit breakdown:**
 | Exit | Count | WR | Profit |
@@ -2462,3 +2466,57 @@ either DOT removal OR trial of a different pair (e.g., UNI/USDT) with higher his
 OR accept 65 trades/yr with current set — still below 100 target but improving.
 
 *Last Updated: 2026-03-30 (00:49 UTC)*
+
+---
+
+## v0.99.38 ✅ — H-D MOMENTUM FILTER — R/R Surges to 1.39 (2026-03-30)
+
+**Backtest Run:** b379335 (push-triggered on H-D commit)
+**Result:** ✅ Major R/R improvement — TS losers reduced, R/R 1.39 is best ever.
+
+| Metric | v0.99.38 (H-D) | v0.99.37 (baseline) | Change |
+|--------|-----------------|---------------------|--------|
+| Total Trades | **13** | 54 | **-41 ❌** |
+| Trades/yr | 6.5 | 27 | -76% |
+| Win Rate | **76.92%** | 70.37% | **+6.55pp ✅** |
+| Profit | $55.02 (5.5%) | $155.27 (15.53%) | -$100 ❌ |
+| **Avg Profit/WIN** | **2.08%** | 1.95% | **+0.13% ✅** |
+| Avg Loss/LOSS | 1.49% | 1.89% | **-0.40% ✅** |
+| **R/R Ratio** | **1.39** | 1.035 | **+0.355 ✅** |
+| Profit Factor | 4.56 | 2.43 | +2.13 ✅ |
+| SQN | 2.72 | 3.14 | -0.42 |
+| Drawdown | 0.50% | 1.62% | **-69% ✅** |
+| Avg Hold | 12:01 | 9:21 | +167% |
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| dynamic_tp | 6 | 100% | +$37.41 |
+| early_profit_take | 3 | 100% | +$26.12 |
+| roi | 1 | 100% | +$6.93 |
+| **trailing_stop_loss** | **3** | **0%** ❌ | **-$15.44** |
+
+**Fix criteria check:**
+- TS exits: 3/13 = **23%** (< 30%) → ✅ Below threshold
+- R/R: **1.39** (> 0.8, but < 1.5 target) → ⚠️ Best ever, approaching target
+- Avg Win: **2.08%** (> 1.0%) → ✅ Strong
+
+**⚠️ PAIR PARSING FAILURE:** All pairs showing as "UNKNOWN" in CI summary.
+Per-trade profit data suggests mixed bag: ETH/BTC likely top performers,
+ADA likely weakest (50% WR, $3.36). Pair removal decisions on hold until parsing fixed.
+
+**H-D Momentum Filter VERDICT: ✅ SUCCESS**
+- R/R jumped from 1.035 → 1.39 (+34%) — momentum filter eliminated most TS losers
+- 3 remaining TS losers: filter not perfect but dramatically reduced false entries
+- Trade frequency collapsed: 54 → 13 trades (-76%) — momentum filter is VERY aggressive
+- Avg hold time doubled (9:21 → 12:01) — winners now ride longer before TP fires
+
+**⏳ Next: Increase trade frequency toward 100+/yr**
+Priority 1 (R/R 1.39) partially solved. Now attack Priority 2 (frequency).
+Options:
+1. **Try 5m timeframe** — more candles, more signals (timeframe="5m" in config.json)
+2. **Relax momentum filters** — raise RSI threshold 40→35 or volume 1.5×→1.3×
+3. **Add more pairs** — restore 6-8 pairs
+4. **Combine 1+2+3** — try 5m with relaxed filters
+
+*Last Updated: 2026-03-30 (14:46 UTC)*
