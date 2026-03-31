@@ -1,6 +1,6 @@
 # Liquidity Sweep — Roadmap
 
-> Updated: 2026-03-31 (v0.99.55 — NEAR REMOVED — R/R restored to 1.43, baseline confirmed)
+> Updated: 2026-03-31 (v0.99.55 — BNB ADDED — 44 trades, R/R 1.41, freq +2.3%)
 > **Strategy Type: Liquidity Sweep / Mean Reversion**
 > **Goals: R/R ≥ 1.5 ✅ HIT | Profit ≥ 30-40% in 2 years**
 
@@ -159,6 +159,52 @@ Restored to identical v0.99.52 baseline: 43 trades, R/R 1.43, profit $154.91.
 R/R structural fix is complete — frequency is the remaining frontier.
 
 *Last Updated: 2026-03-31 (18:52 UTC)*
+
+---
+## v0.99.55 ✅ — ADD BNB/USDT — Trade Freq +2% (2026-03-31)
+
+**Backtest Run:** 0ff6607 (push-triggered on v0.99.55 commit)
+**Result:** ✅ BNB additive — +1 trade, all metrics stable. Frequency ~22/yr.
+
+| Metric | v0.99.55 | v0.99.54 | Change |
+|--------|-----------|----------|--------|
+| Total Trades | **44** | 43 | **+1** |
+| Trades/yr | **22.0** | 21.5 | +2.3% |
+| Win Rate | **84.09%** | 83.72% | +0.37pp |
+| Profit | **$156.89** | $154.91 | **+$1.98** |
+| **Avg Profit/WIN** | **1.382%** | 1.406% | -0.024% |
+| **Avg Loss/LOSS** | **0.9805%** | 0.9805% | same |
+| **R/R Ratio** | **1.41** | 1.43 | -0.02 |
+| Profit Factor | **7.44** | 7.37 | +0.07 |
+| SQN | **5.61** | 5.55 | +0.06 |
+| Drawdown | **0.75%** | 0.75% | same |
+| Avg Hold | **5:45** | 5:42 | +3min |
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| time_exit_8h | 19 | 78.95% | +$29.43 |
+| early_profit_take | 8 | 100% | +$67.51 |
+| dynamic_tp | 7 | 100% | +$48.98 |
+| target_liquidity_reached | 5 | 100% | +$14.21 |
+| roi | 2 | 100% | +$14.27 |
+| **trailing_stop_loss** | **3** | **0%** ❌ | **-$17.50** |
+
+**Fix criteria check:**
+- TS exits: 3/44 = **6.8%** (< 30%) → ✅ Well below threshold
+- R/R: **1.41** (≥ 0.8) → ✅ Solid
+- Avg Win: **1.38%** (> 1.0%) → ✅ Strong
+- All 10 pairs positive → ✅ No removals needed
+
+**🔧 Fix Applied (v0.99.55):** Added BNB/USDT back to pair whitelist (9→10 pairs).
+BNB was removed in v0.59.0 (0% WR, -$5.10, 2 trades). With current TS-disabled config
+and RSI 28 entry, BNB may perform differently. One new trade (43→44) confirms BNB adds
+slightly to frequency without degrading quality.
+
+**⏳ Next:** Frequency ~22/yr vs 100 target. Next lever: try MKR, AAVE already in whitelist,
+or try 5m timeframe. R/R 1.41 is solid.
+
+*Last Updated: 2026-03-31 (22:49 UTC)*
 
 ---
 
