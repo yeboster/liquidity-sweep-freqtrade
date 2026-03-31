@@ -12,13 +12,18 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.48
+Version: 0.99.50
 
 Changelog:
-- v0.99.48 (2026-03-31): RE-ENABLE trailing_stop (tight offset 0.8%).
+- v0.99.50 (2026-03-31): DISABLE trailing_stop — REVERT v0.99.48 experiment.
+  v0.99.48 result: R/R = 1.07 (COLLAPSED from 1.57), TS exits = 34/40 (85%, FAR above 30% threshold).
+  avg_profit_per_win = 0.75% (< 1.0% threshold). Fix criteria met.
+  TS clips winners at +0.68% avg — destroys R/R. Reverting to TS=False (like v0.99.47).
+
+- v0.99.48 (2026-03-31): RE-ENABLE trailing_stop (tight offset 0.8%) — FAILED ❌.
   Hypothesis: v0.99.47 (TS=False) produced 40 trades. 98-trade backtest had TS=True.
   Re-enabling with offset 0.8% should restore frequency toward 80-100/yr.
-  TS catches reversals early (+0.8%), prevents them becoming -1.5% custom_stoploss hits.
+  Result: 34/40 trades hit TS at +0.68% avg — clips winners, R/R collapses to 1.07.
 - v0.99.45 (2026-03-31): RELAX MOMENTUM FURTHER — RSI 30→28 + vol 1.0→0.9. v0.99.44
   achieved 17 trades/yr but still far from 100+/yr target. Further relaxing
   momentum filter should allow more trades through while maintaining R/R ≥ 1.3.
@@ -663,15 +668,10 @@ class LiquiditySweep(IStrategy):
     # Absolute backstop required by Freqtrade — custom_stoploss will use ATR, this is fallback
     stoploss = -0.194  # -19.4% absolute backstop (ATR SL handles tight exits)
     
-    # Trailing stop — v0.99.48: RE-ENABLE with tight offset
-    # Hypothesis: The 98-trade backtest had trailing_stop=True (offset 0.8%).
-    # v0.99.47 (trailing_stop=False) produced only 40 trades.
-    # Re-enabling with tight offset (0.8%) lets TS catch reversals quickly,
-    # preventing them from turning into custom_stoploss hits (~-1.5% avg).
-    # TS intercepts winners above +0.8%, clips them at ~+0.3-0.5%.
-    # custom_stoploss handles losers that never reach +0.8%.
-    # Net: more total exits = more trades accepted = higher frequency.
-    trailing_stop = True
+    # Trailing stop — v0.99.50: DISABLED — reverts v0.99.48 failure.
+    # v0.99.48 (TS=True, offset=0.8%): 34/40 trades TS exits, R/R=1.07, avg_win=0.75%.
+    # TS clips winners before they can develop. Reverting to TS=False.
+    trailing_stop = False
     trailing_stop_positive = 0.005      # 0.5% trailing distance
     trailing_stop_positive_offset = 0.008  # 0.8% activation threshold
     trailing_only_offset_is_reached = True
