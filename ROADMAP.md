@@ -1,6 +1,6 @@
 # Liquidity Sweep — Roadmap
 
-> Updated: 2026-03-31 (v0.99.50 — 35 trades, R/R 1.67 ✅, profit 12.79% — TS re-enabled in v0.99.48 → R/R=1.07 CRASH → reverted in v0.99.50, R/R restored to 1.67)
+> Updated: 2026-03-31 (v0.99.51 — 38 trades, R/R 1.69 ✅, profit 14.64% — SOL added back to whitelist, 7→8 pairs)
 > **Strategy Type: Liquidity Sweep / Mean Reversion**
 > **Goals: R/R ≥ 1.5 ✅ HIT | Profit ≥ 30-40% in 2 years**
 
@@ -123,6 +123,51 @@ to increase frequency while preserving R/R. Pair whitelist now at 10 — more pa
 possible if frequency needs another boost.
 
 *Last Updated: 2026-03-31 (00:46 UTC)*
+
+---
+
+## v0.99.51 ✅ — ADD SOL/USDT — 38 trades, R/R 1.69 ✅ (2026-03-31)
+
+**Backtest Run:** f4d1a00 (push-triggered on v0.99.51 commit)
+**Result:** ✅ SOL added back to whitelist (7→8 pairs). +3 trades, R/R up to 1.69.
+
+| Metric | v0.99.51 | v0.99.50 | Change |
+|--------|-----------|----------|--------|
+| Total Trades | **38** | 35 | **+3 ✅** |
+| Trades/yr | **19.0** | 17.5 | **+8.6% ✅** |
+| Win Rate | **84.21%** | 82.86% | +1.35pp ✅ |
+| Profit | **$146.38** | $127.93 | **+$18.45 ✅** |
+| **Avg Profit/WIN** | **1.46%** | 1.44% | +0.02% ✅ |
+| **Avg Loss/LOSS** | **0.86%** | 0.86% | same |
+| **R/R Ratio** | **1.69** | 1.67 | **+0.02 ✅** |
+| Profit Factor | **8.99** | 8.05 | +0.94 ✅ |
+| SQN | **5.71** | 5.14 | **+0.57 ✅** |
+| Drawdown | **0.75%** | 0.75% | same |
+| Avg Hold | **5:42** | 5:48 | **-6min** |
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| early_profit_take | 7 | 100% | +$59.60 |
+| dynamic_tp | 7 | 100% | +$48.86 |
+| time_exit_8h | 16 | 75% | +$23.46 |
+| roi | 2 | 100% | +$14.25 |
+| target_liquidity_reached | 4 | 100% | +$11.68 |
+| **trailing_stop_loss** | **2** | **0%** ❌ | **-$11.47** |
+
+**Fix criteria check:**
+- TS exits: 2/38 = **5.3%** (< 30%) → ✅ Well below threshold
+- R/R: **1.69** (≥ 1.5 target) → ✅ **TARGET SMASHED! +0.19 above target**
+- Avg Win: **1.46%** (> 1.0%) → ✅ Strong
+- All pairs positive → ✅ No removals needed
+
+**🔧 Fix Applied (v0.99.51):** Added SOL/USDT to pair whitelist (7→8 pairs).
+SOL was historically strong performer (#3 in earlier backtests). With TS disabled
+and all 8 pairs positive, pushing whitelist toward 10 pairs may push frequency
+above 20/yr while maintaining R/R ≥ 1.5.
+
+**⏳ Next:** Frequency still ~19/yr vs 100 target. All exits healthy. Next lever:
+try 10 pairs (add LINK back) or test 5m timeframe (historically crashed R/R).
 
 ---
 
