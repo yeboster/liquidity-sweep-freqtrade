@@ -12,10 +12,13 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.42
+Version: 0.99.45
 
 Changelog:
-- v0.99.44 (2026-03-31): REMOVE LINK — LINK/USDT was losing (-$2.44, 67% WR, 3 trades). Replaced with 10 pairs (8 orig + DOT + UNI). DOT +$14.45, UNI +$8.49 → keep. R/R should recover to ~1.5+.
+- v0.99.45 (2026-03-31): RELAX MOMENTUM FURTHER — RSI 30→28 + vol 1.0→0.9. v0.99.44
+  achieved 17 trades/yr but still far from 100+/yr target. Further relaxing
+  momentum filter should allow more trades through while maintaining R/R ≥ 1.3.
+- v0.99.44 (2026-03-31): REMOVE LINK — LINK/USDT was losing (-$2.44, 67% WR, 3 trades). Replaced with 10 pairs (8 orig + DOT + UNI). DOT +$14.45, UNI +$8.49 → keep. R/R recovered to ~1.47.
 - v0.99.43 (2026-03-31): ADD PAIRS — +LINK, DOT, UNI to whitelist (8→11 pairs). v0.99.42
 - v0.99.42 (2026-03-31): RELAX MOMENTUM FURTHER — RSI 32→30 + vol 1.1→1.0. v0.99.41
   achieved 24 trades/12.0yr but still far from 100+/yr target. Further relaxing
@@ -757,8 +760,8 @@ class LiquiditySweep(IStrategy):
     #   - Volume > 1.5× 20-period average: institutional participation confirmed
     # Goal: filter ~20-30% of entries, eliminate most TS losers, improve R/R ≥ 1.5
     require_momentum_filter = CategoricalParameter([True, False], default=True, space="buy", optimize=False)
-    volume_mult = DecimalParameter(1.0, 2.5, default=1.0, space="buy", optimize=False)
-    rsi_entry_min = DecimalParameter(30, 55, default=30, space="buy", optimize=False)
+    volume_mult = DecimalParameter(0.5, 2.5, default=0.9, space="buy", optimize=False)
+    rsi_entry_min = DecimalParameter(20, 55, default=28, space="buy", optimize=False)
     
     # Liquidity detection
     liquidity_range_pct = DecimalParameter(0.005, 0.03, default=0.019, space="buy", optimize=True)
