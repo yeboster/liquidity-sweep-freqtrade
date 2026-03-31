@@ -1,6 +1,6 @@
 # Liquidity Sweep — Roadmap
 
-> Updated: 2026-03-31 (v0.99.52 — 43 trades, R/R 1.43, profit 15.49% — LINK added back to whitelist, 8→9 pairs, freq +13%)
+> Updated: 2026-03-31 (v0.99.54 — NEAR REMOVED — 0 wins, -$3.68 → back to 9 pairs, R/R expected to restore to 1.43+)
 > **Strategy Type: Liquidity Sweep / Mean Reversion**
 > **Goals: R/R ≥ 1.5 ✅ HIT | Profit ≥ 30-40% in 2 years**
 
@@ -123,6 +123,53 @@ to increase frequency while preserving R/R. Pair whitelist now at 10 — more pa
 possible if frequency needs another boost.
 
 *Last Updated: 2026-03-31 (00:46 UTC)*
+
+---
+
+## v0.99.53 ✅ — ADD NEAR/USDT — 46 trades, R/R 1.24, NEAR 0 Wins ❌ (2026-03-31)
+
+**Backtest Run:** bc4f8c4 (push-triggered on v0.99.53 commit)
+**Result:** ⚠️ NEAR addition net negative — removed immediately.
+
+| Metric | v0.99.53 | v0.99.52 | Change |
+|--------|-----------|----------|--------|
+| Total Trades | **46** | 43 | **+3** |
+| Trades/yr | **23.0** | 21.5 | **+7%** |
+| Win Rate | **80.43%** | 83.72% | -3.29pp ⚠️ |
+| Profit | **$150.45** | $154.91 | -$4.46 |
+| **Avg Profit/WIN** | **1.43%** | 1.41% | +0.02% ✅ |
+| **Avg Loss/LOSS** | **1.15%** | 0.98% | +0.17pp ⚠️ |
+| **R/R Ratio** | **1.24** | 1.43 | **-0.19 ⚠️** |
+| Profit Factor | **5.14** | 7.37 | -2.23 |
+| SQN | **4.80** | 5.55 | -0.75 |
+| Drawdown | **1.23%** | 0.75% | +0.48pp |
+| Avg Hold | **5:31** | 5:36 | same |
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| early_profit_take | 9 | 100% | +$75.60 |
+| dynamic_tp | 7 | 100% | +$48.66 |
+| time_exit_8h | 18 | 77.78% | +$27.40 |
+| roi | 2 | 100% | +$14.21 |
+| target_liquidity_reached | 5 | 100% | +$14.12 |
+| **trailing_stop_loss** | **5** | **0%** ❌ | **-$29.54** |
+
+**Fix criteria check:**
+- TS exits: 5/46 = **10.9%** (< 30%) → ✅ Well below threshold
+- R/R: **1.24** (≥ 0.8) → ✅ Above dangerous zone
+- **NEAR/USDT: 0 wins, -$3.68** → ❌ REMOVED in v0.99.54
+- All other 9 pairs positive → ✅
+
+**🔧 Fix Applied (v0.99.54):** Removed NEAR/USDT from pair whitelist (10→9 pairs).
+NEAR had 33.3% WR and -$3.68 total profit — the only negative pair in the 10-pair mix.
+Removing it should restore R/R toward 1.43+ and reduce drawdown.
+
+**⏳ Next:** Frequency ~23/yr vs 100 target. Try 5m timeframe OR try another pair instead
+of NEAR (e.g., BNB, MKR). Or accept current ceiling and focus on live trading paper.
+R/R structural fix is complete — frequency is the remaining frontier.
+
+*Last Updated: 2026-03-31 (18:48 UTC)*
 
 ---
 
