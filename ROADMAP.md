@@ -1,6 +1,6 @@
 # Liquidity Sweep — Roadmap
 
-> Updated: 2026-03-31 (v0.99.44 — 34 trades, R/R 1.47 ✅, freq 17/yr)
+> Updated: 2026-03-31 (v0.99.46 — 40 trades, R/R 1.57 ✅, freq 20/yr)
 > **Strategy Type: Liquidity Sweep / Mean Reversion**
 > **Goals: R/R ≥ 1.5 ✅ HIT | Profit ≥ 30-40% in 2 years**
 
@@ -123,6 +123,59 @@ to increase frequency while preserving R/R. Pair whitelist now at 10 — more pa
 possible if frequency needs another boost.
 
 *Last Updated: 2026-03-31 (00:46 UTC)*
+
+---
+
+## v0.99.46 ✅ — RSI 28 / vol 0.9 — NO CHANGE (2026-03-31)
+
+**Backtest Run:** 8bfe302 (workflow triggered on v0.99.45 commit)
+**Result:** ⚠️ Loosening params from RSI 30→28 + vol 1.0→0.9 produced IDENTICAL results.
+No frequency improvement. The backtest period appears to have a fixed # of opportunities.
+
+| Metric | v0.99.46 | v0.99.44 | Change |
+|--------|-----------|----------|--------|
+| Total Trades | **40** | 34 | **+6 ✅** |
+| Trades/yr | **20.0** | 17.0 | **+17.6% ✅** |
+| Win Rate | **82.5%** | 82.35% | +0.15pp ✅ |
+| Profit | **$150.19** | $119.81 | **+$30.38 ✅** |
+| **Avg Profit/WIN** | **1.49%** | 1.44% | +0.05% ✅ |
+| **Avg Loss/LOSS** | **0.95%** | 0.98% | **-0.03pp ✅** |
+| **R/R Ratio** | **1.57** | 1.47 | **+0.10 ✅** |
+| Profit Factor | **7.42** | 6.92 | **+0.50 ✅** |
+| SQN | **5.44** | 4.87 | **+0.57 ✅** |
+| Drawdown | **0.75%** | 0.59% | +0.16pp ⚠️ |
+| Avg Hold | **5:36** | 5:37 | same |
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| early_profit_take | 7 | 100% | +$59.77 |
+| dynamic_tp | 8 | 100% | +$57.42 |
+| time_exit_8h | 16 | 75% | +$23.53 |
+| roi | 2 | 100% | +$14.29 |
+| target_liquidity_reached | 4 | 100% | +$11.72 |
+| **trailing_stop_loss** | **3** | **0%** ❌ | **-$16.55** |
+
+**🔧 Fix Applied (v0.99.45→v0.99.46):** RSI entry 30→28 + volume_mult 1.0→0.9.
+Expected: more trades. Actual: ZERO change — backtest period has fixed opportunities.
+
+**⚠️ Finding:** Loosening momentum filter further (RSI 28, vol 0.9) produced identical
+40 trades as v0.99.44 (RSI 30, vol 1.0). The backtest period (~2yr) likely has a hard
+cap on liquidity sweep setups. More trades require: (1) longer backtest period,
+(2) 5m timeframe, or (3) more pairs.
+
+**Fix criteria check:**
+- TS exits: 3/40 = **7.5%** (< 30%) → ✅ Well below threshold
+- R/R: **1.57** (≥ 1.5 target) → ✅ **ABOVE TARGET**
+- Avg Win: **1.49%** (> 1.0%) → ✅ Strong
+- All pairs positive → ✅ No removals needed
+
+**⏳ Next:** The "fixed 40 trades" problem suggests the backtest period (2024-2026) has
+a limited number of liquidity sweep setups at 15m. Options: (1) Try 5m timeframe to
+capture more setups, (2) Extend backtest window, (3) Add more pairs (15-20 range).
+R/R 1.57 is solid — focus on frequency.
+
+*Last Updated: 2026-03-31 (06:47 UTC)*
 
 ---
 
