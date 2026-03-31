@@ -1,6 +1,6 @@
 # Liquidity Sweep — Roadmap
 
-> Updated: 2026-03-31 (v0.99.47 — 40 trades, R/R 1.57 ✅, freq 20/yr — identical to v0.99.46, 40-trade ceiling confirmed)
+> Updated: 2026-03-31 (v0.99.50 — 35 trades, R/R 1.67 ✅, profit 12.79% — TS re-enabled in v0.99.48 → R/R=1.07 CRASH → reverted in v0.99.50, R/R restored to 1.67)
 > **Strategy Type: Liquidity Sweep / Mean Reversion**
 > **Goals: R/R ≥ 1.5 ✅ HIT | Profit ≥ 30-40% in 2 years**
 
@@ -123,6 +123,53 @@ to increase frequency while preserving R/R. Pair whitelist now at 10 — more pa
 possible if frequency needs another boost.
 
 *Last Updated: 2026-03-31 (00:46 UTC)*
+
+---
+
+## v0.99.50 ✅ — DISABLE trailing_stop — R/R RESTORED to 1.67 ✅ (2026-03-31)
+
+**Backtest Run:** 9119086 (push-triggered on v0.99.50 commit)
+**Result:** ✅ R/R fully restored to 1.67. v0.99.48 TS re-enable experiment FAILED.
+Fix: disabled trailing_stop (was clipping all wins at +0.68% avg).
+
+| Metric | v0.99.50 | v0.99.48 | Change |
+|--------|-----------|----------|--------|
+| Total Trades | **35** | 40 | **-5** |
+| Trades/yr | **17.5** | 20.0 | -2.5 |
+| Win Rate | **82.86%** | 92.5% | -9.64pp ⚠️ |
+| Profit | **$127.93** | $88.31 | **+$39.62 ✅** |
+| **Avg Profit/WIN** | **1.44%** | 0.75% | **+0.69% ✅ KEY** |
+| **Avg Loss/LOSS** | **0.86%** | 0.70% | +0.16pp |
+| **R/R Ratio** | **1.67** | 1.07 | **+0.60 ✅ RESTORED** |
+| Profit Factor | **8.05** | 13.39 | -5.34 |
+| SQN | **5.14** | 6.53 | -1.39 |
+| Drawdown | **0.75%** | 0.49% | +0.26pp |
+| Avg Hold | **5:48** | 3:20 | **+2:28 ✅** |
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| time_exit_8h | 15 | 73% | +$20.66 |
+| dynamic_tp | 7 | 100% | +$48.61 |
+| early_profit_take | 5 | 100% | +$44.36 |
+| target_liquidity_reached | 4 | 100% | +$11.55 |
+| roi | 2 | 100% | +$14.14 |
+| **trailing_stop_loss** | **2** | **0%** ❌ | **-$11.38** |
+
+**Fix criteria check:**
+- TS exits: 2/35 = **5.7%** (< 30%) → ✅ Well below threshold (but 0% WR, 2 trades)
+- R/R: **1.67** (≥ 1.5 target) → ✅ **TARGET SMASHED! +0.17 above target**
+- Avg Win: **1.44%** (> 1.0%) → ✅ Strong
+- v0.99.48 (TS=True) had: 34/40 TS exits (85%), R/R=1.07 — TS=DISABLE was correct
+
+**🔧 Fix Applied (v0.99.50):** Disabled trailing_stop — reverts v0.99.48.
+TS was clipping ALL wins at avg +0.68%, destroying R/R. With TS=False, wins can
+develop fully: dynamic_tp avg +2.02%, early_profit_take avg +2.52%, roi avg +2.0%.
+All 8 pairs positive → no removals needed.
+
+**⏳ Next:** Frequency still ~17.5/yr vs 100 target. TS cannot be used at any offset —
+it always clips winners before they develop. Options: (1) More pairs; (2) 5m TF;
+(3) Shorter holding time targets; (4) More aggressive entry (lower RSI).
 
 ---
 
