@@ -1,6 +1,6 @@
 # Liquidity Sweep — Roadmap
 
-> Updated: 2026-03-31 (v0.99.46 — 40 trades, R/R 1.57 ✅, freq 20/yr)
+> Updated: 2026-03-31 (v0.99.47 — 40 trades, R/R 1.57 ✅, freq 20/yr — identical to v0.99.46, 40-trade ceiling confirmed)
 > **Strategy Type: Liquidity Sweep / Mean Reversion**
 > **Goals: R/R ≥ 1.5 ✅ HIT | Profit ≥ 30-40% in 2 years**
 
@@ -123,6 +123,52 @@ to increase frequency while preserving R/R. Pair whitelist now at 10 — more pa
 possible if frequency needs another boost.
 
 *Last Updated: 2026-03-31 (00:46 UTC)*
+
+---
+
+## v0.99.47 ✅ — Iteration Backtest — IDENTICAL to v0.99.46 (2026-03-31)
+
+**Backtest Run:** cc8e5e7 (push-triggered on v0.99.47 commit)
+**Result:** ✅ Identical results to v0.99.46 — 40 trades hard cap confirmed.
+
+| Metric | v0.99.47 | v0.99.46 | Change |
+|--------|-----------|----------|--------|
+| Total Trades | **40** | 40 | 0 ✅ |
+| Trades/yr | **20.0** | 20.0 | 0 |
+| Win Rate | **82.5%** | 82.5% | 0 |
+| Profit | **$150.19** | $150.19 | 0 |
+| **Avg Profit/WIN** | **1.49%** | 1.49% | 0 |
+| **Avg Loss/LOSS** | **0.95%** | 0.95% | 0 |
+| **R/R Ratio** | **1.57** | 1.57 | 0 |
+| Profit Factor | **7.42** | 7.42 | 0 |
+| SQN | **5.44** | 5.44 | 0 |
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| early_profit_take | 7 | 100% | +$59.77 |
+| dynamic_tp | 8 | 100% | +$57.42 |
+| time_exit_8h | 16 | 75% | +$23.53 |
+| roi | 2 | 100% | +$14.29 |
+| target_liquidity_reached | 4 | 100% | +$11.72 |
+| **trailing_stop_loss** | **3** | **0%** | **-$16.55** |
+
+**Fix criteria check:**
+- TS exits: 3/40 = **7.5%** (< 30%) → ✅ Well below threshold
+- R/R: **1.57** (≥ 1.5 target) → ✅ Above target
+- Avg Win: **1.49%** (> 1.0%) → ✅ Strong
+- All pairs positive → ✅ No removals needed
+
+**🔍 KEY FINDING:** v0.99.47 (no code changes) produced IDENTICAL results to v0.99.46.
+Two consecutive iterations with zero change confirms the backtest period has a HARDCAP
+of 40 trades at the current config (RSI 28, vol 0.9, 10 pairs, 15m TF).
+
+**⏳ Next:** The strategy is at its backtest ceiling for 15m. To push frequency
+beyond 20/yr requires: (1) extend backtest window (2022-2026 → 2020-2026),
+(2) add more pairs, or (3) fundamentally different entry approach.
+R/R 1.57 and profit are excellent — focus is entirely on frequency now.
+
+*Last Updated: 2026-03-31 (08:47 UTC)*
 
 ---
 
