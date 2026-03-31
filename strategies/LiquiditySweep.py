@@ -12,7 +12,7 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.52
+Version: 0.99.54
 
 Changelog:
 - v0.99.52 (2026-03-31): ADD LINK/USDT to pair whitelist (8→9 pairs). R/R now at
