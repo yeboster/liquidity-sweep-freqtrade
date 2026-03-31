@@ -1,12 +1,14 @@
 # Liquidity Sweep — Roadmap
 
-> Updated: 2026-03-30 (Marco review)
+> Updated: 2026-03-31 (v0.99.42 — R/R 1.67 ✅ TARGET SMASHED)
 > **Strategy Type: Liquidity Sweep / Mean Reversion**
-> **Goals: R/R ≥ 1.5 | Profit ≥ 30-40% in 2 years**
+> **Goals: R/R ≥ 1.5 ✅ HIT | Profit ≥ 30-40% in 2 years**
 
 ---
 
 ## 🎯 NEW TARGETS (2026-03-30)
+
+**Status: R/R TARGET ACHIEVED (1.67)** ✅ — focus now on frequency.
 
 **Marco's directive:**
 - R/R ratio must reach **≥ 1.5** (currently ~1.0 — not enough margin)
@@ -18,6 +20,51 @@
 | R/R Ratio | **1.46** | ≥ 1.5 | -0.04 | ✅ close! |
 | Profit/2yr | ~8.5% | ≥ 30% | -21.5pp | ⚠️ fewer trades |
 | Trades/yr | **12.0** | 100+ | massive | ❌ |
+
+---
+
+## v0.99.42 ✅ — R/R 1.67 — TARGET SMASHED! (2026-03-31)
+
+**Backtest Run:** 5f396b0 (push-triggered on v0.99.42 commit)
+**Result:** ✅ R/R surges to 1.67 — target of 1.5 exceeded! Trade frequency also up.
+
+| Metric | v0.99.42 | v0.99.41 | Change |
+|--------|-----------|----------|--------|
+| Total Trades | **27** | 24 | **+3 ✅** |
+| Trades/yr | **13.5** | 12.0 | **+12.5% ✅** |
+| Win Rate | **81.48%** | 83.33% | -1.85pp ⚠️ |
+| Profit | **$95.80 (9.58%)** | $85.22 (8.52%) | **+$10.58 ✅** |
+| **Avg Profit/WIN** | **1.46%** | 1.44% | +0.02% ✅ |
+| **Avg Loss/LOSS** | **0.88%** | 0.98% | **-0.10pp ✅** |
+| **R/R Ratio** | **1.67** | 1.46 | **+0.21 ✅ TARGET!** |
+| Profit Factor | **7.52** | 7.45 | +0.07 ✅ |
+| SQN | **4.45** | 4.14 | **+0.31 ✅** |
+| Drawdown | **0.73%** | 0.59% | +0.14pp ⚠️ |
+| Avg Hold | **5:36** | 5:34 | same |
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| early_profit_take | 5 | 100% | +$40.91 |
+| dynamic_tp | 5 | 100% | +$31.21 |
+| roi | 2 | 100% | +$13.76 |
+| time_exit_8h | 10 | 70% | +$12.85 |
+| target_liquidity_reached | 3 | 100% | +$7.88 |
+| **trailing_stop_loss** | **2** | **0%** ❌ | **-$10.80** |
+
+**Fix criteria check:**
+- TS exits: 2/27 = **7.4%** (< 30%) → ✅ Well below threshold
+- R/R: **1.67** (≥ 1.5 target) → ✅ **TARGET SMASHED! +0.17 above target**
+- Avg Win: **1.46%** (> 1.0%) → ✅ Strong
+- All pairs positive → ✅ No removals needed
+
+**🔧 Fix Applied (v0.99.42):** RSI entry 32→30 + volume_mult 1.1→1.0. Further relaxed
+momentum filter allows more trades through. Both frequency and R/R improved simultaneously.
+
+**⏳ Next:** Frequency still 13.5/yr vs 100 target. Options: (1) Add more pairs to whitelist;
+(2) Try 5m timeframe; (3) Further relax to RSI 28 / vol 0.9. R/R structural fix DONE.
+
+*Last Updated: 2026-03-31 (00:46 UTC)*
 
 ---
 
