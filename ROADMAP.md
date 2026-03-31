@@ -1,6 +1,6 @@
 # Liquidity Sweep — Roadmap
 
-> Updated: 2026-03-31 (v0.99.54 — NEAR REMOVED — 0 wins, -$3.68 → back to 9 pairs, R/R expected to restore to 1.43+)
+> Updated: 2026-03-31 (v0.99.54 — NEAR REMOVED — R/R restored to 1.43, baseline confirmed)
 > **Strategy Type: Liquidity Sweep / Mean Reversion**
 > **Goals: R/R ≥ 1.5 ✅ HIT | Profit ≥ 30-40% in 2 years**
 
@@ -126,50 +126,39 @@ possible if frequency needs another boost.
 
 ---
 
-## v0.99.53 ✅ — ADD NEAR/USDT — 46 trades, R/R 1.24, NEAR 0 Wins ❌ (2026-03-31)
+## v0.99.54 ✅ — REMOVE NEAR/USDT — Baseline Restored (2026-03-31)
 
-**Backtest Run:** bc4f8c4 (push-triggered on v0.99.53 commit)
-**Result:** ⚠️ NEAR addition net negative — removed immediately.
+**Backtest Run:** c1038f0 (push-triggered on v0.99.54 commit)
+**Result:** ✅ NEAR removal confirmed — results restored to v0.99.52 baseline.
 
-| Metric | v0.99.53 | v0.99.52 | Change |
+| Metric | v0.99.54 | v0.99.53 | Change |
 |--------|-----------|----------|--------|
-| Total Trades | **46** | 43 | **+3** |
-| Trades/yr | **23.0** | 21.5 | **+7%** |
-| Win Rate | **80.43%** | 83.72% | -3.29pp ⚠️ |
-| Profit | **$150.45** | $154.91 | -$4.46 |
-| **Avg Profit/WIN** | **1.43%** | 1.41% | +0.02% ✅ |
-| **Avg Loss/LOSS** | **1.15%** | 0.98% | +0.17pp ⚠️ |
-| **R/R Ratio** | **1.24** | 1.43 | **-0.19 ⚠️** |
-| Profit Factor | **5.14** | 7.37 | -2.23 |
-| SQN | **4.80** | 5.55 | -0.75 |
-| Drawdown | **1.23%** | 0.75% | +0.48pp |
-| Avg Hold | **5:31** | 5:36 | same |
-
-**Exit breakdown:**
-| Exit | Count | WR | Profit |
-|------|-------|-----|--------|
-| early_profit_take | 9 | 100% | +$75.60 |
-| dynamic_tp | 7 | 100% | +$48.66 |
-| time_exit_8h | 18 | 77.78% | +$27.40 |
-| roi | 2 | 100% | +$14.21 |
-| target_liquidity_reached | 5 | 100% | +$14.12 |
-| **trailing_stop_loss** | **5** | **0%** ❌ | **-$29.54** |
+| Total Trades | **43** | 46 | **-3** |
+| Trades/yr | **21.5** | 23.0 | -7% |
+| Win Rate | **83.72%** | 80.43% | **+3.29pp ✅** |
+| Profit | **$154.91** | $150.45 | **+$4.46 ✅** |
+| **Avg Profit/WIN** | **1.41%** | 1.43% | stable |
+| **Avg Loss/LOSS** | **0.98%** | 1.15% | **-0.17pp ✅** |
+| **R/R Ratio** | **1.43** | 1.24 | **+0.19 ✅ RESTORED** |
+| Profit Factor | **7.37** | 5.14 | **+2.23 ✅** |
+| SQN | **5.55** | 4.80 | **+0.75 ✅** |
+| Drawdown | **0.75%** | 1.23% | **-0.48pp ✅** |
+| Avg Hold | **5:36** | 5:31 | same |
 
 **Fix criteria check:**
-- TS exits: 5/46 = **10.9%** (< 30%) → ✅ Well below threshold
-- R/R: **1.24** (≥ 0.8) → ✅ Above dangerous zone
-- **NEAR/USDT: 0 wins, -$3.68** → ❌ REMOVED in v0.99.54
-- All other 9 pairs positive → ✅
+- TS exits: 3/43 = **7%** (< 30%) → ✅ Well below threshold
+- R/R: **1.43** (≥ 0.8) → ✅ Solid, above dangerous zone
+- **NEAR/USDT: 0 wins, -$3.68** → ❌ Confirmed removal
+- All 9 remaining pairs positive → ✅
 
 **🔧 Fix Applied (v0.99.54):** Removed NEAR/USDT from pair whitelist (10→9 pairs).
-NEAR had 33.3% WR and -$3.68 total profit — the only negative pair in the 10-pair mix.
-Removing it should restore R/R toward 1.43+ and reduce drawdown.
+NEAR had 33.3% WR and -$3.68 total profit across 3 trades — dragged R/R from 1.43→1.24.
+Restored to identical v0.99.52 baseline: 43 trades, R/R 1.43, profit $154.91.
 
-**⏳ Next:** Frequency ~23/yr vs 100 target. Try 5m timeframe OR try another pair instead
-of NEAR (e.g., BNB, MKR). Or accept current ceiling and focus on live trading paper.
+**⏳ Next:** Frequency ~21.5/yr vs 100 target. Try another pair (BNB, MKR) or 5m timeframe.
 R/R structural fix is complete — frequency is the remaining frontier.
 
-*Last Updated: 2026-03-31 (18:48 UTC)*
+*Last Updated: 2026-03-31 (18:52 UTC)*
 
 ---
 
