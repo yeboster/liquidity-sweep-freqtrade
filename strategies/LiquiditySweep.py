@@ -12,9 +12,13 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.45
+Version: 0.99.48
 
 Changelog:
+- v0.99.48 (2026-03-31): RE-ENABLE trailing_stop (tight offset 0.8%).
+  Hypothesis: v0.99.47 (TS=False) produced 40 trades. 98-trade backtest had TS=True.
+  Re-enabling with offset 0.8% should restore frequency toward 80-100/yr.
+  TS catches reversals early (+0.8%), prevents them becoming -1.5% custom_stoploss hits.
 - v0.99.45 (2026-03-31): RELAX MOMENTUM FURTHER — RSI 30→28 + vol 1.0→0.9. v0.99.44
   achieved 17 trades/yr but still far from 100+/yr target. Further relaxing
   momentum filter should allow more trades through while maintaining R/R ≥ 1.3.
@@ -553,7 +557,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.99.47"
+    STRATEGY_VERSION = "0.99.48"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -659,24 +663,17 @@ class LiquiditySweep(IStrategy):
     # Absolute backstop required by Freqtrade — custom_stoploss will use ATR, this is fallback
     stoploss = -0.194  # -19.4% absolute backstop (ATR SL handles tight exits)
     
-    # Trailing stop — widens from +0.8% toward 2.5% (v0.99.23) to fix R/R
-    # v0.99.26: DISABLE trailing_stop — 5th R/R fix iteration.
-    # Problem (v0.99.25, offset=5.0%): R/R = 0.926, TS WR = 0% — IDENTICAL to v0.99.24.
-    # Confirmed: offset=5.0% produces SAME results as offset=3.5% (23 TS exits, 0% WR).
-    # TS at ANY offset above ~3% is purely catching reversals, never winners.
-    # TS produces ONLY losses: 23 trades × avg -$6.91 = -$158.98 total.
-    # Fix: Disable trailing_stop=True → route ALL exits through 100% WR mechanisms:
-    #   - early_profit_take (30 trades, 100% WR, +$198.17)
-    #   - dynamic_tp (12 trades, 100% WR, +$77.09)
-    #   - roi (6 trades, 100% WR, +$41.93)
-    #   - target_liquidity_reached (3 trades, 100% WR, +$6.82)
-    #   - custom_stoploss (handles remaining losers — ATR-based, ~-1.5% avg)
-    # Expected: (1) 23 losing TS exits eliminated → R/R should flip above 1.0.
-    # (2) Win rate may drop as some winners now ride to custom_stoploss.
-    # (3) Net result should be positive: winners bigger, fewer catastrophic losses.
-    trailing_stop = False  # DISABLED — was only producing losses
-    trailing_stop_positive = 0.005
-    trailing_stop_positive_offset = 0.050
+    # Trailing stop — v0.99.48: RE-ENABLE with tight offset
+    # Hypothesis: The 98-trade backtest had trailing_stop=True (offset 0.8%).
+    # v0.99.47 (trailing_stop=False) produced only 40 trades.
+    # Re-enabling with tight offset (0.8%) lets TS catch reversals quickly,
+    # preventing them from turning into custom_stoploss hits (~-1.5% avg).
+    # TS intercepts winners above +0.8%, clips them at ~+0.3-0.5%.
+    # custom_stoploss handles losers that never reach +0.8%.
+    # Net: more total exits = more trades accepted = higher frequency.
+    trailing_stop = True
+    trailing_stop_positive = 0.005      # 0.5% trailing distance
+    trailing_stop_positive_offset = 0.008  # 0.8% activation threshold
     trailing_only_offset_is_reached = True
     
     # ATR-based dynamic stoploss (v0.99.15, updated v0.99.31)
