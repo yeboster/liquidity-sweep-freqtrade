@@ -1,123 +1,141 @@
 {
   "version": "LiquiditySweep",
-  "timestamp": "2026-03-31T00:45:41.227134Z",
-  "latest_backtest_file": "backtest-result-2026-03-31_00-45-40",
-  "total_trades": 27,
-  "trades_per_year": 13.5,
-  "win_count": 22,
-  "loss_count": 5,
-  "win_rate": 81.48,
-  "profit_abs": 95.8,
-  "profit_pct": 9.58,
-  "avg_profit_per_trade": 3.5481,
-  "avg_profit_per_win": 1.4623,
-  "avg_loss_per_loss": 0.8756,
-  "rr_ratio": 1.6701,
-  "expectancy": 3.5481,
-  "profit_factor": 7.5242,
-  "sqn": 4.4547,
-  "drawdown_abs": 7.31,
-  "drawdown_pct": 0.7313,
-  "holding_avg": "5:36:00",
+  "timestamp": "2026-03-31T02:46:49.070371Z",
+  "latest_backtest_file": "backtest-result-2026-03-31_02-46-48",
+  "total_trades": 37,
+  "trades_per_year": 18.5,
+  "win_count": 30,
+  "loss_count": 7,
+  "win_rate": 81.08,
+  "profit_abs": 117.38,
+  "profit_pct": 11.74,
+  "avg_profit_per_trade": 3.1724,
+  "avg_profit_per_win": 1.3764,
+  "avg_loss_per_loss": 1.081,
+  "rr_ratio": 1.2733,
+  "expectancy": 3.1724,
+  "profit_factor": 5.4941,
+  "sqn": 4.4434,
+  "drawdown_abs": 5.89,
+  "drawdown_pct": 0.5547,
+  "holding_avg": "5:34:00",
   "exits": [
     {
       "exit": "early_profit_take",
-      "trades": 5,
+      "trades": 6,
       "wr": 100.0,
-      "profit_mean_pct": 2.38,
-      "profit_abs": 40.91
+      "profit_mean_pct": 2.39,
+      "profit_abs": 49.95
     },
     {
       "exit": "dynamic_tp",
-      "trades": 5,
+      "trades": 6,
       "wr": 100.0,
-      "profit_mean_pct": 1.86,
-      "profit_abs": 31.21
+      "profit_mean_pct": 1.93,
+      "profit_abs": 39.66
+    },
+    {
+      "exit": "time_exit_8h",
+      "trades": 14,
+      "wr": 78.57,
+      "profit_mean_pct": 0.45,
+      "profit_abs": 22.16
     },
     {
       "exit": "roi",
       "trades": 2,
       "wr": 100.0,
       "profit_mean_pct": 2.0,
-      "profit_abs": 13.76
-    },
-    {
-      "exit": "time_exit_8h",
-      "trades": 10,
-      "wr": 70.0,
-      "profit_mean_pct": 0.36,
-      "profit_abs": 12.85
+      "profit_abs": 13.93
     },
     {
       "exit": "target_liquidity_reached",
-      "trades": 3,
+      "trades": 5,
       "wr": 100.0,
-      "profit_mean_pct": 0.73,
-      "profit_abs": 7.88
+      "profit_mean_pct": 0.79,
+      "profit_abs": 13.89
     },
     {
       "exit": "trailing_stop_loss",
-      "trades": 2,
+      "trades": 4,
       "wr": 0.0,
-      "profit_mean_pct": -1.62,
-      "profit_abs": -10.8
+      "profit_mean_pct": -1.61,
+      "profit_abs": -22.2
     },
     {
       "exit": "TOTAL",
-      "trades": 27,
-      "wr": 81.48,
-      "profit_mean_pct": 1.03,
-      "profit_abs": 95.8
+      "trades": 37,
+      "wr": 81.08,
+      "profit_mean_pct": 0.91,
+      "profit_abs": 117.38
     }
   ],
   "pairs": [
     {
       "pair": "UNKNOWN",
       "trades": 0,
-      "wr": 81.48,
-      "profit": 95.8
+      "wr": 81.08,
+      "profit": 117.38
     },
     {
       "pair": "UNKNOWN",
       "trades": 0,
       "wr": 85.71,
-      "profit": 31.04
+      "profit": 31.47
     },
     {
       "pair": "UNKNOWN",
       "trades": 0,
       "wr": 80.0,
-      "profit": 20.81
+      "profit": 21.06
     },
     {
       "pair": "UNKNOWN",
       "trades": 0,
       "wr": 100.0,
-      "profit": 16.76
+      "profit": 16.96
+    },
+    {
+      "pair": "UNKNOWN",
+      "trades": 0,
+      "wr": 83.33,
+      "profit": 14.45
     },
     {
       "pair": "UNKNOWN",
       "trades": 0,
       "wr": 100.0,
-      "profit": 10.46
+      "profit": 10.51
     },
     {
       "pair": "UNKNOWN",
       "trades": 0,
       "wr": 71.43,
-      "profit": 9.58
+      "profit": 9.69
     },
     {
       "pair": "UNKNOWN",
       "trades": 0,
       "wr": 100.0,
-      "profit": 3.79
+      "profit": 8.49
+    },
+    {
+      "pair": "UNKNOWN",
+      "trades": 0,
+      "wr": 100.0,
+      "profit": 3.83
     },
     {
       "pair": "UNKNOWN",
       "trades": 0,
       "wr": 50.0,
       "profit": 3.35
+    },
+    {
+      "pair": "UNKNOWN",
+      "trades": 0,
+      "wr": 66.67,
+      "profit": -2.44
     }
   ]
 }
