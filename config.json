@@ -40,11 +40,8 @@
         "pair_whitelist": [
             "BTC/USDT",
             "ETH/USDT",
-            "ADA/USDT",
             "AVAX/USDT",
             "AAVE/USDT",
-            "SOL/USDT",
-            "MATIC/USDT",
             "ATOM/USDT",
             "DOT/USDT",
             "UNI/USDT"
