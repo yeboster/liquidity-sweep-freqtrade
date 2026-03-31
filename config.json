@@ -45,7 +45,10 @@
             "AAVE/USDT",
             "SOL/USDT",
             "MATIC/USDT",
-            "ATOM/USDT"
+            "ATOM/USDT",
+            "LINK/USDT",
+            "DOT/USDT",
+            "UNI/USDT"
         ],
         "pair_blacklist": []
     },
