@@ -15,7 +15,8 @@ Author: Jarvis (OpenClaw)
 Version: 0.99.42
 
 Changelog:
-- v0.99.43 (2026-03-31): ADD PAIRS — +LINK, DOT, UNI to whitelist (8→11 pairs). Goal: increase trade frequency toward 100+/yr target. All 8 existing pairs positive — no removals needed.
+- v0.99.44 (2026-03-31): REMOVE LINK — LINK/USDT was losing (-$2.44, 67% WR, 3 trades). Replaced with 10 pairs (8 orig + DOT + UNI). DOT +$14.45, UNI +$8.49 → keep. R/R should recover to ~1.5+.
+- v0.99.43 (2026-03-31): ADD PAIRS — +LINK, DOT, UNI to whitelist (8→11 pairs). v0.99.42
 - v0.99.42 (2026-03-31): RELAX MOMENTUM FURTHER — RSI 32→30 + vol 1.1→1.0. v0.99.41
   achieved 24 trades/12.0yr but still far from 100+/yr target. Further relaxing
   momentum filter should add 3-5 more trades while maintaining R/R ≥ 1.3.
@@ -549,7 +550,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.99.43"
+    STRATEGY_VERSION = "0.99.44"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
