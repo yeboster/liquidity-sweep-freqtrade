@@ -45,7 +45,8 @@
             "ATOM/USDT",
             "DOT/USDT",
             "UNI/USDT",
-            "SOL/USDT"
+            "SOL/USDT",
+            "LINK/USDT"
         ],
         "pair_blacklist": []
     },

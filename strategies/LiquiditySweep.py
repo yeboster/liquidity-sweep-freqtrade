@@ -12,9 +12,14 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.51
+Version: 0.99.52
 
 Changelog:
+- v0.99.52 (2026-03-31): ADD LINK/USDT to pair whitelist (8→9 pairs). R/R now at
+  1.69 (well above 1.5 target) — safe to add pairs. LINK was removed in v0.99.44
+  (-$2.44, 0 wins in that run) but current config (RSI 28, vol 0.9, trailing_stop
+  disabled) may handle it differently. Goal: push freq from 38 toward 50+ trades/yr.
+
 - v0.99.51 (2026-03-31): ADD SOL/USDT to pair whitelist (7→8 pairs). v0.99.50 had
   35 trades/yr with R/R 1.67 ✅ — all 7 pairs positive. Adding SOL back (was removed
   at v0.99.49 for 0 trades, but historically strong performer). Goal: push frequency
