@@ -12,9 +12,12 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.41
+Version: 0.99.42
 
 Changelog:
+- v0.99.42 (2026-03-31): RELAX MOMENTUM FURTHER — RSI 32→30 + vol 1.1→1.0. v0.99.41
+  achieved 24 trades/12.0yr but still far from 100+/yr target. Further relaxing
+  momentum filter should add 3-5 more trades while maintaining R/R ≥ 1.3.
 - v0.99.41 (2026-03-30): RELAX MOMENTUM FILTER — RSI 35→32 + vol 1.2→1.1. v0.99.40
   achieved R/R 1.53 ✅ but trade frequency collapsed to 10.5/yr. Goal: restore trade count
   toward 50+/yr while maintaining R/R ≥ 1.3.
@@ -752,8 +755,8 @@ class LiquiditySweep(IStrategy):
     #   - Volume > 1.5× 20-period average: institutional participation confirmed
     # Goal: filter ~20-30% of entries, eliminate most TS losers, improve R/R ≥ 1.5
     require_momentum_filter = CategoricalParameter([True, False], default=True, space="buy", optimize=False)
-    volume_mult = DecimalParameter(1.0, 2.5, default=1.1, space="buy", optimize=False)
-    rsi_entry_min = DecimalParameter(30, 55, default=32, space="buy", optimize=False)
+    volume_mult = DecimalParameter(1.0, 2.5, default=1.0, space="buy", optimize=False)
+    rsi_entry_min = DecimalParameter(30, 55, default=30, space="buy", optimize=False)
     
     # Liquidity detection
     liquidity_range_pct = DecimalParameter(0.005, 0.03, default=0.019, space="buy", optimize=True)
