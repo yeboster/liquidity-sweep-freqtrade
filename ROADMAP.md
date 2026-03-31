@@ -1,6 +1,6 @@
 # Liquidity Sweep — Roadmap
 
-> Updated: 2026-03-31 (v0.99.54 — NEAR REMOVED — R/R restored to 1.43, baseline confirmed)
+> Updated: 2026-03-31 (v0.99.55 — NEAR REMOVED — R/R restored to 1.43, baseline confirmed)
 > **Strategy Type: Liquidity Sweep / Mean Reversion**
 > **Goals: R/R ≥ 1.5 ✅ HIT | Profit ≥ 30-40% in 2 years**
 
