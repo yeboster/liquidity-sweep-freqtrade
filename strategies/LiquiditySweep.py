@@ -12,14 +12,18 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.60
+Version: 0.99.61
 
 Changelog:
-- - v0.99.60 (2026-04-01): REVERT 5m→15m — v0.99.59 5m switch CATASTROPHIC.
-  Result: WR collapsed 83.72%→56.67%, R/R destroyed 1.43→1.2556, TS exits 3→10.
-  5m ATR (~$50-100/BTC) gives tighter absolute stops than 15m ATR ($100-200/BTC).
-  The ×1.5 ATR widening was insufficient — 5m noise still triggered custom_stoploss
-  at 0% WR. REVERT: 15m timeframe + original v0.99.57 ATR multipliers.
+- v0.99.61 (2026-04-01): COMPLETE REVERT of v0.99.60 "REVERT".
+  v0.99.60 was INCOMPLETE — it switched timeframe to 15m but KEEPING the 5m-widened
+  ATR params (atr_mult 4→6, floor -1.5%→-2.0%, DOGE 3→5, NEAR 2→3.5). These are
+  calibrated for 5m (where ATR is ~1/3 of 15m) and destroyed performance on 15m:
+  43→33 trades, R/R 1.434→1.3576, avg_win 1.41%→1.26%. COMPLETE REVERT to v0.99.57.
+- v0.99.57 (2026-04-01): EXTEND BACKTEST TIMERANGE 20200101 — structural cap confirmed
+  at 43 trades in 2yr window (20240213-). Extending to 20200101 to capture 2020-2022 bull run
+  and 2022-2024 bear market for more liquidity sweep opportunities. Data downloads 730 days
+  so effective window may be limited, but longer timerange tests the frequency ceiling hypothesis.
 - v0.99.56 (2026-04-01): REMOVE BNB — R/R dropped 1.43→1.41 from +1 trade only. Restored
   to 9 pairs. ALSO: RSI 28→26 (further relax momentum filter). Goal: push frequency while
   preserving R/R. BNB was removed in v0.59.0 (0% WR, -$5.10) and added back at v0.99.55
@@ -581,7 +585,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.99.60"
+    STRATEGY_VERSION = "0.99.61"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -589,10 +593,10 @@ class LiquiditySweep(IStrategy):
     # v0.55.0: Added SOL, BNB, XRP, DOT, AVAX per-pair overrides.
     # Prior: only BTC, ETH, ADA had custom params. 5 pairs used global defaults.
     custom_pair_params = {
-        # v0.99.59: WIDEN for 5m equivalence. 5m ATR is ~1/3 of 15m ATR in absolute terms.
-        # v0.99.28 values were tuned for 15m — scaled ×1.5 for 5m.
-        # v0.99.27 doubling (6-7×) was catastrophic on 15m — but that was with TS=True.
-        # With TS=False (v0.99.50+), wider stops = fewer (but bigger) SL hits.
+        # v0.99.28: atr_mult REVERTED to v0.99.26 levels. v0.99.27 doubling (6-7×)
+        # was catastrophic: TS losses avg -$11.86 (vs -$6.91 at 3-3.5×).
+        # The wider stops let losing trades ride 16h instead of cutting at 10min.
+        # UNI/USDT removed (v0.99.27 change kept).
         "BTC/USDT": {
             "atr_multiplier": 3.0,       # v0.99.28: reverted
             "require_ote": False,        # BTC trends hard, often misses OTE
@@ -633,6 +637,17 @@ class LiquiditySweep(IStrategy):
             "require_ote": True,
             "time_exit_1_hours": 6
         },
+        "DOGE/USDT": {
+            "atr_multiplier": 3.0,       # v0.99.28: reverted
+            "require_ote": False,        # DOGE trends hard, often misses OTE
+            "time_exit_1_hours": 8
+        },
+        # v0.99.27: UNI/USDT removed — only pair with negative profit (-$5.83, 57.1% WR)
+        "NEAR/USDT": {
+            "atr_multiplier": 2.0,       # v0.99.28: reverted
+            "require_ote": True,
+            "time_exit_1_hours": 5
+        },
         "LINK/USDT": {
             "atr_multiplier": 2.5,       # v0.99.28: reverted
             "require_ote": True,
@@ -642,21 +657,6 @@ class LiquiditySweep(IStrategy):
             "atr_multiplier": 3.0,       # v0.99.28: reverted
             "require_ote": True,
             "time_exit_1_hours": 6
-        },
-        "UNI/USDT": {
-            "atr_multiplier": 3.0,       # v0.99.28: reverted
-            "require_ote": False,
-            "time_exit_1_hours": 6
-        },
-        "DOGE/USDT": {
-            "atr_multiplier": 5.0,       # v0.99.59: scaled 3.0×1.5 for 5m
-            "require_ote": False,        # DOGE trends hard, often misses OTE
-            "time_exit_1_hours": 8
-        },
-        "NEAR/USDT": {
-            "atr_multiplier": 3.5,       # v0.99.59: scaled 2.0×1.5 for 5m
-            "require_ote": True,
-            "time_exit_1_hours": 5
         }
     }
 
@@ -711,7 +711,7 @@ class LiquiditySweep(IStrategy):
     # ── Timeframes ────────────────────────────────────────────────────────────
     timeframe = '15m'
     informative_timeframe = '1h'
-    startup_candle_count = 150  # 15m: need ~150 15m candles for ATR(14) + buffer
+    startup_candle_count = 100
 
     # ── Hyperoptable Parameters ───────────────────────────────────────────────
     # Swing detection
@@ -740,7 +740,7 @@ class LiquiditySweep(IStrategy):
     # v0.34.0: ATR Multiplier increase to 2.0x (from 1.5x)
     # The avg TSL loss in v0.29.0 was -1.61% vs avg win +0.57%. Loosening SL
     # gives institutional reversals room to breathe.
-    atr_multiplier = DecimalParameter(1.0, 8.0, default=6.0, space="buy", optimize=True)  # v0.99.59: raised max 6→8, default 4→6 for 5m
+    atr_multiplier = DecimalParameter(1.0, 6.0, default=4.0, space="buy", optimize=True)
     atr_period = IntParameter(10, 20, default=14, space="buy", optimize=False)
     
     # Entry filters
@@ -886,7 +886,7 @@ class LiquiditySweep(IStrategy):
         # FVG window of 30 candles (~7.5h at 15m): recent imbalance signal.
         # This is sensible SMC: an FVG formed today is still an active imbalance zone
         # worth trading from — mitigation (price touching it) is EXPECTED on the return move.
-        fvg_window = 30  # ~7.5h at 15m — "Was FVG formed recently?"
+        fvg_window = 30  # ~7.5h at 15m — "Was imbalance created recently?"
         dataframe['active_bullish_fvg'] = (
             dataframe['fvg']
             .eq(1)
@@ -935,7 +935,7 @@ class LiquiditySweep(IStrategy):
         #
         # Rolling window: 20 candles (~20h on 1h TF). A bullish OB formed within
         # the last 20 candles confirms institutional buying pressure is recent.
-        ob_window = 100  # ~25h at 15m — OBs are sparse, need wide window
+        ob_window = 100  # v0.32.0: expanded from 20 → 100 candles (~25h at 15m). OBs are sparse
         # (smc.ob() marks one every ~50-200 candles). A 20-candle (~5h) window missed
         # almost all of them → 0 trades in v0.31.0. 100 candles = "institutional footprint
         # present somewhere in the last day?" which is a sensible SMC recency check.
@@ -1309,7 +1309,7 @@ class LiquiditySweep(IStrategy):
         
         # Apply floor and ceiling
         dynamic_sl = max(dynamic_sl, -0.08)   # Ceiling: don't go above -8% (too wide = catastrophic loss)
-        dynamic_sl = min(dynamic_sl, -0.020)  # Floor: widen -1.5%→-2.0% for 5m (v0.99.59)
+        dynamic_sl = min(dynamic_sl, -0.015)  # Floor: don't go below -1.5% (v0.99.31: REVERTED from -3.0%)
         
         # Return as ratio from current_rate perspective
         # Freqtrade expects: stoploss relative to current_rate (not entry)
