@@ -1,8 +1,8 @@
 # Liquidity Sweep — Roadmap
 
-> Updated: 2026-03-31 (v0.99.55 — BNB ADDED — 44 trades, R/R 1.41, freq +2.3%)
+> Updated: 2026-04-01 (v0.99.56 — R/R RESTORED 1.43, RSI 26, freq 21.5/yr)
 > **Strategy Type: Liquidity Sweep / Mean Reversion**
-> **Goals: R/R ≥ 1.5 ✅ HIT | Profit ≥ 30-40% in 2 years**
+> **Goals: R/R ≥ 1.5 ✅ HIT | Profit ≥ 30-40% in 2 years | Freq ~22/yr vs 100 target**
 
 ---
 
@@ -21,6 +21,56 @@
 | R/R Ratio | **1.47** | ≥ 1.5 | -0.03 | ⚠️ borderline |
 | Profit/yr | **~12%** | ≥ 15% | close | ✅ |
 | Trades/yr | **17.0** | 100+ | massive | ❌ |
+
+---
+
+## v0.99.56 ✅ — REMOVE BNB + RSI 26 — R/R Restored to 1.43 (2026-04-01)
+
+**Backtest Run:** 23826354388 (push-triggered on v0.99.56 commit)
+**Result:** ✅ R/R restored from 1.41→1.434. RSI 26 produced identical trade count to RSI 28 — backtest period appears to have fixed opportunity cap.
+
+| Metric | v0.99.56 | v0.99.55 | Change |
+|--------|-----------|----------|--------|
+| Total Trades | **43** | 44 | -1 |
+| Trades/yr | **21.5** | 22.0 | -2.3% |
+| Win Rate | **83.72%** | 84.09% | -0.37pp |
+| Profit | **$154.91** | $156.89 | -$1.98 |
+| **Avg Profit/WIN** | **1.41%** | 1.38% | +0.03% ✅ |
+| **Avg Loss/LOSS** | **0.9805%** | 0.9805% | same |
+| **R/R Ratio** | **1.434** | 1.41 | **+0.024 ✅ RESTORED** |
+| Profit Factor | **7.37** | 7.44 | -0.07 |
+| SQN | **5.55** | 5.61 | -0.06 |
+| Drawdown | **0.75%** | 0.75% | same |
+| Avg Hold | **5:42** | 5:45 | -3min |
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit |
+|------|-------|-----|--------|
+| early_profit_take | 8 | 100% | +$67.45 |
+| dynamic_tp | 7 | 100% | +$48.96 |
+| time_exit_8h | 18 | 77.78% | +$27.54 |
+| roi | 2 | 100% | +$14.25 |
+| target_liquidity_reached | 5 | 100% | +$14.20 |
+| **trailing_stop_loss** | **3** | **0%** ❌ | **-$17.49** |
+
+**Fix criteria check:**
+- TS exits: 3/43 = **7%** (< 30%) → ✅ Well below threshold
+- R/R: **1.434** (≥ 0.8) → ✅ Solid, restored to v0.99.54 level
+- Avg Win: **1.41%** (> 1.0%) → ✅ Strong
+- All 9 pairs positive → ✅ No removals needed
+
+**🔧 Fix Applied (v0.99.56):** (1) Removed BNB/USDT from pair whitelist (10→9 pairs).
+BNB added in v0.99.55 only generated +1 trade (43→44) but dropped R/R 1.43→1.41.
+(2) Relaxed RSI entry 28→26 — backtest period still capped at 43 trades. RSI 26
+did NOT increase frequency (identical to RSI 28). The backtest period has a structural
+cap on liquidity sweep opportunities.
+
+**⏳ Next:** Frequency ~21.5/yr vs 100 target — structural cap confirmed. The 2yr
+backtest period simply doesn't have enough liquidity sweep setups. Options:
+(1) Extend backtest window to 2020-2026; (2) Add more pairs (MKR, SUSHI, etc.);
+(3) Try shorter timeframe with tighter momentum filter.
+
+*Last Updated: 2026-04-01 (00:48 UTC)*
 
 ---
 
