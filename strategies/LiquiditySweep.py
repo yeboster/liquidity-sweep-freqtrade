@@ -12,13 +12,15 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.57
+Version: 0.99.58
 
 Changelog:
-- v0.99.57 (2026-04-01): EXTEND BACKTEST TIMERANGE 20200101 — structural cap confirmed
-  at 43 trades in 2yr window (20240213-). Extending to 20200101 to capture 2020-2022 bull run
-  and 2022-2024 bear market for more liquidity sweep opportunities. Data downloads 730 days
-  so effective window may be limited, but longer timerange tests the frequency ceiling hypothesis.
+- v0.99.58 (2026-04-01): SWITCH TO 5m TIMEFRAME — more candles = more signals.
+  v0.88.0 (5m + TS=True) FAILED: TS clipped winners at +0.8%, R/R collapsed, -$43.50.
+  Now TS=False is confirmed by v0.99.50+. 5m gives 4x more candles (70k vs 17k per pair
+  per 2yr), increasing setup detection probability. Scaled fvg_window 30→120 (same ~7.5h
+  duration) and ob_window 100→300 (same ~25h duration) for equivalent absolute time.
+  custom_stoploss stays at atr_mult=4.0 — wider on 5m in absolute terms.
 - v0.99.56 (2026-04-01): REMOVE BNB — R/R dropped 1.43→1.41 from +1 trade only. Restored
   to 9 pairs. ALSO: RSI 28→26 (further relax momentum filter). Goal: push frequency while
   preserving R/R. BNB was removed in v0.59.0 (0% WR, -$5.10) and added back at v0.99.55
@@ -704,9 +706,9 @@ class LiquiditySweep(IStrategy):
     use_custom_stoploss = True
 
     # ── Timeframes ────────────────────────────────────────────────────────────
-    timeframe = '15m'
+    timeframe = '5m'
     informative_timeframe = '1h'
-    startup_candle_count = 100
+    startup_candle_count = 300  # 5m: need ~200 5m candles for ATR(14) + extra buffer
 
     # ── Hyperoptable Parameters ───────────────────────────────────────────────
     # Swing detection
@@ -881,7 +883,7 @@ class LiquiditySweep(IStrategy):
         # FVG window of 30 candles (~7.5h at 15m): recent imbalance signal.
         # This is sensible SMC: an FVG formed today is still an active imbalance zone
         # worth trading from — mitigation (price touching it) is EXPECTED on the return move.
-        fvg_window = 30  # ~7.5h at 15m — "Was imbalance created recently?"
+        fvg_window = 120  # ~10h at 5m — scaled from 30*15m=7.5h → 120*5m=10h (same order of magnitude)
         dataframe['active_bullish_fvg'] = (
             dataframe['fvg']
             .eq(1)
@@ -930,7 +932,7 @@ class LiquiditySweep(IStrategy):
         #
         # Rolling window: 20 candles (~20h on 1h TF). A bullish OB formed within
         # the last 20 candles confirms institutional buying pressure is recent.
-        ob_window = 100  # v0.32.0: expanded from 20 → 100 candles (~25h at 15m). OBs are sparse
+        ob_window = 300  # scaled from 100*15m=25h → 300*5m=25h (same absolute duration)
         # (smc.ob() marks one every ~50-200 candles). A 20-candle (~5h) window missed
         # almost all of them → 0 trades in v0.31.0. 100 candles = "institutional footprint
         # present somewhere in the last day?" which is a sensible SMC recency check.
