@@ -46,7 +46,13 @@
       "DOT/USDT",
       "UNI/USDT",
       "SOL/USDT",
-      "LINK/USDT"
+      "LINK/USDT",
+      "MATIC/USDT",
+      "INJ/USDT",
+      "TIA/USDT",
+      "SUI/USDT",
+      "MKR/USDT",
+      "APT/USDT"
     ],
     "pair_blacklist": []
   },

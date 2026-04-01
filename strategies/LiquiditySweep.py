@@ -585,7 +585,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.99.61"
+    STRATEGY_VERSION = "0.99.63"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
