@@ -12,9 +12,13 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.54
+Version: 0.99.56
 
 Changelog:
+- v0.99.56 (2026-04-01): REMOVE BNB — R/R dropped 1.43→1.41 from +1 trade only. Restored
+  to 9 pairs. ALSO: RSI 28→26 (further relax momentum filter). Goal: push frequency while
+  preserving R/R. BNB was removed in v0.59.0 (0% WR, -$5.10) and added back at v0.99.55
+  but only produced +1 trade — net negative for R/R.
 - v0.99.52 (2026-03-31): ADD LINK/USDT to pair whitelist (8→9 pairs). R/R now at
   1.69 (well above 1.5 target) — safe to add pairs. LINK was removed in v0.99.44
   (-$2.44, 0 wins in that run) but current config (RSI 28, vol 0.9, trailing_stop
@@ -572,7 +576,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.99.55"
+    STRATEGY_VERSION = "0.99.56"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -768,7 +772,7 @@ class LiquiditySweep(IStrategy):
     # Goal: filter ~20-30% of entries, eliminate most TS losers, improve R/R ≥ 1.5
     require_momentum_filter = CategoricalParameter([True, False], default=True, space="buy", optimize=False)
     volume_mult = DecimalParameter(0.5, 2.5, default=0.9, space="buy", optimize=False)
-    rsi_entry_min = DecimalParameter(20, 55, default=28, space="buy", optimize=False)
+    rsi_entry_min = DecimalParameter(20, 55, default=26, space="buy", optimize=False)
     
     # Liquidity detection
     liquidity_range_pct = DecimalParameter(0.005, 0.03, default=0.019, space="buy", optimize=True)
