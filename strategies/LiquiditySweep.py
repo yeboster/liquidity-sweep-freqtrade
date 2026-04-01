@@ -12,7 +12,7 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.64
+Version: 0.99.65
 
 Changelog:
 - v0.99.64 (2026-04-01): REMOVE 6 NEW PAIRS — R/R restored to ~1.43 baseline.
