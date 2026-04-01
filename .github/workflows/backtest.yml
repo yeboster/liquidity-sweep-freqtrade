@@ -24,16 +24,11 @@ jobs:
           mkdir -p user_data/backtest_results
           chmod -R 777 user_data
 
-      - name: Cache OHLCV Data
-        uses: actions/cache@v4
-        with:
-          path: user_data/data/
-          key: ohlcv-v1-${{ hashFiles('config.json') }}
-          restore-keys: |
-            ohlcv-v1-
-
-      - name: Download Data
+      - name: Download OHLCV Data (no cache — always fetch fresh)
         run: |
+          # Always download fresh data to ensure full timerange coverage
+          # Remove any existing data to avoid stale cache issues
+          rm -rf user_data/data/*
           docker run --rm \
             -v ${{ github.workspace }}/user_data:/freqtrade/user_data \
             -v ${{ github.workspace }}/config.json:/freqtrade/config.json \
