@@ -1,6 +1,6 @@
 # Liquidity Sweep — Roadmap
 
-> Updated: 2026-04-01 (v0.99.56 — R/R RESTORED 1.43, RSI 26, freq 21.5/yr)
+> Updated: 2026-04-01 02:48 UTC (v0.99.56 — identical repeat: 43 trades, R/R 1.434, WR 83.72%)
 > **Strategy Type: Liquidity Sweep / Mean Reversion**
 > **Goals: R/R ≥ 1.5 ✅ HIT | Profit ≥ 30-40% in 2 years | Freq ~22/yr vs 100 target**
 
