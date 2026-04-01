@@ -40,7 +40,7 @@ jobs:
             freqtradeorg/freqtrade:stable \
             download-data \
             --config /freqtrade/config.json \
-            --days 730 \
+            --days 2190 \
             --timeframes 5m 15m 1h \
             --data-format-ohlcv feather
 
