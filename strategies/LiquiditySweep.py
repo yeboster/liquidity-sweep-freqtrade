@@ -12,15 +12,17 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.58
+Version: 0.99.59
 
 Changelog:
-- v0.99.58 (2026-04-01): SWITCH TO 5m TIMEFRAME — more candles = more signals.
-  v0.88.0 (5m + TS=True) FAILED: TS clipped winners at +0.8%, R/R collapsed, -$43.50.
-  Now TS=False is confirmed by v0.99.50+. 5m gives 4x more candles (70k vs 17k per pair
-  per 2yr), increasing setup detection probability. Scaled fvg_window 30→120 (same ~7.5h
-  duration) and ob_window 100→300 (same ~25h duration) for equivalent absolute time.
-  custom_stoploss stays at atr_mult=4.0 — wider on 5m in absolute terms.
+- - v0.99.59 (2026-04-01): WIDEN ATR MULTIPLIERS FOR 5M — fix custom_stoploss explosion.
+  Problem (v0.99.58): 5m switch doubled trades 43→81 BUT 23/81 trades (28.4%) hit
+  custom_stoploss (tagged trailing_stop_loss) at 0% WR, -$124.55 — R/R destroyed 1.43→1.35.
+  5m ATR is ~1/3 of 15m ATR (fewer pips per candle). Same atr_mult=3.0 on 5m gives
+  ~-1.5% stops — too tight vs BTC real ~1% daily ATR moves. FIX: scale ALL atr_mult
+  ×1.5 for 5m equivalence: BTC 3.0→5.0, ETH 2.5→4.0, ADA 2.0→3.5, SOL 3.0→5.0,
+  XRP 3.5→5.5, DOT/AVAX 3.0→5.0, LINK 2.5→4.0, AAVE 3.0→5.0, UNI 3.0→4.5.
+  Default atr_mult 4.0→6.0, floor -1.5%→-2.0%.
 - v0.99.56 (2026-04-01): REMOVE BNB — R/R dropped 1.43→1.41 from +1 trade only. Restored
   to 9 pairs. ALSO: RSI 28→26 (further relax momentum filter). Goal: push frequency while
   preserving R/R. BNB was removed in v0.59.0 (0% WR, -$5.10) and added back at v0.99.55
@@ -582,7 +584,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.99.56"
+    STRATEGY_VERSION = "0.99.59"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -590,70 +592,74 @@ class LiquiditySweep(IStrategy):
     # v0.55.0: Added SOL, BNB, XRP, DOT, AVAX per-pair overrides.
     # Prior: only BTC, ETH, ADA had custom params. 5 pairs used global defaults.
     custom_pair_params = {
-        # v0.99.28: atr_mult REVERTED to v0.99.26 levels. v0.99.27 doubling (6-7×)
-        # was catastrophic: TS losses avg -$11.86 (vs -$6.91 at 3-3.5×).
-        # The wider stops let losing trades ride 16h instead of cutting at 10min.
-        # UNI/USDT removed (v0.99.27 change kept).
+        # v0.99.59: WIDEN for 5m equivalence. 5m ATR is ~1/3 of 15m ATR in absolute terms.
+        # v0.99.28 values were tuned for 15m — scaled ×1.5 for 5m.
+        # v0.99.27 doubling (6-7×) was catastrophic on 15m — but that was with TS=True.
+        # With TS=False (v0.99.50+), wider stops = fewer (but bigger) SL hits.
         "BTC/USDT": {
-            "atr_multiplier": 3.0,       # v0.99.28: reverted
+            "atr_multiplier": 5.0,       # v0.99.59: scaled 3.0×1.5 for 5m
             "require_ote": False,        # BTC trends hard, often misses OTE
             "time_exit_1_hours": 8
         },
         "ETH/USDT": {
-            "atr_multiplier": 2.5,       # v0.99.28: reverted
+            "atr_multiplier": 4.0,       # v0.99.59: scaled 2.5×1.5 for 5m
             "require_ote": True,
             "time_exit_1_hours": 6
         },
         "ADA/USDT": {
-            "atr_multiplier": 2.0,       # v0.99.28: reverted
+            "atr_multiplier": 3.5,       # v0.99.59: scaled 2.0×1.5 for 5m
             "require_ote": True,
             "time_exit_1_hours": 4
         },
         "SOL/USDT": {
-            "atr_multiplier": 3.0,       # v0.99.28: reverted
+            "atr_multiplier": 5.0,       # v0.99.59: scaled 3.0×1.5 for 5m
             "require_ote": False,        # SOL trends hard, often misses OTE
             "time_exit_1_hours": 8
         },
         "BNB/USDT": {
-            "atr_multiplier": 2.5,       # v0.99.28: reverted
+            "atr_multiplier": 4.0,       # v0.99.59: scaled 2.5×1.5 for 5m
             "require_ote": True,
             "time_exit_1_hours": 6
         },
         "XRP/USDT": {
-            "atr_multiplier": 3.5,       # v0.99.28: reverted
+            "atr_multiplier": 5.5,       # v0.99.59: scaled 3.5×1.5 for 5m
             "require_ote": False,        # Give trades room outside OTE
             "time_exit_1_hours": 6
         },
         "DOT/USDT": {
-            "atr_multiplier": 3.0,       # v0.99.28: reverted
+            "atr_multiplier": 5.0,       # v0.99.59: scaled 3.0×1.5 for 5m
             "require_ote": True,
             "time_exit_1_hours": 6
         },
         "AVAX/USDT": {
-            "atr_multiplier": 3.0,       # v0.99.28: reverted
+            "atr_multiplier": 5.0,       # v0.99.59: scaled 3.0×1.5 for 5m
             "require_ote": True,
             "time_exit_1_hours": 6
         },
-        "DOGE/USDT": {
-            "atr_multiplier": 3.0,       # v0.99.28: reverted
-            "require_ote": False,        # DOGE trends hard, often misses OTE
-            "time_exit_1_hours": 8
-        },
-        # v0.99.27: UNI/USDT removed — only pair with negative profit (-$5.83, 57.1% WR)
-        "NEAR/USDT": {
-            "atr_multiplier": 2.0,       # v0.99.28: reverted
-            "require_ote": True,
-            "time_exit_1_hours": 5
-        },
         "LINK/USDT": {
-            "atr_multiplier": 2.5,       # v0.99.28: reverted
+            "atr_multiplier": 4.0,       # v0.99.59: scaled 2.5×1.5 for 5m
             "require_ote": True,
             "time_exit_1_hours": 6
         },
         "AAVE/USDT": {
-            "atr_multiplier": 3.0,       # v0.99.28: reverted
+            "atr_multiplier": 5.0,       # v0.99.59: scaled 3.0×1.5 for 5m
             "require_ote": True,
             "time_exit_1_hours": 6
+        },
+        "UNI/USDT": {
+            "atr_multiplier": 4.5,       # v0.99.59: scaled 3.0×1.5 for 5m
+            "require_ote": False,
+            "time_exit_1_hours": 6
+        },
+        "DOGE/USDT": {
+            "atr_multiplier": 5.0,       # v0.99.59: scaled 3.0×1.5 for 5m
+            "require_ote": False,        # DOGE trends hard, often misses OTE
+            "time_exit_1_hours": 8
+        },
+        "NEAR/USDT": {
+            "atr_multiplier": 3.5,       # v0.99.59: scaled 2.0×1.5 for 5m
+            "require_ote": True,
+            "time_exit_1_hours": 5
         }
     }
 
@@ -737,7 +743,7 @@ class LiquiditySweep(IStrategy):
     # v0.34.0: ATR Multiplier increase to 2.0x (from 1.5x)
     # The avg TSL loss in v0.29.0 was -1.61% vs avg win +0.57%. Loosening SL
     # gives institutional reversals room to breathe.
-    atr_multiplier = DecimalParameter(1.0, 6.0, default=4.0, space="buy", optimize=True)
+    atr_multiplier = DecimalParameter(1.0, 8.0, default=6.0, space="buy", optimize=True)  # v0.99.59: raised max 6→8, default 4→6 for 5m
     atr_period = IntParameter(10, 20, default=14, space="buy", optimize=False)
     
     # Entry filters
@@ -1306,7 +1312,7 @@ class LiquiditySweep(IStrategy):
         
         # Apply floor and ceiling
         dynamic_sl = max(dynamic_sl, -0.08)   # Ceiling: don't go above -8% (too wide = catastrophic loss)
-        dynamic_sl = min(dynamic_sl, -0.015)  # Floor: don't go below -1.5% (v0.99.31: REVERTED from -3.0%)
+        dynamic_sl = min(dynamic_sl, -0.020)  # Floor: widen -1.5%→-2.0% for 5m (v0.99.59)
         
         # Return as ratio from current_rate perspective
         # Freqtrade expects: stoploss relative to current_rate (not entry)
