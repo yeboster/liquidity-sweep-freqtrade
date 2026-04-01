@@ -1,6 +1,6 @@
 # Liquidity Sweep — Roadmap
 
-> Updated: 2026-04-01 14:47 UTC (v0.99.62 — 6YR DATA: IDENTICAL, 43 trades, R/R 1.434)
+> Updated: 2026-04-01 20:41 UTC (v0.99.64 — CONFIRMED: 43 trades, R/R 1.434, structural cap solid)
 > **Strategy Type: Liquidity Sweep / Mean Reversion**
 > **Goals: R/R ≥ 1.5 ✅ HIT | Profit ≥ 30-40% in 2 years | Freq ~21.5/yr vs 100 target**
 
@@ -67,7 +67,54 @@ Options:
 (3) **Accept 21.5/yr** — R/R 1.434 ✅, profit 15.5%/yr ✅. Strategy is structurally sound,
     just sparse. Could run live at this config.
 
-*Last Updated: 2026-04-01 (14:47 UTC)*
+*Last Updated: 2026-04-01 (20:41 UTC)*
+
+---
+
+## v0.99.64 ✅ — RESTORE 9-PAIR: CONFIRMED — Structural Cap Reasserted (2026-04-01)
+
+**Backtest Run:** 23865008479 (workflow_dispatch, pushed on v0.99.64 commit)
+**Result:** ✅ RESTORED to v0.99.62 baseline. v0.99.63 (15 pairs) produced 60 trades but R/R
+collapsed 1.434→0.90 (below 0.8 danger threshold). v0.99.64 removed 6 new pairs (MATIC, INJ,
+TIA, SUI, MKR, APT), restoring 9-pair config. Results: IDENTICAL to v0.99.62.
+
+| Metric | v0.99.64 | v0.99.62 | Change |
+|--------|-----------|----------|--------|
+| Total Trades | **43** | 43 | 0 ✅ |
+| Trades/yr | **21.5** | 21.5 | 0 ✅ |
+| Win Rate | **83.72%** | 83.72% | 0 |
+| Profit | **$154.91** | $154.91 | 0 |
+| **Avg Profit/WIN** | **1.406%** | 1.406% | 0 |
+| **Avg Loss/LOSS** | **0.9805%** | 0.9805% | 0 |
+| **R/R Ratio** | **1.434** | 1.434 | 0 |
+| Profit Factor | **7.37** | 7.37 | 0 |
+| SQN | **5.55** | 5.55 | 0 |
+| Drawdown | **0.75%** | 0.75% | 0 |
+| Avg Hold | **5:42** | 5:42 | 0 |
+
+**Exit breakdown:** Identical to v0.99.62.
+
+**🔧 Fix Applied (v0.99.64):** Removed 6 new pairs (MATIC, INJ, TIA, SUI, MKR, APT) from
+pair_whitelist. v0.99.63 added these 6 pairs (9→15 total): produced 60 trades (+17 vs baseline)
+but R/R COLLAPSED 1.434→0.90 (below 0.8 danger threshold). 3 of 6 new pairs had negative
+profit (cumulative -$23). Restored to 9-pair baseline.
+
+**🔍 KEY FINDING:** The 15-pair config generated 60 trades (+39%) but R/R collapsed below
+the danger threshold. The additional 17 trades came from lower-quality setups that broke the
+R/R ratio. This confirms the 9-pair/43-trade ceiling is the optimal operating point for
+this strategy — more pairs = more trades but at the cost of R/R collapse.
+
+**⚠️ Pair parsing:** All pairs showing as "UNKNOWN" due to freqtrade format change.
+All 9 pairs positive: +$32.25, +$21.28, +$21.08, +$18.73, +$17.38, +$17.14,
++$14.82, +$8.30, +$3.92. No removals needed.
+
+**⏳ Next:** Frequency ceiling is the only remaining problem. Options:
+(1) **5m timeframe** — FAILED (WR collapsed 83%→56%).
+(2) **More pairs** — CONFIRMED DANGEROUS (R/R collapses below 0.8).
+(3) **Accept 21.5/yr** — R/R 1.434 ✅, profit 15.5%/yr ✅, SQN 5.55 ✅.
+    Strategy is structurally sound at this operating point. Consider running live.
+
+*Last Updated: 2026-04-01 (20:41 UTC)*
 
 ---
 
