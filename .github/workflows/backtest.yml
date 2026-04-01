@@ -57,7 +57,7 @@ jobs:
             -c "pip install numba && pip install --no-deps smartmoneyconcepts && freqtrade backtesting \
             --config /freqtrade/config.json \
             --strategy LiquiditySweep \
-            --timerange 20240213- \
+            --timerange 20200101- \
             --data-format-ohlcv feather \
             --export trades \
             --export-filename user_data/backtest_results/backtest-trades.json"

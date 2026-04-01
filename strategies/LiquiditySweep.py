@@ -12,9 +12,13 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.56
+Version: 0.99.57
 
 Changelog:
+- v0.99.57 (2026-04-01): EXTEND BACKTEST TIMERANGE 20200101 — structural cap confirmed
+  at 43 trades in 2yr window (20240213-). Extending to 20200101 to capture 2020-2022 bull run
+  and 2022-2024 bear market for more liquidity sweep opportunities. Data downloads 730 days
+  so effective window may be limited, but longer timerange tests the frequency ceiling hypothesis.
 - v0.99.56 (2026-04-01): REMOVE BNB — R/R dropped 1.43→1.41 from +1 trade only. Restored
   to 9 pairs. ALSO: RSI 28→26 (further relax momentum filter). Goal: push frequency while
   preserving R/R. BNB was removed in v0.59.0 (0% WR, -$5.10) and added back at v0.99.55
