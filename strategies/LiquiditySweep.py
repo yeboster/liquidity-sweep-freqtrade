@@ -12,9 +12,14 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.61
+Version: 0.99.64
 
 Changelog:
+- v0.99.64 (2026-04-01): REMOVE 6 NEW PAIRS — R/R restored to ~1.43 baseline.
+  v0.99.63 added MATIC, INJ, TIA, SUI, MKR, APT (9→15 pairs): 60 trades (up from 43),
+  R/R COLLAPSED 1.434→0.8997 (below 0.8 danger threshold). 3 new pairs had negative
+  profit (-$13.51, -$6.83, -$2.66). Removing all 6 new pairs to restore 9-pair config.
+  Expected: ~43 trades, R/R ~1.434, all 9 pairs positive.
 - v0.99.61 (2026-04-01): COMPLETE REVERT of v0.99.60 "REVERT".
   v0.99.60 was INCOMPLETE — it switched timeframe to 15m but KEEPING the 5m-widened
   ATR params (atr_mult 4→6, floor -1.5%→-2.0%, DOGE 3→5, NEAR 2→3.5). These are
@@ -585,7 +590,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.99.63"
+    STRATEGY_VERSION = "0.99.64"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
