@@ -12,17 +12,14 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.59
+Version: 0.99.60
 
 Changelog:
-- - v0.99.59 (2026-04-01): WIDEN ATR MULTIPLIERS FOR 5M — fix custom_stoploss explosion.
-  Problem (v0.99.58): 5m switch doubled trades 43→81 BUT 23/81 trades (28.4%) hit
-  custom_stoploss (tagged trailing_stop_loss) at 0% WR, -$124.55 — R/R destroyed 1.43→1.35.
-  5m ATR is ~1/3 of 15m ATR (fewer pips per candle). Same atr_mult=3.0 on 5m gives
-  ~-1.5% stops — too tight vs BTC real ~1% daily ATR moves. FIX: scale ALL atr_mult
-  ×1.5 for 5m equivalence: BTC 3.0→5.0, ETH 2.5→4.0, ADA 2.0→3.5, SOL 3.0→5.0,
-  XRP 3.5→5.5, DOT/AVAX 3.0→5.0, LINK 2.5→4.0, AAVE 3.0→5.0, UNI 3.0→4.5.
-  Default atr_mult 4.0→6.0, floor -1.5%→-2.0%.
+- - v0.99.60 (2026-04-01): REVERT 5m→15m — v0.99.59 5m switch CATASTROPHIC.
+  Result: WR collapsed 83.72%→56.67%, R/R destroyed 1.43→1.2556, TS exits 3→10.
+  5m ATR (~$50-100/BTC) gives tighter absolute stops than 15m ATR ($100-200/BTC).
+  The ×1.5 ATR widening was insufficient — 5m noise still triggered custom_stoploss
+  at 0% WR. REVERT: 15m timeframe + original v0.99.57 ATR multipliers.
 - v0.99.56 (2026-04-01): REMOVE BNB — R/R dropped 1.43→1.41 from +1 trade only. Restored
   to 9 pairs. ALSO: RSI 28→26 (further relax momentum filter). Goal: push frequency while
   preserving R/R. BNB was removed in v0.59.0 (0% WR, -$5.10) and added back at v0.99.55
@@ -584,7 +581,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.99.59"
+    STRATEGY_VERSION = "0.99.60"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -597,57 +594,57 @@ class LiquiditySweep(IStrategy):
         # v0.99.27 doubling (6-7×) was catastrophic on 15m — but that was with TS=True.
         # With TS=False (v0.99.50+), wider stops = fewer (but bigger) SL hits.
         "BTC/USDT": {
-            "atr_multiplier": 5.0,       # v0.99.59: scaled 3.0×1.5 for 5m
+            "atr_multiplier": 3.0,       # v0.99.28: reverted
             "require_ote": False,        # BTC trends hard, often misses OTE
             "time_exit_1_hours": 8
         },
         "ETH/USDT": {
-            "atr_multiplier": 4.0,       # v0.99.59: scaled 2.5×1.5 for 5m
+            "atr_multiplier": 2.5,       # v0.99.28: reverted
             "require_ote": True,
             "time_exit_1_hours": 6
         },
         "ADA/USDT": {
-            "atr_multiplier": 3.5,       # v0.99.59: scaled 2.0×1.5 for 5m
+            "atr_multiplier": 2.0,       # v0.99.28: reverted
             "require_ote": True,
             "time_exit_1_hours": 4
         },
         "SOL/USDT": {
-            "atr_multiplier": 5.0,       # v0.99.59: scaled 3.0×1.5 for 5m
+            "atr_multiplier": 3.0,       # v0.99.28: reverted
             "require_ote": False,        # SOL trends hard, often misses OTE
             "time_exit_1_hours": 8
         },
         "BNB/USDT": {
-            "atr_multiplier": 4.0,       # v0.99.59: scaled 2.5×1.5 for 5m
+            "atr_multiplier": 2.5,       # v0.99.28: reverted
             "require_ote": True,
             "time_exit_1_hours": 6
         },
         "XRP/USDT": {
-            "atr_multiplier": 5.5,       # v0.99.59: scaled 3.5×1.5 for 5m
+            "atr_multiplier": 3.5,       # v0.99.28: reverted
             "require_ote": False,        # Give trades room outside OTE
             "time_exit_1_hours": 6
         },
         "DOT/USDT": {
-            "atr_multiplier": 5.0,       # v0.99.59: scaled 3.0×1.5 for 5m
+            "atr_multiplier": 3.0,       # v0.99.28: reverted
             "require_ote": True,
             "time_exit_1_hours": 6
         },
         "AVAX/USDT": {
-            "atr_multiplier": 5.0,       # v0.99.59: scaled 3.0×1.5 for 5m
+            "atr_multiplier": 3.0,       # v0.99.28: reverted
             "require_ote": True,
             "time_exit_1_hours": 6
         },
         "LINK/USDT": {
-            "atr_multiplier": 4.0,       # v0.99.59: scaled 2.5×1.5 for 5m
+            "atr_multiplier": 2.5,       # v0.99.28: reverted
             "require_ote": True,
             "time_exit_1_hours": 6
         },
         "AAVE/USDT": {
-            "atr_multiplier": 5.0,       # v0.99.59: scaled 3.0×1.5 for 5m
+            "atr_multiplier": 3.0,       # v0.99.28: reverted
             "require_ote": True,
             "time_exit_1_hours": 6
         },
         "UNI/USDT": {
-            "atr_multiplier": 4.5,       # v0.99.59: scaled 3.0×1.5 for 5m
+            "atr_multiplier": 3.0,       # v0.99.28: reverted
             "require_ote": False,
             "time_exit_1_hours": 6
         },
@@ -712,9 +709,9 @@ class LiquiditySweep(IStrategy):
     use_custom_stoploss = True
 
     # ── Timeframes ────────────────────────────────────────────────────────────
-    timeframe = '5m'
+    timeframe = '15m'
     informative_timeframe = '1h'
-    startup_candle_count = 300  # 5m: need ~200 5m candles for ATR(14) + extra buffer
+    startup_candle_count = 150  # 15m: need ~150 15m candles for ATR(14) + buffer
 
     # ── Hyperoptable Parameters ───────────────────────────────────────────────
     # Swing detection
@@ -889,7 +886,7 @@ class LiquiditySweep(IStrategy):
         # FVG window of 30 candles (~7.5h at 15m): recent imbalance signal.
         # This is sensible SMC: an FVG formed today is still an active imbalance zone
         # worth trading from — mitigation (price touching it) is EXPECTED on the return move.
-        fvg_window = 120  # ~10h at 5m — scaled from 30*15m=7.5h → 120*5m=10h (same order of magnitude)
+        fvg_window = 30  # ~7.5h at 15m — "Was FVG formed recently?"
         dataframe['active_bullish_fvg'] = (
             dataframe['fvg']
             .eq(1)
@@ -938,7 +935,7 @@ class LiquiditySweep(IStrategy):
         #
         # Rolling window: 20 candles (~20h on 1h TF). A bullish OB formed within
         # the last 20 candles confirms institutional buying pressure is recent.
-        ob_window = 300  # scaled from 100*15m=25h → 300*5m=25h (same absolute duration)
+        ob_window = 100  # ~25h at 15m — OBs are sparse, need wide window
         # (smc.ob() marks one every ~50-200 candles). A 20-candle (~5h) window missed
         # almost all of them → 0 trades in v0.31.0. 100 candles = "institutional footprint
         # present somewhere in the last day?" which is a sensible SMC recency check.
