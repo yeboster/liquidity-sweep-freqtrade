@@ -1,128 +1,135 @@
 {
   "version": "LiquiditySweep",
-  "timestamp": "2026-04-02T03:47:45.947096Z",
-  "latest_backtest_file": "backtest-result-2026-04-02_03-47-44",
+  "timestamp": "2026-04-02T05:43:54.229281Z",
+  "latest_backtest_file": "backtest-result-2026-04-02_05-43-52",
   "total_trades": 120,
   "trades_per_year": 60.0,
-  "win_count": 81,
-  "loss_count": 39,
-  "win_rate": 67.5,
-  "profit_abs": 280.64,
-  "profit_pct": 28.06,
-  "avg_profit_per_trade": 2.3387,
-  "avg_profit_per_win": 1.5173,
-  "avg_loss_per_loss": 1.2136,
-  "rr_ratio": 1.2502,
-  "expectancy": 2.3387,
-  "profit_factor": 2.6572,
-  "sqn": 4.0922,
-  "drawdown_abs": 18.18,
-  "drawdown_pct": 1.7898,
-  "holding_avg": "4:45:00",
+  "win_count": 78,
+  "loss_count": 42,
+  "win_rate": 65.0,
+  "profit_abs": 297.86,
+  "profit_pct": 29.79,
+  "avg_profit_per_trade": 2.4822,
+  "avg_profit_per_win": 1.7917,
+  "avg_loss_per_loss": 1.4293,
+  "rr_ratio": 1.2536,
+  "expectancy": 2.4822,
+  "profit_factor": 2.3645,
+  "sqn": 3.9462,
+  "drawdown_abs": 20.39,
+  "drawdown_pct": 1.8035,
+  "holding_avg": "5:43:00",
   "exits": [
     {
       "exit": "early_profit_take",
       "trades": 28,
       "wr": 100.0,
       "profit_mean_pct": 2.63,
-      "profit_abs": 261.07
+      "profit_abs": 264.15
     },
     {
       "exit": "dynamic_tp",
-      "trades": 9,
+      "trades": 13,
       "wr": 100.0,
-      "profit_mean_pct": 2.78,
-      "profit_abs": 96.56
+      "profit_mean_pct": 2.47,
+      "profit_abs": 122.19
+    },
+    {
+      "exit": "roi",
+      "trades": 5,
+      "wr": 100.0,
+      "profit_mean_pct": 2.0,
+      "profit_abs": 37.18
     },
     {
       "exit": "target_liquidity_reached",
-      "trades": 6,
+      "trades": 10,
       "wr": 100.0,
-      "profit_mean_pct": 0.72,
-      "profit_abs": 17.01
+      "profit_mean_pct": 0.86,
+      "profit_abs": 33.04
     },
     {
-      "exit": "time_exit_6h",
-      "trades": 70,
-      "wr": 54.29,
-      "profit_mean_pct": -0.12,
-      "profit_abs": -28.37
+      "exit": "time_exit_8h",
+      "trades": 50,
+      "wr": 44.0,
+      "profit_mean_pct": -0.16,
+      "profit_abs": -28.28
     },
     {
       "exit": "trailing_stop_loss",
-      "trades": 7,
+      "trades": 14,
       "wr": 0.0,
-      "profit_mean_pct": -2.68,
-      "profit_abs": -65.63
+      "profit_mean_pct": -2.59,
+      "profit_abs": -130.41
     },
     {
       "exit": "TOTAL",
       "trades": 120,
-      "wr": 67.5,
-      "profit_mean_pct": 0.63,
-      "profit_abs": 280.64
+      "wr": 65.0,
+      "profit_mean_pct": 0.66,
+      "profit_abs": 297.86
     }
   ],
   "pairs": [
     {
       "pair": "UNKNOWN",
       "trades": 0,
-      "wr": 67.5,
-      "profit": 280.64
+      "wr": 65.0,
+      "profit": 297.86
     },
     {
       "pair": "UNKNOWN",
       "trades": 0,
-      "wr": 68.75,
-      "profit": 88.01
+      "wr": 81.25,
+      "profit": 98.73
     },
     {
       "pair": "UNKNOWN",
       "trades": 0,
-      "wr": 64.71,
-      "profit": 83.85
+      "wr": 70.59,
+      "profit": 75.25
     },
     {
       "pair": "UNKNOWN",
       "trades": 0,
       "wr": 81.82,
-      "profit": 62.96
-    },
-    {
-      "pair": "UNKNOWN",
-      "trades": 0,
-      "wr": 70.0,
-      "profit": 21.43
+      "profit": 69.55
     },
     {
       "pair": "UNKNOWN",
       "trades": 0,
       "wr": 63.64,
-      "profit": 19.68
+      "profit": 23.74
+    },
+    {
+      "pair": "UNKNOWN",
+      "trades": 0,
+      "wr": 60.0,
+      "profit": 23.08
     },
     {
       "pair": "UNKNOWN",
       "trades": 0,
       "wr": 70.0,
-      "profit": 14.46
+      "profit": 18.82
     },
     {
       "pair": "UNKNOWN",
       "trades": 0,
-      "wr": 80.0,
-      "profit": 11.95
+      "wr": 60.0,
+      "profit": 15.6
     },
     {
       "pair": "UNKNOWN",
       "trades": 0,
       "wr": 54.55,
-      "profit": -6.34
+      "profit": -10.96
     },
     {
       "pair": "UNKNOWN",
       "trades": 0,
-      "wr": 57.14,
-      "profit": -15.37
+      "wr": 42.86,
+      "profit": -15.95
     }
   ]
 }
