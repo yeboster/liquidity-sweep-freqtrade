@@ -12,9 +12,10 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.68
+Version: 0.99.69
 
 Changelog:
+- v0.99.69 (2026-04-02): REVERT ATR floor -2.5%→-1.5%. v0.99.68 pushed REVERT of time_exit to 8h [skip ci] — no new backtest. v0.99.67 (6h time_exit + -2.5% floor) = 120 trades, R/R 1.25, 14 TS exits (0% WR, -$130). ATR mult=4.0 means BTC stops at ~-2.4% (floor -2.5% barely binding). Hypothesis: -2.5% floor was combined with 6h time_exit in v0.99.67 — together they caused R/R collapse. Reverting floor to -1.5% while keeping 8h time_exit → expected R/R ~1.43+ baseline with 43 trades/yr.
 - v0.99.68 (2026-04-02): REVERT time_exit 6h→8h. v0.99.67 time_exit_6h produced 120 trades
   (+179% vs 43) but WR collapsed 83.72%→67.5% and R/R crashed 1.434→1.25 (danger zone).
   70/120 exits (58%) via time_exit_6h at 54% WR / -0.12% avg = dominant stale exit.
@@ -603,7 +604,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.99.68"
+    STRATEGY_VERSION = "0.99.69"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -1327,7 +1328,7 @@ class LiquiditySweep(IStrategy):
         
         # Apply floor and ceiling
         dynamic_sl = max(dynamic_sl, -0.08)   # Ceiling: don't go above -8% (too wide = catastrophic loss)
-        dynamic_sl = min(dynamic_sl, -0.025)  # Floor: don't go below -2.5% (v0.99.66: widened from -1.5% to reduce premature stopouts)
+        dynamic_sl = min(dynamic_sl, -0.015)  # Floor: don't go below -1.5% (v0.99.69: REVERT v0.99.66 floor widening. v0.99.66: -2.5% floor + time_exit_8h → 14 TS exits (0% WR, -$130). ATR mult=4.0 means BTC stops at ~-2.4% (floor not binding). But -2.5% floor was tested with time_exit_6h → R/R 1.25. Reverting to -1.5% floor + 8h time_exit → expected R/R ~1.43+ baseline.
         
         # Return as ratio from current_rate perspective
         # Freqtrade expects: stoploss relative to current_rate (not entry)
