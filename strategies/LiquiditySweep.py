@@ -12,9 +12,13 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.67
+Version: 0.99.68
 
 Changelog:
+- v0.99.68 (2026-04-02): REVERT time_exit 6h→8h. v0.99.67 time_exit_6h produced 120 trades
+  (+179% vs 43) but WR collapsed 83.72%→67.5% and R/R crashed 1.434→1.25 (danger zone).
+  70/120 exits (58%) via time_exit_6h at 54% WR / -0.12% avg = dominant stale exit.
+  Reverting to 8h to restore original quality (R/R 1.43, WR 83.7%, 21.5 trades/yr).
 - v0.99.67 (2026-04-02): time_exit 8h→6h. v0.99.66: time_exit_8h was 50/120 trades
   (41.7% of all!) at 44% WR / -0.16% avg = dominant exit but barely breaks even.
   38 losing time_exit trades at -0.39% avg drag down overall R/R. Shortening to 6h:
@@ -599,7 +603,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.99.67"
+    STRATEGY_VERSION = "0.99.68"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -809,7 +813,7 @@ class LiquiditySweep(IStrategy):
     time_exit_1_profit = DecimalParameter(-0.02, 0.01, default=0.0, space="sell", optimize=True)
     
     time_exit_2_enabled = CategoricalParameter([True, False], default=True, space="sell", optimize=False)
-    time_exit_2_hours = IntParameter(5, 12, default=6, space="sell", optimize=False)  # v0.99.67: 8h→6h. time_exit_8h was 41.7% of trades at 44% WR / -0.16% avg — dead zone too wide.
+    time_exit_2_hours = IntParameter(5, 12, default=8, space="sell", optimize=False)  # v0.99.68: REVERT 6h→8h. v0.99.67: time_exit_6h was 70/120 trades (58%) at 54% WR / -0.12% avg = dominant stale exit. R/R collapsed 1.434→1.25. Reverting to 8h to restore original quality.
     time_exit_2_profit = DecimalParameter(0.0, 0.04, default=0.015, space="sell", optimize=False)
 
     # ── Plotting ──────────────────────────────────────────────────────────────
