@@ -12,16 +12,17 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.66
+Version: 0.99.67
 
 Changelog:
+- v0.99.67 (2026-04-02): time_exit 8h→6h. v0.99.66: time_exit_8h was 50/120 trades
+  (41.7% of all!) at 44% WR / -0.16% avg = dominant exit but barely breaks even.
+  38 losing time_exit trades at -0.39% avg drag down overall R/R. Shortening to 6h:
+  catches reversals sooner, routes capital to better setups. R/R 1.25 is dangerously
+  close to 0.8 danger threshold.
 - v0.99.66 (2026-04-02): Widen ATR floor -1.5%→-2.5% — reduce premature stopouts.
   v0.99.65 (6yr data): 22 trailing_stop_loss exits at -1.93% avg = $155.21 loss (50.8%
-  of all losses, only 18.3% of trades). Custom stoploss at -1.5% floor clips winners before
-  they reach 100% WR exits (early_profit_take/dynamic_tp/roi). v0.99.30's -3.0% floor
-  failed (avg_loss -3.13% vs -1.82%). Trying -2.5% as middle ground: enough to reduce
-  premature exits, not so wide it magnifies loss magnitude. No mandatory fix triggered
-  (TS% 18.3% < 30%, avg_win 1.80% > 1.0%) but R/R 1.36 vs 1.5 target warrants action.
+  of all losses, only 18.3% of trades).
 - v0.99.65 (2026-04-01): Bump version — no strategy change (CI cache fix: download 6yr data).
 - v0.99.64 (2026-04-01): REMOVE 6 NEW PAIRS — R/R restored to ~1.43 baseline.
   v0.99.63 added MATIC, INJ, TIA, SUI, MKR, APT (9→15 pairs): 60 trades (up from 43),
@@ -598,7 +599,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.99.64"
+    STRATEGY_VERSION = "0.99.67"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -808,7 +809,7 @@ class LiquiditySweep(IStrategy):
     time_exit_1_profit = DecimalParameter(-0.02, 0.01, default=0.0, space="sell", optimize=True)
     
     time_exit_2_enabled = CategoricalParameter([True, False], default=True, space="sell", optimize=False)
-    time_exit_2_hours = IntParameter(5, 12, default=8, space="sell", optimize=False)
+    time_exit_2_hours = IntParameter(5, 12, default=6, space="sell", optimize=False)  # v0.99.67: 8h→6h. time_exit_8h was 41.7% of trades at 44% WR / -0.16% avg — dead zone too wide.
     time_exit_2_profit = DecimalParameter(0.0, 0.04, default=0.015, space="sell", optimize=False)
 
     # ── Plotting ──────────────────────────────────────────────────────────────
