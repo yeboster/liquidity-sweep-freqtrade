@@ -12,9 +12,17 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.65
+Version: 0.99.66
 
 Changelog:
+- v0.99.66 (2026-04-02): Widen ATR floor -1.5%→-2.5% — reduce premature stopouts.
+  v0.99.65 (6yr data): 22 trailing_stop_loss exits at -1.93% avg = $155.21 loss (50.8%
+  of all losses, only 18.3% of trades). Custom stoploss at -1.5% floor clips winners before
+  they reach 100% WR exits (early_profit_take/dynamic_tp/roi). v0.99.30's -3.0% floor
+  failed (avg_loss -3.13% vs -1.82%). Trying -2.5% as middle ground: enough to reduce
+  premature exits, not so wide it magnifies loss magnitude. No mandatory fix triggered
+  (TS% 18.3% < 30%, avg_win 1.80% > 1.0%) but R/R 1.36 vs 1.5 target warrants action.
+- v0.99.65 (2026-04-01): Bump version — no strategy change (CI cache fix: download 6yr data).
 - v0.99.64 (2026-04-01): REMOVE 6 NEW PAIRS — R/R restored to ~1.43 baseline.
   v0.99.63 added MATIC, INJ, TIA, SUI, MKR, APT (9→15 pairs): 60 trades (up from 43),
   R/R COLLAPSED 1.434→0.8997 (below 0.8 danger threshold). 3 new pairs had negative
@@ -1314,7 +1322,7 @@ class LiquiditySweep(IStrategy):
         
         # Apply floor and ceiling
         dynamic_sl = max(dynamic_sl, -0.08)   # Ceiling: don't go above -8% (too wide = catastrophic loss)
-        dynamic_sl = min(dynamic_sl, -0.015)  # Floor: don't go below -1.5% (v0.99.31: REVERTED from -3.0%)
+        dynamic_sl = min(dynamic_sl, -0.025)  # Floor: don't go below -2.5% (v0.99.66: widened from -1.5% to reduce premature stopouts)
         
         # Return as ratio from current_rate perspective
         # Freqtrade expects: stoploss relative to current_rate (not entry)
