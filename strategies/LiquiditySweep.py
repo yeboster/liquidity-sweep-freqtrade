@@ -12,15 +12,11 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.72
+Version: 0.99.74
 
 Changelog:
-- v0.99.72 (2026-04-02): REVERT ATR floor -2.5%→-2.0%. v0.99.71 (-2.5%): TS exits 30/120
-  (25% of trades), 0% WR, -$329.76, avg_loss -2.82% — CATASTROPHIC. R/R COLLAPSED
-  1.32→0.74 (below 0.8 danger threshold). Hypothesis: -2.5% floor is too loose, lets
-  losers run to -3%+ before stopping, then when TS finally triggers, it's a massive loss.
-  Reverting to -2.0% (v0.99.70 level): 17 TS exits, -$137, avg_loss -1.36%, R/R 1.32.
-  time_exit_2 stays DISABLED (only -$8 impact, net neutral).
+- v0.99.74 (2026-04-02): CONFIRM ATR floor -2.0% + RE-ENABLE time_exit_2. v0.99.71 (disabled time_exit_2, -2.5% floor): TS exits 32/120, R/R 0.85 CATASTROPHIC. v0.99.70 (enabled time_exit_2, -2.0% floor): 17 TS exits, R/R 1.32. time_exit_2 at 8h is essential — it catches stale trades before custom_stoploss has to exit them at -2.0%. Reverting to enabled + -2.0% floor.
+- v0.99.72 (2026-04-02): REVERT ATR floor -2.5%→-2.0%. v0.99.71 (-2.5%): TS exits 30/120, 0% WR, -$329.76, avg_loss -2.82% — CATASTROPHIC. R/R COLLAPSED 1.32→0.74 (below 0.8 danger threshold). Hypothesis: -2.5% floor is too loose, lets losers run to -3%+ before stopping. Reverting to -2.0% (v0.99.70 level): 17 TS exits, -$137, avg_loss -1.36%, R/R 1.32.
 - v0.99.71 (2026-04-02): DISABLE time_exit_2 + WIDEN ATR floor -2.0%→-2.5%.
   time_exit_2 (8h): 47 trades (39% of all exits!), 39% WR, -$28 — THE #1 problem.
   These stale trades miss early_profit_take (2%) and get cut at 8h for minimal/negative.
@@ -614,7 +610,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.99.72"
+    STRATEGY_VERSION = "0.99.74"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -823,7 +819,7 @@ class LiquiditySweep(IStrategy):
     time_exit_1_hours = IntParameter(2, 6, default=4, space="sell", optimize=True)
     time_exit_1_profit = DecimalParameter(-0.02, 0.01, default=0.0, space="sell", optimize=True)
     
-    time_exit_2_enabled = CategoricalParameter([True, False], default=False, space="sell", optimize=False)  # v0.99.71: DISABLED — 47 trades at 39% WR / -$28 (39% of all trades are stale exits). These trades missed early_profit_take (2%) and got cut at 8h for minimal/negative profit. In choppy 2020-2022 markets, this fires too aggressively on trades that would eventually recover. Let custom_stoploss handle losers instead.
+    time_exit_2_enabled = CategoricalParameter([True, False], default=True, space="sell", optimize=False)  # v0.99.74: RE-ENABLED — v0.99.71 (disabled): 32 TS exits, R/R 0.85 CATASTROPHIC. v0.99.70 (enabled, floor=-2.0%): 17 TS exits, R/R 1.32. time_exit_2 handles stale trades at 8h before custom_stoploss has to exit them at -2.0%. Keeping it enabled is essential alongside -2.0% floor.
     time_exit_2_hours = IntParameter(5, 12, default=8, space="sell", optimize=False)
     time_exit_2_profit = DecimalParameter(0.0, 0.04, default=0.015, space="sell", optimize=False)
 
@@ -1338,7 +1334,7 @@ class LiquiditySweep(IStrategy):
         
         # Apply floor and ceiling
         dynamic_sl = max(dynamic_sl, -0.08)   # Ceiling: don't go above -8% (too wide = catastrophic loss)
-        dynamic_sl = min(dynamic_sl, -0.020)  # Floor: don't go below -2.0% (v0.99.72: REVERT -2.5%→-2.0%). v0.99.71 (-2.5%): TS exits 30/120, 0% WR, -$329.76, avg_loss -2.82% — CATASTROPHIC. R/R COLLAPSED 1.32→0.74 (below 0.8 danger threshold). Hypothesis: -2.5% floor is too loose, lets losers run to -3%+ before stopping. Reverting to -2.0% (v0.99.70 level): TS exits 17/120, -$137, avg_loss -1.36%, R/R 1.32.
+        dynamic_sl = min(dynamic_sl, -0.020)  # Floor: don't go below -2.0% (v0.99.74: CONFIRM -2.0% floor). v0.99.71 (-2.5%): TS exits 32/120, 0% WR, -$304.78, avg_loss -2.45% — CATASTROPHIC. R/R COLLAPSED to 0.85 (below 0.8 danger threshold). Reverting to -2.0%: expect TS exits ~17-20, R/R ~1.3+.
         
         # Return as ratio from current_rate perspective
         # Freqtrade expects: stoploss relative to current_rate (not entry)
