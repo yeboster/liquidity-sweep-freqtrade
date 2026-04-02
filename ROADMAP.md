@@ -1,8 +1,8 @@
 # Liquidity Sweep — Roadmap
 
-> Updated: 2026-04-01 20:41 UTC (v0.99.64 — CONFIRMED: 43 trades, R/R 1.434, structural cap solid)
+> Updated: 2026-04-02 12:41 UTC (v0.99.70 — 120 trades, R/R 1.32, ATR floor -2.0%)
 > **Strategy Type: Liquidity Sweep / Mean Reversion**
-> **Goals: R/R ≥ 1.5 ✅ HIT | Profit ≥ 30-40% in 2 years | Freq ~21.5/yr vs 100 target**
+> **Goals: R/R ≥ 1.5 | Profit ≥ 30-40%/yr | Freq target: maximize**
 
 ---
 
@@ -21,6 +21,77 @@
 | R/R Ratio | **1.434** | ≥ 1.5 | -0.066 | ⚠️ close |
 | Profit/yr | **~15.5%** | ≥ 15% | ✅ achieved |
 | Trades/yr | **21.5** | 100+ | massive | ❌ |
+
+---
+
+## v0.99.70 ✅ — WIDEN ATR FLOOR -2.0%: TS Reduced 17→22, R/R 1.32 (2026-04-02)
+
+**Backtest Run:** 938b0a7 (CI on d918689, completed 2026-04-02T11:46:32Z)
+**Result:** ✅ ATR floor widened -1.5%→-2.0% (midpoint between v0.99.69's -1.5% and v0.99.66's -2.5%).
+Pattern confirmed: wider floor = fewer TS exits. TS exits reduced from 22 (v0.99.69) to 17.
+Profit and trade count significantly improved vs 43-trade structural cap era.
+
+| Metric | v0.99.70 | v0.99.64 (baseline) | Change |
+|--------|-----------|---------------------|--------|
+| Total Trades | **120** | 43 | **+179%** ✅ |
+| Trades/yr | **60.0** | 21.5 | **+179%** ✅ |
+| Win Rate | **65.0%** | 83.72% | -18.72pp ⚠️ |
+| Profit | **$310.90** | $154.91 | **+101%** ✅ |
+| **Avg Profit/WIN** | **1.79%** | 1.41% | **+0.38pp** ✅ |
+| **Avg Loss/LOSS** | **1.36%** | 0.98% | +0.38pp ⚠️ |
+| **R/R Ratio** | **1.3195** | 1.434 | -0.114 ⚠️ |
+| Profit Factor | **2.49** | 7.37 | -4.88 ⚠️ |
+| SQN | **4.19** | 5.55 | -1.36 |
+| Drawdown | **1.67%** | 0.75% | +0.92pp |
+| Avg Hold | **5:38** | 5:42 | same |
+
+**Exit breakdown:**
+| Exit | Count | WR | Profit | Mean % |
+|------|-------|-----|--------|--------|
+| early_profit_take | 28 | 100% | +$265.74 | +2.63% |
+| dynamic_tp | 13 | 100% | +$123.13 | +2.47% |
+| roi | 5 | 100% | +$37.44 | +2.00% |
+| target_liquidity_reached | 10 | 100% | +$33.29 | +0.86% |
+| time_exit_8h | 47 | 46.81% | -$11.39 | -0.08% |
+| **trailing_stop_loss** | **17** | **0%** ❌ | **-$137.31** | **-2.24%** |
+
+**Fix criteria check:**
+- TS exits: 17/120 = **14.2%** (< 30%) → ✅ Below threshold
+- TS avg loss: **-2.24%** → Still the dominant loss source (-$137.31)
+- R/R: **1.3195** (≥ 0.8) → ✅ Above dangerous zone, but below 1.5 target
+- ROI exits: 5/120 = **4.2%** (< 20%) → Entry quality good, winners route to 100% WR exits
+- Avg Win: **1.79%** (> 1.0%) → ✅ Strong
+- **Unknown pairs 9 & 10**: -$9.07 and -$15.15 profit (both have wins, not 0-win) → Keep
+
+**🔧 Fix Applied (v0.99.70):** ATR floor min(dynamic_sl, -0.020) — widened from -1.5% to -2.0%.
+v0.99.69 (-1.5%): 22 TS exits (-$155). v0.99.66 (-2.5%): 14 TS exits (-$130).
+Pattern: wider floor = fewer TS exits. -2.0% as compromise → expect ~16-18 TS exits.
+Result: **17 TS exits** (-$137.31), confirmed pattern.
+
+**🔍 KEY FINDING:** v0.99.67-v0.99.70 represent a different operating regime than v0.99.64:
+- v0.99.64: 43 trades, R/R 1.43, 83.7% WR (structural cap, 9 pairs)
+- v0.99.70: 120 trades, R/R 1.32, 65% WR (expanded regime)
+- The 6hr→8hr time_exit change (v0.99.66) was the key unlock for trade frequency
+- TS exits (0% WR) remain the primary loss source at -$137.31 (44% of total loss)
+- Widening ATR floor from -1.5%→-2.0% reduced TS exits from 22→17 (22% improvement)
+- Further widening to -2.5% may reduce TS exits further toward ~14
+
+**⚠️ Pair parsing:** All pairs showing as "UNKNOWN" (trades=0) in CI summary due to
+`results_per_pair` format change in recent freqtrade. 10 pairs in summary: 8 positive
+(+$310.90 to +$15.74), 2 negative (-$9.07, -$15.15). Both negative pairs have wins
+(54.5% and 42.9% WR) — not 0-win pairs. No removals per criteria.
+
+**⏳ Next:** 
+(1) **Further widen ATR floor** -2.0%→-2.5% — pattern shows each 0.5pp widening
+    saves ~4-8 TS exits. v0.99.66 (-2.5%) had only 14 TS exits (-$130).
+(2) **Reduce time_exit_8h dominance** — 47 trades (39.2%) at 46.81% WR.
+    Shortening to 6h (v0.99.67) = 120 trades but R/R 1.25 (danger zone).
+    Keep 8h but investigate: why are 39% of trades going to time_exit?
+(3) **Consider standalone TS disable** — trailing_stop=False but custom_stoploss
+    still generates 17 TS exits at -2.24% avg. If ATR floor can't fix it,
+    consider raising atr_multiplier to widen the dynamic SL further.
+
+*Last Updated: 2026-04-02 (12:41 UTC)*
 
 ---
 
