@@ -12,7 +12,10 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.69
+Version: 0.99.70
+
+Changelog:
+- v0.99.70 (2026-04-02): WIDEN ATR floor -1.5%→-2.0%. v0.99.69 (floor=-1.5%): 22 TS exits (-$155, 18.3% of trades). v0.99.66 (floor=-2.5%): 14 TS exits (-$130). Pattern: wider floor = fewer TS exits. -2.0% as compromise between -1.5% and -2.5%. Expect ~16-18 TS exits, R/R ~1.38-1.40.
 
 Changelog:
 - v0.99.69 (2026-04-02): REVERT ATR floor -2.5%→-1.5%. v0.99.68 pushed REVERT of time_exit to 8h [skip ci] — no new backtest. v0.99.67 (6h time_exit + -2.5% floor) = 120 trades, R/R 1.25, 14 TS exits (0% WR, -$130). ATR mult=4.0 means BTC stops at ~-2.4% (floor -2.5% barely binding). Hypothesis: -2.5% floor was combined with 6h time_exit in v0.99.67 — together they caused R/R collapse. Reverting floor to -1.5% while keeping 8h time_exit → expected R/R ~1.43+ baseline with 43 trades/yr.
@@ -604,7 +607,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.99.69"
+    STRATEGY_VERSION = "0.99.70"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -1328,7 +1331,7 @@ class LiquiditySweep(IStrategy):
         
         # Apply floor and ceiling
         dynamic_sl = max(dynamic_sl, -0.08)   # Ceiling: don't go above -8% (too wide = catastrophic loss)
-        dynamic_sl = min(dynamic_sl, -0.015)  # Floor: don't go below -1.5% (v0.99.69: REVERT v0.99.66 floor widening. v0.99.66: -2.5% floor + time_exit_8h → 14 TS exits (0% WR, -$130). ATR mult=4.0 means BTC stops at ~-2.4% (floor not binding). But -2.5% floor was tested with time_exit_6h → R/R 1.25. Reverting to -1.5% floor + 8h time_exit → expected R/R ~1.43+ baseline.
+        dynamic_sl = min(dynamic_sl, -0.020)  # Floor: don't go below -2.0% (v0.99.70: WIDEN -1.5%→-2.0% — midpoint test. v0.99.69 (-1.5%): 22 TS exits (-$155). v0.99.66 (-2.5%): 14 TS exits (-$130). Pattern: wider floor = fewer TS exits. -2.0% as compromise: expect ~16-18 TS exits, R/R ~1.38-1.40.
         
         # Return as ratio from current_rate perspective
         # Freqtrade expects: stoploss relative to current_rate (not entry)
