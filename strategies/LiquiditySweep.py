@@ -12,22 +12,23 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.70
+Version: 0.99.72
 
 Changelog:
-- v0.99.70 (2026-04-02): WIDEN ATR floor -1.5%→-2.0%. v0.99.69 (floor=-1.5%): 22 TS exits (-$155, 18.3% of trades). v0.99.66 (floor=-2.5%): 14 TS exits (-$130). Pattern: wider floor = fewer TS exits. -2.0% as compromise between -1.5% and -2.5%. Expect ~16-18 TS exits, R/R ~1.38-1.40.
-
-Changelog:
+- v0.99.72 (2026-04-02): REVERT ATR floor -2.5%→-2.0%. v0.99.71 (-2.5%): TS exits 30/120
+  (25% of trades), 0% WR, -$329.76, avg_loss -2.82% — CATASTROPHIC. R/R COLLAPSED
+  1.32→0.74 (below 0.8 danger threshold). Hypothesis: -2.5% floor is too loose, lets
+  losers run to -3%+ before stopping, then when TS finally triggers, it's a massive loss.
+  Reverting to -2.0% (v0.99.70 level): 17 TS exits, -$137, avg_loss -1.36%, R/R 1.32.
+  time_exit_2 stays DISABLED (only -$8 impact, net neutral).
 - v0.99.71 (2026-04-02): DISABLE time_exit_2 + WIDEN ATR floor -2.0%→-2.5%.
   time_exit_2 (8h): 47 trades (39% of all exits!), 39% WR, -$28 — THE #1 problem.
   These stale trades miss early_profit_take (2%) and get cut at 8h for minimal/negative.
   In choppy 2020-2022 markets, this fires far too aggressively. Removing it lets
   custom_stoploss handle losers naturally. ATR floor -2.0%→-2.5%: match v0.99.66
   level where TS exits hit minimum (14). Goal: R/R >1.3, WR >75%, TS exits <10%.
-- v0.99.69 (2026-04-02): REVERT ATR floor -2.5%→-1.5%.
-- v0.99.68 (2026-04-02): REVERT time_exit 6h→8h. v0.99.67 time_exit_6h produced 120 trades
-  (+179% vs 43) but WR collapsed 83.72%→67.5% and R/R crashed 1.434→1.25 (danger zone).
-  70/120 exits (58%) via time_exit_6h at 54% WR / -0.12% avg = dominant stale exit.
+  RESULT: ATR floor -2.5% CATASTROPHIC — TS exits 30, R/R 0.74.
+- v0.99.70 (2026-04-02): WIDEN ATR floor -1.5%→-2.0%. v0.99.69 (floor=-1.5%): 22 TS exits (-$155, 18.3% of trades). v0.99.66 (floor=-2.5%): 14 TS exits (-$130). Pattern: wider floor = fewer TS exits. -2.0% as compromise between -1.5% and -2.5%. Expect ~16-18 TS exits, R/R ~1.38-1.40.
   Reverting to 8h to restore original quality (R/R 1.43, WR 83.7%, 21.5 trades/yr).
 - v0.99.67 (2026-04-02): time_exit 8h→6h. v0.99.66: time_exit_8h was 50/120 trades
   (41.7% of all!) at 44% WR / -0.16% avg = dominant exit but barely breaks even.
@@ -613,7 +614,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.99.71"
+    STRATEGY_VERSION = "0.99.72"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -1337,7 +1338,7 @@ class LiquiditySweep(IStrategy):
         
         # Apply floor and ceiling
         dynamic_sl = max(dynamic_sl, -0.08)   # Ceiling: don't go above -8% (too wide = catastrophic loss)
-        dynamic_sl = min(dynamic_sl, -0.025)  # Floor: don't go below -2.5% (v0.99.71: WIDEN -2.0%→-2.5%). v0.99.70 (-2.0%): TS exits 17/120, 0% WR, -$137. Pattern: wider floor = fewer TS triggers. -2.5% matches v0.99.66 level where TS exits hit 14 (vs 17 at -2.0%). Goal: push TS exits below 14, reduce loss drag.
+        dynamic_sl = min(dynamic_sl, -0.020)  # Floor: don't go below -2.0% (v0.99.72: REVERT -2.5%→-2.0%). v0.99.71 (-2.5%): TS exits 30/120, 0% WR, -$329.76, avg_loss -2.82% — CATASTROPHIC. R/R COLLAPSED 1.32→0.74 (below 0.8 danger threshold). Hypothesis: -2.5% floor is too loose, lets losers run to -3%+ before stopping. Reverting to -2.0% (v0.99.70 level): TS exits 17/120, -$137, avg_loss -1.36%, R/R 1.32.
         
         # Return as ratio from current_rate perspective
         # Freqtrade expects: stoploss relative to current_rate (not entry)
