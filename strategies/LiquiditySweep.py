@@ -18,7 +18,13 @@ Changelog:
 - v0.99.70 (2026-04-02): WIDEN ATR floor -1.5%→-2.0%. v0.99.69 (floor=-1.5%): 22 TS exits (-$155, 18.3% of trades). v0.99.66 (floor=-2.5%): 14 TS exits (-$130). Pattern: wider floor = fewer TS exits. -2.0% as compromise between -1.5% and -2.5%. Expect ~16-18 TS exits, R/R ~1.38-1.40.
 
 Changelog:
-- v0.99.69 (2026-04-02): REVERT ATR floor -2.5%→-1.5%. v0.99.68 pushed REVERT of time_exit to 8h [skip ci] — no new backtest. v0.99.67 (6h time_exit + -2.5% floor) = 120 trades, R/R 1.25, 14 TS exits (0% WR, -$130). ATR mult=4.0 means BTC stops at ~-2.4% (floor -2.5% barely binding). Hypothesis: -2.5% floor was combined with 6h time_exit in v0.99.67 — together they caused R/R collapse. Reverting floor to -1.5% while keeping 8h time_exit → expected R/R ~1.43+ baseline with 43 trades/yr.
+- v0.99.71 (2026-04-02): DISABLE time_exit_2 + WIDEN ATR floor -2.0%→-2.5%.
+  time_exit_2 (8h): 47 trades (39% of all exits!), 39% WR, -$28 — THE #1 problem.
+  These stale trades miss early_profit_take (2%) and get cut at 8h for minimal/negative.
+  In choppy 2020-2022 markets, this fires far too aggressively. Removing it lets
+  custom_stoploss handle losers naturally. ATR floor -2.0%→-2.5%: match v0.99.66
+  level where TS exits hit minimum (14). Goal: R/R >1.3, WR >75%, TS exits <10%.
+- v0.99.69 (2026-04-02): REVERT ATR floor -2.5%→-1.5%.
 - v0.99.68 (2026-04-02): REVERT time_exit 6h→8h. v0.99.67 time_exit_6h produced 120 trades
   (+179% vs 43) but WR collapsed 83.72%→67.5% and R/R crashed 1.434→1.25 (danger zone).
   70/120 exits (58%) via time_exit_6h at 54% WR / -0.12% avg = dominant stale exit.
@@ -607,7 +613,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.99.70"
+    STRATEGY_VERSION = "0.99.71"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -816,8 +822,8 @@ class LiquiditySweep(IStrategy):
     time_exit_1_hours = IntParameter(2, 6, default=4, space="sell", optimize=True)
     time_exit_1_profit = DecimalParameter(-0.02, 0.01, default=0.0, space="sell", optimize=True)
     
-    time_exit_2_enabled = CategoricalParameter([True, False], default=True, space="sell", optimize=False)
-    time_exit_2_hours = IntParameter(5, 12, default=8, space="sell", optimize=False)  # v0.99.68: REVERT 6h→8h. v0.99.67: time_exit_6h was 70/120 trades (58%) at 54% WR / -0.12% avg = dominant stale exit. R/R collapsed 1.434→1.25. Reverting to 8h to restore original quality.
+    time_exit_2_enabled = CategoricalParameter([True, False], default=False, space="sell", optimize=False)  # v0.99.71: DISABLED — 47 trades at 39% WR / -$28 (39% of all trades are stale exits). These trades missed early_profit_take (2%) and got cut at 8h for minimal/negative profit. In choppy 2020-2022 markets, this fires too aggressively on trades that would eventually recover. Let custom_stoploss handle losers instead.
+    time_exit_2_hours = IntParameter(5, 12, default=8, space="sell", optimize=False)
     time_exit_2_profit = DecimalParameter(0.0, 0.04, default=0.015, space="sell", optimize=False)
 
     # ── Plotting ──────────────────────────────────────────────────────────────
@@ -1331,7 +1337,7 @@ class LiquiditySweep(IStrategy):
         
         # Apply floor and ceiling
         dynamic_sl = max(dynamic_sl, -0.08)   # Ceiling: don't go above -8% (too wide = catastrophic loss)
-        dynamic_sl = min(dynamic_sl, -0.020)  # Floor: don't go below -2.0% (v0.99.70: WIDEN -1.5%→-2.0% — midpoint test. v0.99.69 (-1.5%): 22 TS exits (-$155). v0.99.66 (-2.5%): 14 TS exits (-$130). Pattern: wider floor = fewer TS exits. -2.0% as compromise: expect ~16-18 TS exits, R/R ~1.38-1.40.
+        dynamic_sl = min(dynamic_sl, -0.025)  # Floor: don't go below -2.5% (v0.99.71: WIDEN -2.0%→-2.5%). v0.99.70 (-2.0%): TS exits 17/120, 0% WR, -$137. Pattern: wider floor = fewer TS triggers. -2.5% matches v0.99.66 level where TS exits hit 14 (vs 17 at -2.0%). Goal: push TS exits below 14, reduce loss drag.
         
         # Return as ratio from current_rate perspective
         # Freqtrade expects: stoploss relative to current_rate (not entry)
