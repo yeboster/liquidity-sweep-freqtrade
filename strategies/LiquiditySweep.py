@@ -12,9 +12,10 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.74
+Version: 0.99.75
 
 Changelog:
+- v0.99.75 (2026-04-02): RAISE time_exit_2_profit 1.5%→2.0%. 42 time_exit_8h exits (38% of trades) at 47.62% WR are the #1 exit problem. These stale trades (0% to +2.0% profit at 8h) coast near zero instead of exiting cleanly. Gap: +1.5-2.0% trades bypass time_exit_2 (needs profit < 1.5%) but miss early_profit_take (needs >= 2.0%). Raising to 2.0% = early_profit_take threshold closes the gap. Expected: fewer stale near-zero exits, better R/R.
 - v0.99.74 (2026-04-02): CONFIRM ATR floor -2.0% + RE-ENABLE time_exit_2. v0.99.71 (disabled time_exit_2, -2.5% floor): TS exits 32/120, R/R 0.85 CATASTROPHIC. v0.99.70 (enabled time_exit_2, -2.0% floor): 17 TS exits, R/R 1.32. time_exit_2 at 8h is essential — it catches stale trades before custom_stoploss has to exit them at -2.0%. Reverting to enabled + -2.0% floor.
 - v0.99.72 (2026-04-02): REVERT ATR floor -2.5%→-2.0%. v0.99.71 (-2.5%): TS exits 30/120, 0% WR, -$329.76, avg_loss -2.82% — CATASTROPHIC. R/R COLLAPSED 1.32→0.74 (below 0.8 danger threshold). Hypothesis: -2.5% floor is too loose, lets losers run to -3%+ before stopping. Reverting to -2.0% (v0.99.70 level): 17 TS exits, -$137, avg_loss -1.36%, R/R 1.32.
 - v0.99.71 (2026-04-02): DISABLE time_exit_2 + WIDEN ATR floor -2.0%→-2.5%.
@@ -610,7 +611,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.99.74"
+    STRATEGY_VERSION = "0.99.75"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -821,7 +822,7 @@ class LiquiditySweep(IStrategy):
     
     time_exit_2_enabled = CategoricalParameter([True, False], default=True, space="sell", optimize=False)  # v0.99.74: RE-ENABLED — v0.99.71 (disabled): 32 TS exits, R/R 0.85 CATASTROPHIC. v0.99.70 (enabled, floor=-2.0%): 17 TS exits, R/R 1.32. time_exit_2 handles stale trades at 8h before custom_stoploss has to exit them at -2.0%. Keeping it enabled is essential alongside -2.0% floor.
     time_exit_2_hours = IntParameter(5, 12, default=8, space="sell", optimize=False)
-    time_exit_2_profit = DecimalParameter(0.0, 0.04, default=0.015, space="sell", optimize=False)
+    time_exit_2_profit = DecimalParameter(0.0, 0.04, default=0.020, space="sell", optimize=False)  # v0.99.75: RAISE 1.5%→2.0%. 42 time_exit_8h exits (38% of trades) at 47.62% WR leak profit. Gap: trades at +1.5-2.0% at 8h bypass time_exit_2 (profit < 1.5%) and coast near zero. Matching 2.0% = early_profit_take threshold → stale trades above 1.5% now exit at reasonable level instead of leaking. Net effect: fewer stale time_exit trades, better avg win/loss split.
 
     # ── Plotting ──────────────────────────────────────────────────────────────
     plot_config = {
