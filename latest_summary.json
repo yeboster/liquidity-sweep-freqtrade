@@ -1,116 +1,123 @@
 {
   "version": "LiquiditySweep",
-  "timestamp": "2026-04-03T11:28:46.647699Z",
-  "latest_backtest_file": "backtest-result-2026-04-03_11-28-45",
-  "total_trades": 93,
-  "trades_per_year": 46.5,
-  "win_count": 69,
-  "loss_count": 24,
-  "win_rate": 74.19,
-  "profit_abs": 188.43,
-  "profit_pct": 18.84,
-  "avg_profit_per_trade": 2.0262,
-  "avg_profit_per_win": 1.1626,
-  "avg_loss_per_loss": 1.1537,
-  "rr_ratio": 1.0078,
-  "expectancy": 2.0262,
-  "profit_factor": 2.9297,
-  "sqn": 4.3322,
-  "drawdown_abs": 20.29,
-  "drawdown_pct": 1.854,
-  "holding_avg": "4:58:00",
+  "timestamp": "2026-04-03T13:34:24.788915Z",
+  "latest_backtest_file": "backtest-result-2026-04-03_13-34-23",
+  "total_trades": 92,
+  "trades_per_year": 46.0,
+  "win_count": 59,
+  "loss_count": 33,
+  "win_rate": 64.13,
+  "profit_abs": 193.05,
+  "profit_pct": 19.31,
+  "avg_profit_per_trade": 2.0984,
+  "avg_profit_per_win": 1.6608,
+  "avg_loss_per_loss": 1.3348,
+  "rr_ratio": 1.2442,
+  "expectancy": 2.0984,
+  "profit_factor": 2.2522,
+  "sqn": 3.2132,
+  "drawdown_abs": 22.44,
+  "drawdown_pct": 2.105,
+  "holding_avg": "5:51:00",
   "exits": [
     {
-      "exit": "trailing_stop_loss",
-      "trades": 46,
-      "wr": 100.0,
-      "profit_mean_pct": 1.03,
-      "profit_abs": 170.64
-    },
-    {
       "exit": "early_profit_take",
-      "trades": 9,
+      "trades": 16,
       "wr": 100.0,
-      "profit_mean_pct": 2.54,
-      "profit_abs": 79.95
-    },
-    {
-      "exit": "target_liquidity_reached",
-      "trades": 4,
-      "wr": 100.0,
-      "profit_mean_pct": 0.6,
-      "profit_abs": 9.03
+      "profit_mean_pct": 2.51,
+      "profit_abs": 140.49
     },
     {
       "exit": "dynamic_tp",
-      "trades": 1,
+      "trades": 12,
       "wr": 100.0,
-      "profit_mean_pct": 0.69,
-      "profit_abs": 2.27
+      "profit_mean_pct": 2.42,
+      "profit_abs": 103.62
     },
     {
       "exit": "time_exit_8h",
-      "trades": 33,
-      "wr": 27.27,
-      "profit_mean_pct": -0.63,
-      "profit_abs": -73.46
+      "trades": 40,
+      "wr": 55.0,
+      "profit_mean_pct": 0.18,
+      "profit_abs": 26.34
+    },
+    {
+      "exit": "roi",
+      "trades": 3,
+      "wr": 100.0,
+      "profit_mean_pct": 2.0,
+      "profit_abs": 20.92
+    },
+    {
+      "exit": "target_liquidity_reached",
+      "trades": 6,
+      "wr": 100.0,
+      "profit_mean_pct": 0.8,
+      "profit_abs": 17.32
+    },
+    {
+      "exit": "trailing_stop_loss",
+      "trades": 15,
+      "wr": 0.0,
+      "profit_mean_pct": -2.22,
+      "profit_abs": -115.64
     },
     {
       "exit": "TOTAL",
-      "trades": 93,
-      "wr": 74.19,
-      "profit_mean_pct": 0.56,
-      "profit_abs": 188.43
+      "trades": 92,
+      "wr": 64.13,
+      "profit_mean_pct": 0.59,
+      "profit_abs": 193.05
     }
   ],
   "pairs": [
     {
       "pair": "UNKNOWN",
       "trades": 0,
-      "wr": 74.19,
-      "profit": 188.43
+      "wr": 64.13,
+      "profit": 193.05
     },
     {
       "pair": "UNKNOWN",
       "trades": 0,
-      "wr": 100.0,
-      "profit": 64.12
-    },
-    {
-      "pair": "UNKNOWN",
-      "trades": 0,
-      "wr": 87.5,
-      "profit": 62.41
-    },
-    {
-      "pair": "UNKNOWN",
-      "trades": 0,
-      "wr": 71.43,
-      "profit": 23.32
+      "wr": 81.25,
+      "profit": 94.2
     },
     {
       "pair": "UNKNOWN",
       "trades": 0,
       "wr": 81.82,
-      "profit": 22.68
+      "profit": 66.4
+    },
+    {
+      "pair": "UNKNOWN",
+      "trades": 0,
+      "wr": 60.0,
+      "profit": 25.08
     },
     {
       "pair": "UNKNOWN",
       "trades": 0,
       "wr": 70.0,
-      "profit": 19.08
+      "profit": 16.32
     },
     {
       "pair": "UNKNOWN",
       "trades": 0,
-      "wr": 70.0,
-      "profit": 15.18
+      "wr": 60.0,
+      "profit": 14.31
+    },
+    {
+      "pair": "UNKNOWN",
+      "trades": 0,
+      "wr": 54.55,
+      "profit": -8.61
     },
     {
       "pair": "UNKNOWN",
       "trades": 0,
       "wr": 42.86,
-      "profit": -18.35
+      "profit": -14.63
     }
   ]
 }
