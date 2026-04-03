@@ -1301,8 +1301,11 @@ class LiquiditySweep(IStrategy):
     # stop should trigger when price BREAKS the OTE zone — that means the setup
     # is actually invalid, not just temporarily reversing.
     #
-    # For longs: stop fires when price closes below OTE lower boundary.
-    # For shorts: stop fires when price closes above OTE upper boundary.
+    # For longs: stop fires when price closes BELOW OTE lower - buffer.
+    #   The buffer (default 0.75%) gives room for stop hunts — price often
+    #   wicked below OTE lower before reversing. We wait for a CLOSE below
+    #   (ote_lower * 0.9925) to confirm it's a real break, not a wick.
+    # For shorts: stop fires when price closes ABOVE OTE upper + buffer.
     # Fallback to ATR if OTE boundary not found (e.g., require_ote=False).
 
     def custom_stoploss(self, pair: str, trade: 'Trade', current_time: datetime,
@@ -1330,24 +1333,26 @@ class LiquiditySweep(IStrategy):
             entry_price = trade.open_rate
 
             if not pd.isna(ote_lower) and not pd.isna(ote_upper) and entry_price > 0:
+                # OTE-zone structural stop with stop-hunt buffer (0.75%)
+                # Longs: stop fires when price CLOSES below ote_lower * 0.9925
+                # Shorts: stop fires when price CLOSES above ote_upper * 1.0075
+                # This gives room for wicks to shake out stop hunters before
+                # confirming the structural break
+                ote_stop_buffer = 0.0075  # 0.75% buffer for stop hunt protection
                 if trade.is_short:
-                    # Short: stop if price closes ABOVE OTE upper (structural resistance broken)
-                    # Stop distance = (ote_upper - entry_price) / entry_price
-                    stop_dist = (ote_upper - entry_price) / entry_price
+                    ote_stop_level = ote_upper * (1 + ote_stop_buffer)
+                    stop_dist = (ote_stop_level - entry_price) / entry_price
                     if stop_dist > 0:
-                        # Apply floor: don't go below a sensible minimum (avoid getting stopped on tiny breaks)
                         stop_dist = max(stop_dist, 0.005)   # min 0.5% stop
-                        stop_dist = min(stop_dist, 0.040)  # max 4% stop (cap for fat-finger protection)
+                        stop_dist = min(stop_dist, 0.050)   # max 5% stop
                         from freqtrade.strategy import stoploss_from_open
                         return stoploss_from_open(stop_dist, current_profit, is_short=True)
                 else:
-                    # Long: stop if price closes BELOW OTE lower (structural support broken)
-                    # Stop distance = (entry_price - ote_lower) / entry_price
-                    stop_dist = (entry_price - ote_lower) / entry_price
+                    ote_stop_level = ote_lower * (1 - ote_stop_buffer)
+                    stop_dist = (entry_price - ote_stop_level) / entry_price
                     if stop_dist > 0:
-                        # Apply floor and ceiling
                         stop_dist = max(stop_dist, 0.005)   # min 0.5% stop
-                        stop_dist = min(stop_dist, 0.040)  # max 4% stop
+                        stop_dist = min(stop_dist, 0.050)   # max 5% stop
                         from freqtrade.strategy import stoploss_from_open
                         return stoploss_from_open(stop_dist, current_profit, is_short=False)
 
