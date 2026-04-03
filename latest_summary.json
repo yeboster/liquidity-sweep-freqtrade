@@ -1,129 +1,116 @@
 {
   "version": "LiquiditySweep",
-  "timestamp": "2026-04-03T07:38:28.120469Z",
-  "latest_backtest_file": "backtest-result-2026-04-03_07-38-26",
-  "total_trades": 110,
-  "trades_per_year": 55.0,
-  "win_count": 72,
-  "loss_count": 38,
-  "win_rate": 65.45,
-  "profit_abs": 290.62,
-  "profit_pct": 29.06,
-  "avg_profit_per_trade": 2.642,
-  "avg_profit_per_win": 1.8081,
-  "avg_loss_per_loss": 1.3746,
-  "rr_ratio": 1.3153,
-  "expectancy": 2.642,
-  "profit_factor": 2.5227,
-  "sqn": 4.0779,
-  "drawdown_abs": 17.82,
-  "drawdown_pct": 1.5333,
-  "holding_avg": "5:40:00",
+  "timestamp": "2026-04-03T11:28:46.647699Z",
+  "latest_backtest_file": "backtest-result-2026-04-03_11-28-45",
+  "total_trades": 93,
+  "trades_per_year": 46.5,
+  "win_count": 69,
+  "loss_count": 24,
+  "win_rate": 74.19,
+  "profit_abs": 188.43,
+  "profit_pct": 18.84,
+  "avg_profit_per_trade": 2.0262,
+  "avg_profit_per_win": 1.1626,
+  "avg_loss_per_loss": 1.1537,
+  "rr_ratio": 1.0078,
+  "expectancy": 2.0262,
+  "profit_factor": 2.9297,
+  "sqn": 4.3322,
+  "drawdown_abs": 20.29,
+  "drawdown_pct": 1.854,
+  "holding_avg": "4:58:00",
   "exits": [
     {
-      "exit": "early_profit_take",
-      "trades": 26,
+      "exit": "trailing_stop_loss",
+      "trades": 46,
       "wr": 100.0,
-      "profit_mean_pct": 2.6,
-      "profit_abs": 244.03
+      "profit_mean_pct": 1.03,
+      "profit_abs": 170.64
     },
     {
-      "exit": "dynamic_tp",
-      "trades": 13,
+      "exit": "early_profit_take",
+      "trades": 9,
       "wr": 100.0,
-      "profit_mean_pct": 2.47,
-      "profit_abs": 121.84
+      "profit_mean_pct": 2.54,
+      "profit_abs": 79.95
     },
     {
       "exit": "target_liquidity_reached",
-      "trades": 7,
+      "trades": 4,
       "wr": 100.0,
-      "profit_mean_pct": 0.83,
-      "profit_abs": 22.56
+      "profit_mean_pct": 0.6,
+      "profit_abs": 9.03
     },
     {
-      "exit": "roi",
-      "trades": 3,
+      "exit": "dynamic_tp",
+      "trades": 1,
       "wr": 100.0,
-      "profit_mean_pct": 2.0,
-      "profit_abs": 21.87
+      "profit_mean_pct": 0.69,
+      "profit_abs": 2.27
     },
     {
       "exit": "time_exit_8h",
-      "trades": 45,
-      "wr": 51.11,
-      "profit_mean_pct": 0.05,
-      "profit_abs": 10.07
-    },
-    {
-      "exit": "trailing_stop_loss",
-      "trades": 16,
-      "wr": 0.0,
-      "profit_mean_pct": -2.24,
-      "profit_abs": -129.76
+      "trades": 33,
+      "wr": 27.27,
+      "profit_mean_pct": -0.63,
+      "profit_abs": -73.46
     },
     {
       "exit": "TOTAL",
-      "trades": 110,
-      "wr": 65.45,
-      "profit_mean_pct": 0.71,
-      "profit_abs": 290.62
+      "trades": 93,
+      "wr": 74.19,
+      "profit_mean_pct": 0.56,
+      "profit_abs": 188.43
     }
   ],
   "pairs": [
     {
       "pair": "UNKNOWN",
       "trades": 0,
-      "wr": 65.45,
-      "profit": 290.62
+      "wr": 74.19,
+      "profit": 188.43
     },
     {
       "pair": "UNKNOWN",
       "trades": 0,
-      "wr": 81.25,
-      "profit": 99.48
+      "wr": 100.0,
+      "profit": 64.12
     },
     {
       "pair": "UNKNOWN",
       "trades": 0,
-      "wr": 72.22,
-      "profit": 84.82
+      "wr": 87.5,
+      "profit": 62.41
+    },
+    {
+      "pair": "UNKNOWN",
+      "trades": 0,
+      "wr": 71.43,
+      "profit": 23.32
     },
     {
       "pair": "UNKNOWN",
       "trades": 0,
       "wr": 81.82,
-      "profit": 70.84
-    },
-    {
-      "pair": "UNKNOWN",
-      "trades": 0,
-      "wr": 60.0,
-      "profit": 26.17
+      "profit": 22.68
     },
     {
       "pair": "UNKNOWN",
       "trades": 0,
       "wr": 70.0,
-      "profit": 17.99
+      "profit": 19.08
     },
     {
       "pair": "UNKNOWN",
       "trades": 0,
-      "wr": 60.0,
-      "profit": 15.52
-    },
-    {
-      "pair": "UNKNOWN",
-      "trades": 0,
-      "wr": 54.55,
-      "profit": -9.02
+      "wr": 70.0,
+      "profit": 15.18
     },
     {
       "pair": "UNKNOWN",
       "trades": 0,
       "wr": 42.86,
-      "profit": -15.17
+      "profit": -18.35
     }
   ]
 }
