@@ -12,9 +12,10 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.81
+Version: 0.99.82
 
 Changelog:
+- v0.99.82 (2026-04-03): REMOVE XRP/USDT + SOL/USDT from pairlist. v0.99.81 (15m/1H revert): 107 trades, 86% WR, 12.07% profit BUT R/R=0.72 (DANGER — below 0.8 threshold). Winner avg 3:59, loser avg 7:39 — holding time ratio reveals losers held 2× longer than winners. XRP: -$8.45 (66.7% WR, 12 trades), SOL: -$7.37 (72.7% WR, 11 trades). Both negative AND below 0.8 R/R individually. Removing both expected: R/R recovers to ~1.1+, fewer but higher quality trades.
 - v0.99.81 (2026-04-03): REVERT 1H TIMEFRAME → 15m/1H. v0.99.80 (1H/4H): 65 trades, 56.92% WR, R/R=1.0447 — FAILURE. Fewer trades (65 vs 110) and worse R/R (1.04 vs 1.31). time_exit_8h became 75% of exits (49 trades at 48.98% WR, -0.09% avg). 1H timeframe hypothesis REJECTED. Reverting to v0.99.79 baseline (ATR floor -2.0%, time_exit_2_profit=3.0%, R/R=1.31).
 - v0.99.79 (2026-04-03): REVERT OTE-zone stop → ATR floor -2.0%. v0.99.78b (OTE-zone+0.75% buffer): 46 TS exits, R/R=1.0078 — OTE-zone hypothesis REJECTED. The buffer widened the effective stop range, causing 3× more triggers. R/R collapsed 1.31→1.0078. Also: RAISE time_exit_2_profit 2.0%→3.0%. v0.99.78b: 33 time_exit_8h exits (35.5% of trades) at 27.27% WR/-0.63% avg = -$73.46 = dominant loss. Raising to 3.0% routes stale trades to ATR stop instead of time_exit at near-zero. Expected: R/R ≥ 1.3, fewer time_exit exits.
 - v0.99.78 (2026-04-03): REPLACE ATR-stop with OTE-ZONE stop. Hypothesis: ATR-based stops trigger on ANY -X% retracement, even within the OTE zone (structural support). Structural stop: exit ONLY when price closes below OTE lower (longs) — the zone support is broken. Stop = 0.5-4% below entry, tied to actual structure. Also store OTE levels in confirm_trade_entry for clean exit reference. time_exit_2 stays enabled. Expected: fewer TS triggers (only real breaks), better R/R.
@@ -615,7 +616,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.99.78"
+    STRATEGY_VERSION = "0.99.82"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -642,19 +643,9 @@ class LiquiditySweep(IStrategy):
             "require_ote": True,
             "time_exit_1_hours": 4
         },
-        "SOL/USDT": {
-            "atr_multiplier": 3.0,       # v0.99.28: reverted
-            "require_ote": False,        # SOL trends hard, often misses OTE
-            "time_exit_1_hours": 8
-        },
         "BNB/USDT": {
             "atr_multiplier": 2.5,       # v0.99.28: reverted
             "require_ote": True,
-            "time_exit_1_hours": 6
-        },
-        "XRP/USDT": {
-            "atr_multiplier": 3.5,       # v0.99.28: reverted
-            "require_ote": False,        # Give trades room outside OTE
             "time_exit_1_hours": 6
         },
         "DOT/USDT": {

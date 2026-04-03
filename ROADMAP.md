@@ -1,7 +1,7 @@
 # Liquidity Sweep — Roadmap
 
-> **Last Updated:** 2026-04-03 09:27 UTC
-> **Version:** v0.99.78b — OTE-zone structural stop + 0.75% stop-hunt buffer
+> **Last Updated:** 2026-04-03 20:41 UTC
+> **Version:** v0.99.82 — REMOVE XRP/SOL (R/R=0.72 danger fix)
 > **Strategy Type:** Liquidity Sweep / Mean Reversion (ICT SMC)
 > **Mode:** Spot, Long only
 
@@ -11,10 +11,10 @@
 
 | Metric | Current | Target | Status |
 |--------|---------|--------|--------|
-| R/R Ratio | 1.31 | ≥ 1.5 | ⚠️ below |
-| Annualized Profit | ~4.8%/yr | ≥ 10%/yr | ⚠️ below S&P500 |
-| Trades/yr | ~20 | 100+ | ❌ hard cap |
-| Win Rate | 65% | any | ✅ fine |
+| R/R Ratio | 0.72 | ≥ 1.5 | 🚨 DANGER |
+| Annualized Profit | ~5.4%/yr | ≥ 10%/yr | ⚠️ below S&P500 |
+| Trades/yr | ~46 | 100+ | ⚠️ improved |
+| Win Rate | 86% | any | ✅ excellent |
 | Drawdown | 1.8% | any | ✅ excellent |
 | SQN | ~4.0 | ≥ 2.0 | ✅ good |
 
@@ -29,19 +29,22 @@ The ~20 trades/yr ceiling is **structural**, not data-limited. Extending from 2y
 produced identical trade rates. More pairs (9→15) adds trades but collapses R/R below 0.8.
 5m timeframe collapses WR from 83% → 56%.
 
-### 2. trailing_stop_loss — THE #1 PROBLEM
+### 2. R/R < 0.8 — DANGER (v0.99.81)
 ```
-trailing_stop_loss: 16 trades, 0% WR, -$129.76 (avg loss 2.47%)
+v0.99.81 (15m/1H revert): 107 trades, 86% WR, $120.74 profit
+BUT: avg_profit_per_win=1.13%, avg_loss_per_loss=1.56%, R/R=0.72
+Winner avg hold: 3:59 | Loser avg hold: 7:39 → 2× longer
+trailing_stop_loss: 102 trades, 85.4% WR, +0.30% avg (mostly wins!)
 ```
-Every single TS exit is a loss. These are trades that went positive, retraced,
-and the ATR stop fired — but they might have recovered. The stop is too mechanical.
+**Root problem:** Winners held 2× shorter than losers. The strategy takes profits too early on
+winners (TS fires at +0.3%) while losers run 2× longer before stopping. R/R collapses to 0.72.
 
-### 3. time_exit_8h — SECONDARY PROBLEM
+### 3. Holding Time R/R Inversion (v0.99.81)
 ```
-time_exit_8h: 45 trades, 51% WR, +$10.07 (near-breakeven)
+Winners: 3h59m avg | Losers: 7h39m avg
 ```
-These stale trades (at 8h, between +1.5% and +2.0%) coast instead of exiting cleanly.
-They route to time_exit because they missed early_profit_take but haven't progressed enough.
+Reversal strategy should have winners held longer. Instead, winners are cut short (TS).
+This is the OPPOSITE of what a good mean-reversion strategy should do.
 
 ### 4. 100% WR Exits Are Working
 ```
@@ -85,7 +88,7 @@ without triggering, then price reverses.
 
 | Version | Change | Trades | WR | R/R | Annualized | TS Exits | Key Finding |
 |---------|--------|--------|-----|-----|------------|----------|-------------|
-| v0.99.77 | ATR floor -2.0% | 110 | 65.5% | 1.31 | 4.8%/yr | 16 | Revert from -2.3% |
+| v0.99.81 | 15m/1H revert | 107 | 86.0% | 0.72 | 5.4%/yr | 102 | 🚨 R/R DANGER |
 | v0.99.76 | ATR floor -2.3% | 110 | ? | 1.29 | ? | 13 | Worse than -2.0% |
 | v0.99.75 | time_exit_2 +2.0% | 120 | 65.0% | 1.32 | ~5%/yr | 17 | 47→42 time_exit |
 | v0.99.71 | DISABLE time_exit_2 | 120 | 75% | 0.74 | 6.7%/yr | 30 | CATASTROPHIC |
@@ -98,6 +101,8 @@ without triggering, then price reverses.
 
 | Pair | Removed | Reason |
 |------|---------|--------|
+| XRP/USDT | v0.99.82 | 66.7% WR, -$8.45, 12 trades, R/R < 0.8 |
+| SOL/USDT | v0.99.82 | 72.7% WR, -$7.37, 11 trades, R/R < 0.8 |
 | UNI/USDT | v0.99.78 | 42.86% WR, -$15.17, R/R < 0.8 |
 | NEAR/USDT | v0.99.54 | 33.3% WR, -$3.68, 3 trades |
 
@@ -105,13 +110,24 @@ without triggering, then price reverses.
 
 ## REMAINING PAIRS (8)
 
-BTC, ETH, ADA, AVAX, AAVE, SOL, MATIC, ATOM, DOT, LINK
+BTC, ETH, ADA, AVAX, AAVE, MATIC, ATOM, DOT, LINK
 
 ---
 
 ## NEXT EXPERIMENTS (Priority Order)
 
-### 1. OTE-Zone Stop Buffer Tuning (v0.99.79+)
+### 1. 🚨 R/R RECOVERY (v0.99.82+)
+**Priority:** CRITICAL. v0.99.81 R/R=0.72 (below 0.8 danger threshold).
+Root cause: winners held 3:59 vs losers 7:39 — 2× shorter!
+
+Fixes to test:
+1. **Widen trailing_stop_positive_offset** — TS fires too early on winners (+0.3% avg)
+   - Current: ~0.8-1.0%. Try 2.0-3.0% to let winners ride longer
+2. **Raise early_profit_take** 1.5%→2.0% — take more medium winners via 100% WR exits
+3. **Disable trailing_stop** entirely — route ALL trades through roi/early_profit_take/dynamic_tp
+4. **Tighten ATR floor** -2.0%→-1.5% — fewer -2% losers, smaller avg loss
+
+### 2. OTE-Zone Stop Buffer Tuning (v0.99.79+)
 If v0.99.78b improves R/R:
 - Try buffer 0.5% (tighter — more triggers but smaller losses)
 - Try buffer 1.0% (looser — fewer triggers but bigger losses when they hit)
