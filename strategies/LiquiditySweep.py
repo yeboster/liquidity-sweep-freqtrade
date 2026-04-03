@@ -12,9 +12,10 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.77
+Version: 0.99.78
 
 Changelog:
+- v0.99.78 (2026-04-03): REMOVE UNI/USDT — 42.86% WR, -$15.17, R/R < 0.8. Worst pair in 9-pair config. 8 pairs remain.
 - v0.99.77 (2026-04-03): REVERT ATR floor -2.3%→-2.0%. v0.99.76 (-2.3%): 13 TS exits at -2.47% avg = -$116.19, but 110 trades and R/R 1.2914 — WORSE than v0.99.75 (120 trades, R/R 1.3195). The wider floor made individual TS exits worse (-2.47% vs -2.24%) and reduced total trade count. Reverting to -2.0% to restore v0.99.70 baseline (120 trades, R/R 1.32, 17 TS exits).
 - v0.99.75 (2026-04-02): RAISE time_exit_2_profit 1.5%→2.0%. 42 time_exit_8h exits (38% of trades) at 47.62% WR are the #1 exit problem. These stale trades (0% to +2.0% profit at 8h) coast near zero instead of exiting cleanly. Gap: +1.5-2.0% trades bypass time_exit_2 (needs profit < 1.5%) but miss early_profit_take (needs >= 2.0%). Raising to 2.0% = early_profit_take threshold closes the gap. Expected: fewer stale near-zero exits, better R/R.
 - v0.99.74 (2026-04-02): CONFIRM ATR floor -2.0% + RE-ENABLE time_exit_2. v0.99.71 (disabled time_exit_2, -2.5% floor): TS exits 32/120, R/R 0.85 CATASTROPHIC. v0.99.70 (enabled time_exit_2, -2.0% floor): 17 TS exits, R/R 1.32. time_exit_2 at 8h is essential — it catches stale trades before custom_stoploss has to exit them at -2.0%. Reverting to enabled + -2.0% floor.
