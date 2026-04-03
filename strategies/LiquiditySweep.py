@@ -12,9 +12,10 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.78
+Version: 0.99.79
 
 Changelog:
+- v0.99.79 (2026-04-03): REVERT OTE-zone stop → ATR floor -2.0%. v0.99.78b (OTE-zone+0.75% buffer): 46 TS exits, R/R=1.0078 — OTE-zone hypothesis REJECTED. The buffer widened the effective stop range, causing 3× more triggers. R/R collapsed 1.31→1.0078. Also: RAISE time_exit_2_profit 2.0%→3.0%. v0.99.78b: 33 time_exit_8h exits (35.5% of trades) at 27.27% WR/-0.63% avg = -$73.46 = dominant loss. Raising to 3.0% routes stale trades to ATR stop instead of time_exit at near-zero. Expected: R/R ≥ 1.3, fewer time_exit exits.
 - v0.99.78 (2026-04-03): REPLACE ATR-stop with OTE-ZONE stop. Hypothesis: ATR-based stops trigger on ANY -X% retracement, even within the OTE zone (structural support). Structural stop: exit ONLY when price closes below OTE lower (longs) — the zone support is broken. Stop = 0.5-4% below entry, tied to actual structure. Also store OTE levels in confirm_trade_entry for clean exit reference. time_exit_2 stays enabled. Expected: fewer TS triggers (only real breaks), better R/R.
 - v0.99.77 (2026-04-03): REVERT ATR floor -2.3%→-2.0%. v0.99.76 (-2.3%): 13 TS exits at -2.47% avg = -$116.19, but 110 trades and R/R 1.2914 — WORSE than v0.99.75 (120 trades, R/R 1.3195). The wider floor made individual TS exits worse (-2.47% vs -2.24%) and reduced total trade count. Reverting to -2.0% to restore v0.99.70 baseline (120 trades, R/R 1.32, 17 TS exits).
 - v0.99.75 (2026-04-02): RAISE time_exit_2_profit 1.5%→2.0%. 42 time_exit_8h exits (38% of trades) at 47.62% WR are the #1 exit problem. These stale trades (0% to +2.0% profit at 8h) coast near zero instead of exiting cleanly. Gap: +1.5-2.0% trades bypass time_exit_2 (needs profit < 1.5%) but miss early_profit_take (needs >= 2.0%). Raising to 2.0% = early_profit_take threshold closes the gap. Expected: fewer stale near-zero exits, better R/R.
@@ -719,6 +720,10 @@ class LiquiditySweep(IStrategy):
     # Absolute backstop required by Freqtrade — custom_stoploss will use ATR, this is fallback
     stoploss = -0.194  # -19.4% absolute backstop (ATR SL handles tight exits)
     
+    # v0.99.79: REVERT OTE-zone stop → ATR-based stop with -2.0% floor.
+    # v0.99.78b (OTE-zone + 0.75% buffer): 46 TS exits, R/R=1.0078 — WORSE.
+    # OTE-zone hypothesis REJECTED: fires more often than ATR floor, collapses R/R.
+    # Reverting to ATR floor (-2.0%) which was validated in v0.99.77 (R/R=1.31).
     # Trailing stop — v0.99.50: DISABLED — reverts v0.99.48 failure.
     # v0.99.48 (TS=True, offset=0.8%): 34/40 trades TS exits, R/R=1.07, avg_win=0.75%.
     # TS clips winners before they can develop. Reverting to TS=False.
@@ -824,7 +829,7 @@ class LiquiditySweep(IStrategy):
     
     time_exit_2_enabled = CategoricalParameter([True, False], default=True, space="sell", optimize=False)  # v0.99.74: RE-ENABLED — v0.99.71 (disabled): 32 TS exits, R/R 0.85 CATASTROPHIC. v0.99.70 (enabled, floor=-2.0%): 17 TS exits, R/R 1.32. time_exit_2 handles stale trades at 8h before custom_stoploss has to exit them at -2.0%. Keeping it enabled is essential alongside -2.0% floor.
     time_exit_2_hours = IntParameter(5, 12, default=8, space="sell", optimize=False)
-    time_exit_2_profit = DecimalParameter(0.0, 0.04, default=0.020, space="sell", optimize=False)  # v0.99.75: RAISE 1.5%→2.0%. 42 time_exit_8h exits (38% of trades) at 47.62% WR leak profit. Gap: trades at +1.5-2.0% at 8h bypass time_exit_2 (profit < 1.5%) and coast near zero. Matching 2.0% = early_profit_take threshold → stale trades above 1.5% now exit at reasonable level instead of leaking. Net effect: fewer stale time_exit trades, better avg win/loss split.
+    time_exit_2_profit = DecimalParameter(0.0, 0.04, default=0.030, space="sell", optimize=False)  # v0.99.79: RAISE 2.0%→3.0%. v0.99.78b: 33 time_exit_8h exits (35.5% of trades!) at 27.27% WR / -$73.46 = THE dominant loss source. These stale trades (0-2% profit at 8h) coast near zero. Raising to 3.0% means: if a trade has +3% profit at 8h, it exits cleanly (good). If it has <3%, custom_stoploss (ATR -2.0%) handles it instead of time_exit at near-zero. Expected: fewer near-zero time_exit exits, better R/R split.
 
     # ── Plotting ──────────────────────────────────────────────────────────────
     plot_config = {
@@ -1310,14 +1315,12 @@ class LiquiditySweep(IStrategy):
 
     def custom_stoploss(self, pair: str, trade: 'Trade', current_time: datetime,
                         current_rate: float, current_profit: float, **kwargs) -> float:
+        # v0.99.79: REVERT to ATR-based stop. v0.99.78b OTE-zone hypothesis REJECTED.
+        # OTE-zone + 0.75% buffer fired 46 times (vs 16 with ATR) but R/R collapsed 1.31→1.0078.
+        # ATR floor (-2.0%) was validated in v0.99.77 with R/R=1.31. Restoring it.
         dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
         if len(dataframe) == 0:
             return self.stoploss
-
-        # Get OTE levels from trade entry (stored in confirm_trade_entry)
-        custom_info = trade.custom_info if hasattr(trade, 'custom_info') else {}
-        ote_lower_pct = custom_info.get('ote_lower_pct', None)
-        ote_upper_pct = custom_info.get('ote_upper_pct', None)
 
         trade_open_dt = trade.open_date_utc
         entry_candle_df = dataframe[dataframe['date'] <= trade_open_dt]
@@ -1325,45 +1328,13 @@ class LiquiditySweep(IStrategy):
             return self.stoploss
 
         entry_row = entry_candle_df.iloc[-1]
-
-        # Try to get current OTE zone levels (using entry candle's swing levels)
-        if 'ote_lower' in entry_row and 'ote_upper' in entry_row:
-            ote_lower = entry_row.get('ote_lower')
-            ote_upper = entry_row.get('ote_upper')
-            entry_price = trade.open_rate
-
-            if not pd.isna(ote_lower) and not pd.isna(ote_upper) and entry_price > 0:
-                # OTE-zone structural stop with stop-hunt buffer (0.75%)
-                # Longs: stop fires when price CLOSES below ote_lower * 0.9925
-                # Shorts: stop fires when price CLOSES above ote_upper * 1.0075
-                # This gives room for wicks to shake out stop hunters before
-                # confirming the structural break
-                ote_stop_buffer = 0.0075  # 0.75% buffer for stop hunt protection
-                if trade.is_short:
-                    ote_stop_level = ote_upper * (1 + ote_stop_buffer)
-                    stop_dist = (ote_stop_level - entry_price) / entry_price
-                    if stop_dist > 0:
-                        stop_dist = max(stop_dist, 0.005)   # min 0.5% stop
-                        stop_dist = min(stop_dist, 0.050)   # max 5% stop
-                        from freqtrade.strategy import stoploss_from_open
-                        return stoploss_from_open(stop_dist, current_profit, is_short=True)
-                else:
-                    ote_stop_level = ote_lower * (1 - ote_stop_buffer)
-                    stop_dist = (entry_price - ote_stop_level) / entry_price
-                    if stop_dist > 0:
-                        stop_dist = max(stop_dist, 0.005)   # min 0.5% stop
-                        stop_dist = min(stop_dist, 0.050)   # max 5% stop
-                        from freqtrade.strategy import stoploss_from_open
-                        return stoploss_from_open(stop_dist, current_profit, is_short=False)
-
-        # Fallback: use ATR-based stop if OTE not available
         atr_pct = entry_row.get('atr_pct')
         if pd.isna(atr_pct) or atr_pct <= 0:
             return self.stoploss
         atr_mult = self.get_param('atr_multiplier', pair, self.atr_multiplier.value)
         dynamic_sl = -(atr_mult * atr_pct)
         dynamic_sl = max(dynamic_sl, -0.08)
-        dynamic_sl = min(dynamic_sl, -0.020)
+        dynamic_sl = min(dynamic_sl, -0.020)  # Floor: -2.0% (v0.99.79 revert from OTE-zone)
         from freqtrade.strategy import stoploss_from_open
         return stoploss_from_open(dynamic_sl, current_profit, is_short=trade.is_short)
 
