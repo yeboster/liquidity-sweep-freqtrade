@@ -15,7 +15,7 @@ Author: Jarvis (OpenClaw)
 Version: 0.99.78
 
 Changelog:
-- v0.99.78 (2026-04-03): REMOVE UNI/USDT — 42.86% WR, -$15.17, R/R < 0.8. Worst pair in 9-pair config. 8 pairs remain.
+- v0.99.78 (2026-04-03): REPLACE ATR-stop with OTE-ZONE stop. Hypothesis: ATR-based stops trigger on ANY -X% retracement, even within the OTE zone (structural support). Structural stop: exit ONLY when price closes below OTE lower (longs) — the zone support is broken. Stop = 0.5-4% below entry, tied to actual structure. Also store OTE levels in confirm_trade_entry for clean exit reference. time_exit_2 stays enabled. Expected: fewer TS triggers (only real breaks), better R/R.
 - v0.99.77 (2026-04-03): REVERT ATR floor -2.3%→-2.0%. v0.99.76 (-2.3%): 13 TS exits at -2.47% avg = -$116.19, but 110 trades and R/R 1.2914 — WORSE than v0.99.75 (120 trades, R/R 1.3195). The wider floor made individual TS exits worse (-2.47% vs -2.24%) and reduced total trade count. Reverting to -2.0% to restore v0.99.70 baseline (120 trades, R/R 1.32, 17 TS exits).
 - v0.99.75 (2026-04-02): RAISE time_exit_2_profit 1.5%→2.0%. 42 time_exit_8h exits (38% of trades) at 47.62% WR are the #1 exit problem. These stale trades (0% to +2.0% profit at 8h) coast near zero instead of exiting cleanly. Gap: +1.5-2.0% trades bypass time_exit_2 (needs profit < 1.5%) but miss early_profit_take (needs >= 2.0%). Raising to 2.0% = early_profit_take threshold closes the gap. Expected: fewer stale near-zero exits, better R/R.
 - v0.99.74 (2026-04-02): CONFIRM ATR floor -2.0% + RE-ENABLE time_exit_2. v0.99.71 (disabled time_exit_2, -2.5% floor): TS exits 32/120, R/R 0.85 CATASTROPHIC. v0.99.70 (enabled time_exit_2, -2.0% floor): 17 TS exits, R/R 1.32. time_exit_2 at 8h is essential — it catches stale trades before custom_stoploss has to exit them at -2.0%. Reverting to enabled + -2.0% floor.
@@ -613,7 +613,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.99.77"
+    STRATEGY_VERSION = "0.99.78"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -1295,59 +1295,111 @@ class LiquiditySweep(IStrategy):
         
         return dataframe
 
-    # ── Custom Stoploss (ATR-based, v0.22.0) ─────────────────────────────────
+    # ── Custom Stoploss (OTE-zone-based, v0.99.78) ──────────────────────────
+    # REPLACES ATR-based stop. The problem with ATR stops: they trigger on any
+    # -X% move, even if price is just retracing within the OTE zone. A structural
+    # stop should trigger when price BREAKS the OTE zone — that means the setup
+    # is actually invalid, not just temporarily reversing.
+    #
+    # For longs: stop fires when price closes below OTE lower boundary.
+    # For shorts: stop fires when price closes above OTE upper boundary.
+    # Fallback to ATR if OTE boundary not found (e.g., require_ote=False).
 
     def custom_stoploss(self, pair: str, trade: 'Trade', current_time: datetime,
                         current_rate: float, current_profit: float, **kwargs) -> float:
-        """
-        ATR-based dynamic stoploss (v0.22.0, updated v0.99.31).
-
-        SL is placed at N× ATR(14) below entry price (longs) or above (shorts).
-        This makes the stoploss:
-        - Tighter in calm markets (ETH/ADA) → less loss per stop hit
-        - Wider in volatile markets (BTC/SOL) → fewer premature exits
-
-        Floor: -1.5% (v0.99.31: REVERTED from -3.0% — v0.99.30 wider floor made losses worse)
-        Ceiling: -8.0% (don't let it run beyond backstop SL)
-        """
         dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
-        
-        # Safety: can't compute SL without data
         if len(dataframe) == 0:
-            return self.stoploss  # Fallback to static
-        
-        # Use the entry candle's ATR for stability (not current candle which may be mid-move)
-        # Find candle at trade open time
+            return self.stoploss
+
+        # Get OTE levels from trade entry (stored in confirm_trade_entry)
+        custom_info = trade.custom_info if hasattr(trade, 'custom_info') else {}
+        ote_lower_pct = custom_info.get('ote_lower_pct', None)
+        ote_upper_pct = custom_info.get('ote_upper_pct', None)
+
         trade_open_dt = trade.open_date_utc
-        entry_candle = dataframe[dataframe['date'] <= trade_open_dt]
-        
-        if len(entry_candle) == 0 or 'atr_pct' not in entry_candle.columns:
-            return self.stoploss  # Fallback
-        
-        entry_atr_pct = entry_candle.iloc[-1]['atr_pct']
-        
-        if pd.isna(entry_atr_pct) or entry_atr_pct <= 0:
-            return self.stoploss  # Fallback
-            
-        # Dynamically fetch ATR multiplier for this pair
+        entry_candle_df = dataframe[dataframe['date'] <= trade_open_dt]
+        if len(entry_candle_df) == 0:
+            return self.stoploss
+
+        entry_row = entry_candle_df.iloc[-1]
+
+        # Try to get current OTE zone levels (using entry candle's swing levels)
+        if 'ote_lower' in entry_row and 'ote_upper' in entry_row:
+            ote_lower = entry_row.get('ote_lower')
+            ote_upper = entry_row.get('ote_upper')
+            entry_price = trade.open_rate
+
+            if not pd.isna(ote_lower) and not pd.isna(ote_upper) and entry_price > 0:
+                if trade.is_short:
+                    # Short: stop if price closes ABOVE OTE upper (structural resistance broken)
+                    # Stop distance = (ote_upper - entry_price) / entry_price
+                    stop_dist = (ote_upper - entry_price) / entry_price
+                    if stop_dist > 0:
+                        # Apply floor: don't go below a sensible minimum (avoid getting stopped on tiny breaks)
+                        stop_dist = max(stop_dist, 0.005)   # min 0.5% stop
+                        stop_dist = min(stop_dist, 0.040)  # max 4% stop (cap for fat-finger protection)
+                        from freqtrade.strategy import stoploss_from_open
+                        return stoploss_from_open(stop_dist, current_profit, is_short=True)
+                else:
+                    # Long: stop if price closes BELOW OTE lower (structural support broken)
+                    # Stop distance = (entry_price - ote_lower) / entry_price
+                    stop_dist = (entry_price - ote_lower) / entry_price
+                    if stop_dist > 0:
+                        # Apply floor and ceiling
+                        stop_dist = max(stop_dist, 0.005)   # min 0.5% stop
+                        stop_dist = min(stop_dist, 0.040)  # max 4% stop
+                        from freqtrade.strategy import stoploss_from_open
+                        return stoploss_from_open(stop_dist, current_profit, is_short=False)
+
+        # Fallback: use ATR-based stop if OTE not available
+        atr_pct = entry_row.get('atr_pct')
+        if pd.isna(atr_pct) or atr_pct <= 0:
+            return self.stoploss
         atr_mult = self.get_param('atr_multiplier', pair, self.atr_multiplier.value)
-        
-        # Dynamic SL = ATR multiplier * ATR% (as negative ratio)
-        dynamic_sl = -(atr_mult * entry_atr_pct)
-        
-        # Apply floor and ceiling
-        dynamic_sl = max(dynamic_sl, -0.08)   # Ceiling: don't go above -8% (too wide = catastrophic loss)
-        dynamic_sl = min(dynamic_sl, -0.020)  # Floor: don't go below -2.0% (v0.99.77: REVERT -2.3%→-2.0%). v0.99.76 (-2.3%): 13 TS exits at -2.47% avg = -$116, but R/R 1.2914, 110 trades — WORSE than -2.0% (R/R 1.32, 120 trades). Pattern: -1.5%→22 TS exits, -2.0%→17, -2.3%→13 (but worse R/R + fewer trades). Reverting to -2.0%.
-        
-        # Return as ratio from current_rate perspective
-        # Freqtrade expects: stoploss relative to current_rate (not entry)
-        # But custom_stoploss must return value relative to entry price
-        # so we convert: if current profit is positive, SL from current is less negative
-        # Actually Freqtrade custom_stoploss returns value relative to CURRENT rate
-        # A return of -0.05 means: if current rate drops 5% from now, stop.
-        # But we want entry-based. Use: return stoploss_from_open()
+        dynamic_sl = -(atr_mult * atr_pct)
+        dynamic_sl = max(dynamic_sl, -0.08)
+        dynamic_sl = min(dynamic_sl, -0.020)
         from freqtrade.strategy import stoploss_from_open
         return stoploss_from_open(dynamic_sl, current_profit, is_short=trade.is_short)
+
+    def confirm_trade_entry(self, pair: str, order_type: str, amount: float,
+                            rate: float, time_in_force: str, current_time: datetime,
+                            entry_tag: Optional[str], side: str, **kwargs) -> bool:
+        """
+        Store OTE zone levels at entry time so custom_stoploss can use them.
+        v0.99.78: Structural OTE-zone stop replaces ATR-based stop.
+        """
+        trade = kwargs.get('trade')
+        if trade is None:
+            return True
+
+        dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
+        if len(dataframe) == 0:
+            return True
+
+        trade_open_dt = trade.open_date_utc
+        entry_candles = dataframe[dataframe['date'] <= trade_open_dt]
+        if len(entry_candles) == 0:
+            return True
+
+        entry_row = entry_candles.iloc[-1]
+
+        # Store OTE zone levels relative to entry price
+        # These are used in custom_stoploss to determine structural break
+        if not hasattr(trade, 'custom_info') or trade.custom_info is None:
+            trade.custom_info = {}
+
+        entry_price = rate if rate > 0 else trade.open_rate
+        ote_lower = entry_row.get('ote_lower')
+        ote_upper = entry_row.get('ote_upper')
+
+        if not pd.isna(ote_lower) and not pd.isna(ote_upper) and entry_price > 0:
+            trade.custom_info['ote_lower_pct'] = (entry_price - ote_lower) / entry_price
+            trade.custom_info['ote_upper_pct'] = (ote_upper - entry_price) / entry_price
+            trade.custom_info['ote_lower'] = ote_lower
+            trade.custom_info['ote_upper'] = ote_upper
+
+        return True
 
     def custom_exit(self, pair: str, trade: 'Trade', current_time: datetime, current_rate: float,
                     current_profit: float, **kwargs):
