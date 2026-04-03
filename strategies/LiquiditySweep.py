@@ -12,9 +12,10 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.82
+Version: 0.99.83
 
 Changelog:
+- v0.99.83 (2026-04-03): RAISE early_profit_take 2.0%→2.5%. v0.99.82: 81 trades, R/R=1.18, 61.73% WR BUT time_exit_8h DOMINATES at 39 trades (48%) with 53.85% WR/+0.17% avg — nearly break-even. early_profit_take captured only 10 trades (12%) at +2.42% avg. Hypothesis: 2.0% threshold is too low — winners reversed before reaching it, falling through to time_exit_8h at <3.0%. Raising to 2.5% lets winners develop further. dynamic_tp (~2.7% for BTC) handles the 2.5-3.0% range. Expected: more trades captured by 100% WR exits, fewer time_exit exits, improved R/R toward 1.5.
 - v0.99.82 (2026-04-03): REMOVE XRP/USDT + SOL/USDT from pairlist. v0.99.81 (15m/1H revert): 107 trades, 86% WR, 12.07% profit BUT R/R=0.72 (DANGER — below 0.8 threshold). Winner avg 3:59, loser avg 7:39 — holding time ratio reveals losers held 2× longer than winners. XRP: -$8.45 (66.7% WR, 12 trades), SOL: -$7.37 (72.7% WR, 11 trades). Both negative AND below 0.8 R/R individually. Removing both expected: R/R recovers to ~1.1+, fewer but higher quality trades.
 - v0.99.81 (2026-04-03): REVERT 1H TIMEFRAME → 15m/1H. v0.99.80 (1H/4H): 65 trades, 56.92% WR, R/R=1.0447 — FAILURE. Fewer trades (65 vs 110) and worse R/R (1.04 vs 1.31). time_exit_8h became 75% of exits (49 trades at 48.98% WR, -0.09% avg). 1H timeframe hypothesis REJECTED. Reverting to v0.99.79 baseline (ATR floor -2.0%, time_exit_2_profit=3.0%, R/R=1.31).
 - v0.99.79 (2026-04-03): REVERT OTE-zone stop → ATR floor -2.0%. v0.99.78b (OTE-zone+0.75% buffer): 46 TS exits, R/R=1.0078 — OTE-zone hypothesis REJECTED. The buffer widened the effective stop range, causing 3× more triggers. R/R collapsed 1.31→1.0078. Also: RAISE time_exit_2_profit 2.0%→3.0%. v0.99.78b: 33 time_exit_8h exits (35.5% of trades) at 27.27% WR/-0.63% avg = -$73.46 = dominant loss. Raising to 3.0% routes stale trades to ATR stop instead of time_exit at near-zero. Expected: R/R ≥ 1.3, fewer time_exit exits.
@@ -1421,10 +1422,14 @@ class LiquiditySweep(IStrategy):
         # v0.64.0: REVERT — early_profit at 0.8% (was 1.5% in failed v0.63.0)
         # v0.99.35: RAISE 1.5%→2.0%. Current 1.5% locks in wins at +1.81% avg but
         # trailing_stop_loss still generates 14 losses at -1.89%. Raising to 2.0%
-        # lets winners ride further — dynamic_tp (1.5× ATR) and roi (5%) will
-        # handle bigger moves while 2.0% locks in medium winners.
+        # v0.99.83: RAISE 2.0%→2.5%. v0.99.82 time_exit_8h captured 39 trades (48%) at 53.85% WR/+0.17% avg —
+        # dominant near-zero exits dragging R/R to 1.18. 2.0% fires before winners can develop.
+        # dynamic_tp (~2.7% for BTC) fills 2.5-3.0% gap. 2.5% raises the floor, routes more
+        # to 100% WR exits (early_profit_take/dynamic_tp) instead of time_exit at ~0%.
+        # let winners ride further — dynamic_tp (1.5× ATR) and roi (5%) will
+        # handle bigger moves while 2.5% locks in medium winners.
         trade_duration = (current_time - trade.open_date_utc).total_seconds() / 3600
-        if trade_duration >= 0.75 and current_profit >= 0.020:
+        if trade_duration >= 0.75 and current_profit >= 0.025:
             return "early_profit_take"
         
         # Time-based exit

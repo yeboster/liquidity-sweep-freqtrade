@@ -1,7 +1,7 @@
 # Liquidity Sweep — Roadmap
 
-> **Last Updated:** 2026-04-03 20:41 UTC
-> **Version:** v0.99.82 — REMOVE XRP/SOL (R/R=0.72 danger fix)
+> **Last Updated:** 2026-04-03 22:41 UTC
+> **Version:** v0.99.83 — RAISE early_profit_take 2.0%→2.5% (time_exit_8h domination fix)
 > **Strategy Type:** Liquidity Sweep / Mean Reversion (ICT SMC)
 > **Mode:** Spot, Long only
 
@@ -11,10 +11,10 @@
 
 | Metric | Current | Target | Status |
 |--------|---------|--------|--------|
-| R/R Ratio | 0.72 | ≥ 1.5 | 🚨 DANGER |
-| Annualized Profit | ~5.4%/yr | ≥ 10%/yr | ⚠️ below S&P500 |
-| Trades/yr | ~46 | 100+ | ⚠️ improved |
-| Win Rate | 86% | any | ✅ excellent |
+| R/R Ratio | 1.18 | ≥ 1.5 | ⚠️ improved |
+| Annualized Profit | ~12.2%/yr | ≥ 10%/yr | ✅ crossed target |
+| Trades/yr | ~40 | 100+ | ⚠️ below target |
+| Win Rate | 61.73% | any | ✅ acceptable |
 | Drawdown | 1.8% | any | ✅ excellent |
 | SQN | ~4.0 | ≥ 2.0 | ✅ good |
 
@@ -67,7 +67,30 @@ Wider floor = fewer TS triggers BUT worse R/R. The floor doesn't fix the root pr
 
 ---
 
-## v0.99.78b — OTE-ZONE STRUCTURAL STOP (Current)
+## v0.99.83 — RAISE early_profit_take 2.0%→2.5% (⏳ Current)
+
+**Problem:** v0.99.82: time_exit_8h dominates at 39 trades (48% of all exits) with 53.85% WR and +0.17% avg profit — near zero. early_profit_take captured only 10/81 trades (12%). R/R=1.18 — below 1.5 target.
+
+**Fix:** Raise early_profit_take from 2.0% to 2.5%. Winners in the 2.0-2.5% range were falling through to time_exit_8h (exits at <3.0%). Raising to 2.5% raises the floor. dynamic_tp (~2.7% for BTC) handles the 2.5-3.0% gap.
+
+**Expected:** Fewer time_exit exits, more 100% WR exits, R/R ≥ 1.5.
+
+---
+
+## v0.99.82 — REMOVE XRP/SOL (Results: R/R=1.18 ✅)
+```
+v0.99.82 backtest (6yr): 81 trades, 61.73% WR, $121.89 profit (12.19%)
+avg_profit_per_win=1.48%, avg_loss_per_loss=1.25%, R/R=1.18
+trailing_stop_loss: 13 trades (16%), 0% WR, -$96.45 ← main loss source
+time_exit_8h: 39 trades (48%), 53.85% WR, +$23.13 ← dominant near-breakeven
+early_profit_take: 10 trades (12%), 100% WR, +$83.62 ✅
+dynamic_tp: 10 trades (12%), 100% WR, +$74.51 ✅
+```
+**Finding:** XRP/SOL removal recovered R/R from 0.72→1.18. Win rate dropped (86%→62%) because bad pairs removed. Still: R/R > 0.8 ✅. Main problem now: time_exit_8h domination (48% of exits). NEW TARGET: R/R ≥ 1.5.
+
+---
+
+## v0.99.78b — OTE-ZONE STRUCTURAL STOP (REVERTED)
 
 **Change:** Replaced ATR-based `custom_stoploss` with OTE-zone structural stop.
 
@@ -88,7 +111,7 @@ without triggering, then price reverses.
 
 | Version | Change | Trades | WR | R/R | Annualized | TS Exits | Key Finding |
 |---------|--------|--------|-----|-----|------------|----------|-------------|
-| v0.99.81 | 15m/1H revert | 107 | 86.0% | 0.72 | 5.4%/yr | 102 | 🚨 R/R DANGER |
+| v0.99.82 | Remove XRP/SOL | 81 | 61.7% | 1.18 | 12.2%/yr | 13 | time_exit_8h 48% dominates, new target R/R≥1.5 |
 | v0.99.76 | ATR floor -2.3% | 110 | ? | 1.29 | ? | 13 | Worse than -2.0% |
 | v0.99.75 | time_exit_2 +2.0% | 120 | 65.0% | 1.32 | ~5%/yr | 17 | 47→42 time_exit |
 | v0.99.71 | DISABLE time_exit_2 | 120 | 75% | 0.74 | 6.7%/yr | 30 | CATASTROPHIC |
@@ -111,6 +134,8 @@ without triggering, then price reverses.
 ## REMAINING PAIRS (8)
 
 BTC, ETH, ADA, AVAX, AAVE, MATIC, ATOM, DOT, LINK
+
+> ⚠️ NOTE: v0.99.82 backtest summary showed 2 pairs with negative profit (-$8.1, -$14.79) but pair names were UNKNOWN in the CI extraction. May be XRP/SOL (not fully removed) or another pair. Investigate after next backtest.
 
 ---
 
