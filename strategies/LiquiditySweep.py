@@ -12,11 +12,11 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.80
+Version: 0.99.81
 
 Changelog:
-- v0.99.80 (2026-04-03): TEST 1H TIMEFRAME (experiment #4 from roadmap). Change main timeframe 15m→1h, informative 1h→4h. Expectation: fewer trades (1/4 frequency) but better WR/R/R due to filtered noise. Entry conditions unchanged.
-- v0.99.79 (2026-04-03): REVERT OTE-zone stop → ATR floor -2.0%. v0.99.78b (OTE-zone+0.75% buffer): 46 TS exits, R/R=1.0078 — OTE-zone hypothesis REJECTED. The buffer widened the effective stop range, causing 3× more triggers. R/R collapsed 1.31→1.0078. Also: RAISE time_exit_2_profit 2.0%→3.0%. v0.99.78b: 33 time_exit_8h exits (35.5% of trades) at 27.27% WR/-0.63% avg = -$73.46 = dominant loss. Raising to 3.0% routes stale trades to ATR stop instead of time_exit at near-zero.
+- v0.99.81 (2026-04-03): REVERT 1H TIMEFRAME → 15m/1H. v0.99.80 (1H/4H): 65 trades, 56.92% WR, R/R=1.0447 — FAILURE. Fewer trades (65 vs 110) and worse R/R (1.04 vs 1.31). time_exit_8h became 75% of exits (49 trades at 48.98% WR, -0.09% avg). 1H timeframe hypothesis REJECTED. Reverting to v0.99.79 baseline (ATR floor -2.0%, time_exit_2_profit=3.0%, R/R=1.31).
+- v0.99.79 (2026-04-03): REVERT OTE-zone stop → ATR floor -2.0%. v0.99.78b (OTE-zone+0.75% buffer): 46 TS exits, R/R=1.0078 — OTE-zone hypothesis REJECTED. The buffer widened the effective stop range, causing 3× more triggers. R/R collapsed 1.31→1.0078. Also: RAISE time_exit_2_profit 2.0%→3.0%. v0.99.78b: 33 time_exit_8h exits (35.5% of trades) at 27.27% WR/-0.63% avg = -$73.46 = dominant loss. Raising to 3.0% routes stale trades to ATR stop instead of time_exit at near-zero. Expected: R/R ≥ 1.3, fewer time_exit exits.
 - v0.99.78 (2026-04-03): REPLACE ATR-stop with OTE-ZONE stop. Hypothesis: ATR-based stops trigger on ANY -X% retracement, even within the OTE zone (structural support). Structural stop: exit ONLY when price closes below OTE lower (longs) — the zone support is broken. Stop = 0.5-4% below entry, tied to actual structure. Also store OTE levels in confirm_trade_entry for clean exit reference. time_exit_2 stays enabled. Expected: fewer TS triggers (only real breaks), better R/R.
 - v0.99.77 (2026-04-03): REVERT ATR floor -2.3%→-2.0%. v0.99.76 (-2.3%): 13 TS exits at -2.47% avg = -$116.19, but 110 trades and R/R 1.2914 — WORSE than v0.99.75 (120 trades, R/R 1.3195). The wider floor made individual TS exits worse (-2.47% vs -2.24%) and reduced total trade count. Reverting to -2.0% to restore v0.99.70 baseline (120 trades, R/R 1.32, 17 TS exits).
 - v0.99.75 (2026-04-02): RAISE time_exit_2_profit 1.5%→2.0%. 42 time_exit_8h exits (38% of trades) at 47.62% WR are the #1 exit problem. These stale trades (0% to +2.0% profit at 8h) coast near zero instead of exiting cleanly. Gap: +1.5-2.0% trades bypass time_exit_2 (needs profit < 1.5%) but miss early_profit_take (needs >= 2.0%). Raising to 2.0% = early_profit_take threshold closes the gap. Expected: fewer stale near-zero exits, better R/R.
@@ -743,14 +743,8 @@ class LiquiditySweep(IStrategy):
     use_custom_stoploss = True
 
     # ── Timeframes ────────────────────────────────────────────────────────────
-    # v0.99.80: TEST 1H TIMEFRAME (experiment #4 in roadmap).
-    # Rationale: 15m has structural trade ceiling (~46/yr). 1H may filter noise
-    # better (83% WR was observed on 5m vs 56% on 15m in prior analysis).
-    # Entry signals are same OTE/SMC, just on higher timeframe candles.
-    # Expectation: fewer but higher-quality trades, potentially better WR/R/R.
-    # Trade frequency will drop (1/4 of 15m), but R/R should improve.
-    timeframe = '1h'
-    informative_timeframe = '4h'
+    timeframe = '15m'
+    informative_timeframe = '1h'
     startup_candle_count = 100
 
     # ── Hyperoptable Parameters ───────────────────────────────────────────────
