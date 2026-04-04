@@ -1,7 +1,7 @@
 # Liquidity Sweep — Roadmap
 
-> **Last Updated:** 2026-04-04 09:12 UTC
-> **Version:** v0.99.85 — ATR floor revert -2.5%→-2.0% + REMOVE BTC/LINK (confirmed stable)
+> **Last Updated:** 2026-04-04 17:13 UTC
+> **Version:** v0.99.89 — CONFIRMED: BTC floor-limited, ATR+time_exit changes have ZERO effect
 > **Strategy Type:** Liquidity Sweep / Mean Reversion (ICT SMC)
 > **Mode:** Spot, Long only
 
