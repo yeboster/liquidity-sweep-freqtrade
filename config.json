@@ -40,8 +40,7 @@
     "pair_whitelist": [
       "ETH/USDT",
       "AVAX/USDT",
-      "AAVE/USDT",
-      "DOT/USDT"
+      "AAVE/USDT"
     ],
     "pair_blacklist": []
   },
