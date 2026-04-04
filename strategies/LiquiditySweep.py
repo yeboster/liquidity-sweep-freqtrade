@@ -15,7 +15,7 @@ Author: Jarvis (OpenClaw)
 Version: 0.99.83
 
 Changelog:
-- v0.99.83 (2026-04-03): RAISE early_profit_take 2.0%→2.5%. v0.99.82: 81 trades, R/R=1.18, 61.73% WR BUT time_exit_8h DOMINATES at 39 trades (48%) with 53.85% WR/+0.17% avg — nearly break-even. early_profit_take captured only 10 trades (12%) at +2.42% avg. Hypothesis: 2.0% threshold is too low — winners reversed before reaching it, falling through to time_exit_8h at <3.0%. Raising to 2.5% lets winners develop further. dynamic_tp (~2.7% for BTC) handles the 2.5-3.0% range. Expected: more trades captured by 100% WR exits, fewer time_exit exits, improved R/R toward 1.5.
+- v0.99.84 (2026-04-04): REVERT early_profit_take 2.5%→2.0% + WIDEN ATR floor -2.0%→-2.5%. v0.99.83: RAISE FAILED — 8 trades vs 10 at 2.0%, profit $102 vs $122, R/R 1.09 vs 1.18. early_profit_take 2.5% was too high: winners reversed between 2.0-2.5% and fell through to time_exit_8h. Also: WIDEN ATR floor to -2.5% to reduce premature custom_stoploss triggers (14 TS exits at -2.4% avg in v0.99.83). -2.5% floor gives trades more room to recover before stop fires. Expected: more early_profit_take exits, fewer TS losses, R/R ≥ 1.2.
 - v0.99.82 (2026-04-03): REMOVE XRP/USDT + SOL/USDT from pairlist. v0.99.81 (15m/1H revert): 107 trades, 86% WR, 12.07% profit BUT R/R=0.72 (DANGER — below 0.8 threshold). Winner avg 3:59, loser avg 7:39 — holding time ratio reveals losers held 2× longer than winners. XRP: -$8.45 (66.7% WR, 12 trades), SOL: -$7.37 (72.7% WR, 11 trades). Both negative AND below 0.8 R/R individually. Removing both expected: R/R recovers to ~1.1+, fewer but higher quality trades.
 - v0.99.81 (2026-04-03): REVERT 1H TIMEFRAME → 15m/1H. v0.99.80 (1H/4H): 65 trades, 56.92% WR, R/R=1.0447 — FAILURE. Fewer trades (65 vs 110) and worse R/R (1.04 vs 1.31). time_exit_8h became 75% of exits (49 trades at 48.98% WR, -0.09% avg). 1H timeframe hypothesis REJECTED. Reverting to v0.99.79 baseline (ATR floor -2.0%, time_exit_2_profit=3.0%, R/R=1.31).
 - v0.99.79 (2026-04-03): REVERT OTE-zone stop → ATR floor -2.0%. v0.99.78b (OTE-zone+0.75% buffer): 46 TS exits, R/R=1.0078 — OTE-zone hypothesis REJECTED. The buffer widened the effective stop range, causing 3× more triggers. R/R collapsed 1.31→1.0078. Also: RAISE time_exit_2_profit 2.0%→3.0%. v0.99.78b: 33 time_exit_8h exits (35.5% of trades) at 27.27% WR/-0.63% avg = -$73.46 = dominant loss. Raising to 3.0% routes stale trades to ATR stop instead of time_exit at near-zero. Expected: R/R ≥ 1.3, fewer time_exit exits.
@@ -1327,7 +1327,7 @@ class LiquiditySweep(IStrategy):
         atr_mult = self.get_param('atr_multiplier', pair, self.atr_multiplier.value)
         dynamic_sl = -(atr_mult * atr_pct)
         dynamic_sl = max(dynamic_sl, -0.08)
-        dynamic_sl = min(dynamic_sl, -0.020)  # Floor: -2.0% (v0.99.79 revert from OTE-zone)
+        dynamic_sl = min(dynamic_sl, -0.025)  # Floor: -2.5% (v0.99.84: widen from -2.0% to reduce premature TS exits)
         from freqtrade.strategy import stoploss_from_open
         return stoploss_from_open(dynamic_sl, current_profit, is_short=trade.is_short)
 
@@ -1429,7 +1429,7 @@ class LiquiditySweep(IStrategy):
         # let winners ride further — dynamic_tp (1.5× ATR) and roi (5%) will
         # handle bigger moves while 2.5% locks in medium winners.
         trade_duration = (current_time - trade.open_date_utc).total_seconds() / 3600
-        if trade_duration >= 0.75 and current_profit >= 0.025:
+        if trade_duration >= 0.75 and current_profit >= 0.020:
             return "early_profit_take"
         
         # Time-based exit
