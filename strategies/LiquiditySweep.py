@@ -12,9 +12,10 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.89
+Version: 0.99.91
 
 Changelog:
+- v0.99.91 (2026-04-04): TIGHTEN ATR floor -2.0%→-1.5%. v0.99.90 (3 pairs, ETH/AVAX/AAVE): 5 custom_stoploss exits, 0% WR, avg -2.41% = -$41.25. These 5 trades are all losers. Tightening floor: more triggers but smaller avg loss (target ~-1.2-1.5%). Goal: R/R from 1.18 → 1.5.
 - v0.99.90 (2026-04-04): REMOVE DOT/USDT from pair_whitelist. v0.99.89 (atr_mult=3.0): ZERO effect vs v0.99.85 — BTC already floor-limited at -2.0%. time_exit_2_profit=2.0% also zero effect. Confirmed: structural parameters have hit a ceiling. Backtest summary paired data: DOT was the single negative pair (-$8.38, 54.55% WR, 11 trades). Removing it should eliminate the 5 custom_stoploss exits that were dragging R/R down. Remaining pairs: ETH, AVAX, AAVE (all positive).
 - v0.99.89 (2026-04-04): LOWER atr_multiplier 5.0→3.0. v0.99.88: time_exit_2_profit=2.0% had ZERO effect — results identical to v0.99.85 (47 trades, R/R=1.26). v0.99.87: atr_mult=5.0 also zero effect. BTC is floor-limited at -2.0% (floor tighter than any ATR calc). Trying 3.0×: tighter ATR stops for non-BTC pairs (ETH/AVAX/AAVE/DOT) may catch reversals earlier, reducing avg loss on the 5 custom_stoploss exits (-$41.22). Also check if DOT needs removal (-$8.38 in paired data from CI summary). v0.99.87 backtest: atr_mult=5.0 had ZERO effect — results identical to v0.99.85 (47 trades, R/R=1.26). BTC already floor-limited at -2.0%. Next roadmap item: time_exit_2 Profit Floor Tuning. Current: time_exit_2_profit=3.0% is too high — early_profit_take (+2.0%, 45min) captures all trades in 2.0-3.0% range, so time_exit_8h fires only on stale near-zero trades (+0.16% avg). Lowering to 2.0%: if trade didn't exit via early_profit_take (not enough momentum in 45min) but reaches +2.0% at 8h → exits cleanly. Trades at 0-2% → falls through to stoploss. Expected: more trades exit at 2.0% (vs near-zero), better R/R split.
 - v0.99.85 (2026-04-04): REVERT ATR floor -2.5%→-2.0%. v0.99.84 (floor=-2.5%): R/R=1.12, TS avg=-$8.71 — WORSE than v0.99.82 (R/R=1.18, TS avg=-$7.42). The wider floor lets losers run further before stopping, making each TS loss bigger. Reverting to -2.0% restores v0.99.82 R/R baseline. Also: REMOVE BTC/USDT (-$15.51, 42.86% WR) and LINK/USDT (-$9.78, 54.55% WR) — both significantly negative, dragging down overall PF. Keeping: ETH, AAVE, AVAX, DOT (all positive).
@@ -620,7 +621,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.99.85"
+    STRATEGY_VERSION = "0.99.91"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
@@ -1330,7 +1331,7 @@ class LiquiditySweep(IStrategy):
         atr_mult = self.get_param('atr_multiplier', pair, self.atr_multiplier.value)
         dynamic_sl = -(atr_mult * atr_pct)
         dynamic_sl = max(dynamic_sl, -0.08)
-        dynamic_sl = min(dynamic_sl, -0.020)  # Floor: -2.0% (v0.99.85: revert -2.5%→-2.0% — wider floor makes TS losses worse)
+        dynamic_sl = min(dynamic_sl, -0.015)  # Floor: -1.5% (v0.99.91: tighten from -2.0% — 5 TS exits at -2.41% avg = all losers. Tighter floor = more triggers but smaller avg loss)
         from freqtrade.strategy import stoploss_from_open
         return stoploss_from_open(dynamic_sl, current_profit, is_short=trade.is_short)
 
