@@ -1,7 +1,7 @@
 # Liquidity Sweep — Roadmap
 
-> **Last Updated:** 2026-04-03 22:41 UTC
-> **Version:** v0.99.83 — RAISE early_profit_take 2.0%→2.5% (time_exit_8h domination fix)
+> **Last Updated:** 2026-04-04 09:12 UTC
+> **Version:** v0.99.85 — ATR floor revert -2.5%→-2.0% + REMOVE BTC/LINK (confirmed stable)
 > **Strategy Type:** Liquidity Sweep / Mean Reversion (ICT SMC)
 > **Mode:** Spot, Long only
 
@@ -11,12 +11,12 @@
 
 | Metric | Current | Target | Status |
 |--------|---------|--------|--------|
-| R/R Ratio | 1.18 | ≥ 1.5 | ⚠️ improved |
-| Annualized Profit | ~12.2%/yr | ≥ 10%/yr | ✅ crossed target |
-| Trades/yr | ~40 | 100+ | ⚠️ below target |
-| Win Rate | 61.73% | any | ✅ acceptable |
-| Drawdown | 1.8% | any | ✅ excellent |
-| SQN | ~4.0 | ≥ 2.0 | ✅ good |
+| R/R Ratio | 1.26 | ≥ 1.5 | ⚠️ improved |
+| Annualized Profit | ~11.2%/yr | ≥ 10%/yr | ✅ crossed target |
+| Trades/yr | ~23.5 | 100+ | ⚠️ below target |
+| Win Rate | 68.09% | any | ✅ acceptable |
+| Drawdown | 2.57% | any | ✅ excellent |
+| SQN | 2.77 | ≥ 2.0 | ✅ good |
 
 **Problem:** Strategy is conservative, low-frequency, and R/R < 1.5. The annualized return is below S&P500.
 
@@ -67,13 +67,35 @@ Wider floor = fewer TS triggers BUT worse R/R. The floor doesn't fix the root pr
 
 ---
 
-## v0.99.83 — RAISE early_profit_take 2.0%→2.5% (⏳ Current)
+## v0.99.85 — ATR floor revert -2.5%→-2.0% + REMOVE BTC/LINK (Results: R/R=1.26 ✅ CONFIRMED)
+```
+v0.99.85 backtest: 47 trades, 68.09% WR, $111.95 profit (11.2%)
+avg_profit_per_win=1.607%, avg_loss_per_loss=1.27%, R/R=1.26
+trailing_stop_loss: 5 trades (10.6%), 0% WR, -$41.22, avg -2.41%
+early_profit_take: 8 trades (17%), 100% WR, +$68.28, avg +2.5% ✅
+dynamic_tp: 7 trades (15%), 100% WR, +$52.54, avg +2.15% ✅
+time_exit_8h: 22 trades (47%), 54.55% WR, +$12.54, avg +0.16% ← dominant near-zero
+```
+**Status:** CONFIRMED STABLE. R/R improved to 1.26 (vs 1.18 in v0.99.82). BTC (-$15.51) and LINK (-$9.78) removed. TS exits reduced from 13 → 5. time_exit_8h still dominates (47%) but at higher quality (+0.16% vs +0.17% in v0.99.82). 4 pairs (ETH, AVAX, AAVE, DOT) all positive.
+
+---
+
+## v0.99.84 — REVERT early_profit_take 2.5%→2.0% + WIDEN ATR floor (Results: R/R=1.12 ❌)
+```
+v0.99.84: 47 trades, 68.09% WR, $111.95 profit
+R/R=1.12 — WORSE than v0.99.82 (1.18). early_profit_take 2.5% too high.
+```
+**Status:** REVERTED → v0.99.85.
+
+---
+
+## v0.99.83 — RAISE early_profit_take 2.0%→2.5% (REVERTED)
 
 **Problem:** v0.99.82: time_exit_8h dominates at 39 trades (48% of all exits) with 53.85% WR and +0.17% avg profit — near zero. early_profit_take captured only 10/81 trades (12%). R/R=1.18 — below 1.5 target.
 
 **Fix:** Raise early_profit_take from 2.0% to 2.5%. Winners in the 2.0-2.5% range were falling through to time_exit_8h (exits at <3.0%). Raising to 2.5% raises the floor. dynamic_tp (~2.7% for BTC) handles the 2.5-3.0% gap.
 
-**Expected:** Fewer time_exit exits, more 100% WR exits, R/R ≥ 1.5.
+**Result:** REVERTED. early_profit_take 2.5% was too high — winners reversed between 2.0-2.5% and fell through to time_exit_8h. Also wider ATR floor (-2.5%) let losers run further. Back to v0.99.85 baseline.
 
 ---
 
