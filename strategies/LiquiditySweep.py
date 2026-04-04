@@ -12,10 +12,10 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.88
+Version: 0.99.89
 
 Changelog:
-- v0.99.88 (2026-04-04): LOWER time_exit_2_profit 3.0%→2.0%. v0.99.87 backtest: atr_mult=5.0 had ZERO effect — results identical to v0.99.85 (47 trades, R/R=1.26). BTC already floor-limited at -2.0%. Next roadmap item: time_exit_2 Profit Floor Tuning. Current: time_exit_2_profit=3.0% is too high — early_profit_take (+2.0%, 45min) captures all trades in 2.0-3.0% range, so time_exit_8h fires only on stale near-zero trades (+0.16% avg). Lowering to 2.0%: if trade didn't exit via early_profit_take (not enough momentum in 45min) but reaches +2.0% at 8h → exits cleanly. Trades at 0-2% → falls through to stoploss. Expected: more trades exit at 2.0% (vs near-zero), better R/R split.
+- v0.99.89 (2026-04-04): LOWER atr_multiplier 5.0→3.0. v0.99.88: time_exit_2_profit=2.0% had ZERO effect — results identical to v0.99.85 (47 trades, R/R=1.26). v0.99.87: atr_mult=5.0 also zero effect. BTC is floor-limited at -2.0% (floor tighter than any ATR calc). Trying 3.0×: tighter ATR stops for non-BTC pairs (ETH/AVAX/AAVE/DOT) may catch reversals earlier, reducing avg loss on the 5 custom_stoploss exits (-$41.22). Also check if DOT needs removal (-$8.38 in paired data from CI summary). v0.99.87 backtest: atr_mult=5.0 had ZERO effect — results identical to v0.99.85 (47 trades, R/R=1.26). BTC already floor-limited at -2.0%. Next roadmap item: time_exit_2 Profit Floor Tuning. Current: time_exit_2_profit=3.0% is too high — early_profit_take (+2.0%, 45min) captures all trades in 2.0-3.0% range, so time_exit_8h fires only on stale near-zero trades (+0.16% avg). Lowering to 2.0%: if trade didn't exit via early_profit_take (not enough momentum in 45min) but reaches +2.0% at 8h → exits cleanly. Trades at 0-2% → falls through to stoploss. Expected: more trades exit at 2.0% (vs near-zero), better R/R split.
 - v0.99.85 (2026-04-04): REVERT ATR floor -2.5%→-2.0%. v0.99.84 (floor=-2.5%): R/R=1.12, TS avg=-$8.71 — WORSE than v0.99.82 (R/R=1.18, TS avg=-$7.42). The wider floor lets losers run further before stopping, making each TS loss bigger. Reverting to -2.0% restores v0.99.82 R/R baseline. Also: REMOVE BTC/USDT (-$15.51, 42.86% WR) and LINK/USDT (-$9.78, 54.55% WR) — both significantly negative, dragging down overall PF. Keeping: ETH, AAVE, AVAX, DOT (all positive).
 - v0.99.84 (2026-04-04): REVERT early_profit_take 2.5%→2.0% + WIDEN ATR floor -2.0%→-2.5%. v0.99.83: RAISE FAILED — 8 trades vs 10 at 2.0%, profit $102 vs $122, R/R 1.09 vs 1.18. early_profit_take 2.5% was too high: winners reversed between 2.0-2.5% and fell through to time_exit_8h. Also: WIDEN ATR floor to -2.5% to reduce premature custom_stoploss triggers (14 TS exits at -2.4% avg in v0.99.83). -2.5% floor gives trades more room to recover before stop fires. Expected: more early_profit_take exits, fewer TS losses, R/R ≥ 1.2.
 - v0.99.82 (2026-04-03): REMOVE XRP/USDT + SOL/USDT from pairlist. v0.99.81 (15m/1H revert): 107 trades, 86% WR, 12.07% profit BUT R/R=0.72 (DANGER — below 0.8 threshold). Winner avg 3:59, loser avg 7:39 — holding time ratio reveals losers held 2× longer than winners. XRP: -$8.45 (66.7% WR, 12 trades), SOL: -$7.37 (72.7% WR, 11 trades). Both negative AND below 0.8 R/R individually. Removing both expected: R/R recovers to ~1.1+, fewer but higher quality trades.
@@ -768,7 +768,7 @@ class LiquiditySweep(IStrategy):
     # v0.34.0: ATR Multiplier increase to 2.0x (from 1.5x)
     # The avg TSL loss in v0.29.0 was -1.61% vs avg win +0.57%. Loosening SL
     # gives institutional reversals room to breathe.
-    atr_multiplier = DecimalParameter(1.0, 6.0, default=5.0, space="buy", optimize=True)  # v0.99.87: 4.0→5.0 — no effect (BTC floor-limited). Keep at 5.0.
+    atr_multiplier = DecimalParameter(1.0, 6.0, default=3.0, space="buy", optimize=True)  # v0.99.89: 5.0→3.0 — v0.99.88 (atr_mult=5.0) and v0.99.87 (time_exit_2=2.0%) both had zero effect. BTC is floor-limited at -2.0% (floor tighter than any ATR calc). Try 3.0×: tighter ATR stops for non-BTC pairs may reduce avg loss on custom_stoploss exits.
     atr_period = IntParameter(10, 20, default=14, space="buy", optimize=False)
     
     # Entry filters
