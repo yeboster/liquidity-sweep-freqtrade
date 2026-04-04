@@ -12,10 +12,10 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.87
+Version: 0.99.88
 
 Changelog:
-- v0.99.87 (2026-04-04): RAISE atr_multiplier 4.0→5.0. v0.99.86 CONFIRMED stable: 47 trades, 68.09% WR, R/R=1.26, 11.2%/yr. TS exits only 10.6% (below 30% threshold). No fix needed, but trying roadmap item #3: ATR Multiplier Tuning. Hypothesis: atr_mult=5.0 gives more room to dynamic SL for pairs with higher atr_pct (e.g., ETH/AVAX/AAVE/DOT). BTC is already floor-limited at -2.0% anyway. Dynamic TP threshold increases proportionally (1.5×5.0×atr_pct=7.5×atr_pct), but since BTC rarely reaches dynamic_tp, the main effect is wider SL for non-BTC pairs. Expected: similar trade count, potentially fewer SL exits for ETH-family pairs.
+- v0.99.88 (2026-04-04): LOWER time_exit_2_profit 3.0%→2.0%. v0.99.87 backtest: atr_mult=5.0 had ZERO effect — results identical to v0.99.85 (47 trades, R/R=1.26). BTC already floor-limited at -2.0%. Next roadmap item: time_exit_2 Profit Floor Tuning. Current: time_exit_2_profit=3.0% is too high — early_profit_take (+2.0%, 45min) captures all trades in 2.0-3.0% range, so time_exit_8h fires only on stale near-zero trades (+0.16% avg). Lowering to 2.0%: if trade didn't exit via early_profit_take (not enough momentum in 45min) but reaches +2.0% at 8h → exits cleanly. Trades at 0-2% → falls through to stoploss. Expected: more trades exit at 2.0% (vs near-zero), better R/R split.
 - v0.99.85 (2026-04-04): REVERT ATR floor -2.5%→-2.0%. v0.99.84 (floor=-2.5%): R/R=1.12, TS avg=-$8.71 — WORSE than v0.99.82 (R/R=1.18, TS avg=-$7.42). The wider floor lets losers run further before stopping, making each TS loss bigger. Reverting to -2.0% restores v0.99.82 R/R baseline. Also: REMOVE BTC/USDT (-$15.51, 42.86% WR) and LINK/USDT (-$9.78, 54.55% WR) — both significantly negative, dragging down overall PF. Keeping: ETH, AAVE, AVAX, DOT (all positive).
 - v0.99.84 (2026-04-04): REVERT early_profit_take 2.5%→2.0% + WIDEN ATR floor -2.0%→-2.5%. v0.99.83: RAISE FAILED — 8 trades vs 10 at 2.0%, profit $102 vs $122, R/R 1.09 vs 1.18. early_profit_take 2.5% was too high: winners reversed between 2.0-2.5% and fell through to time_exit_8h. Also: WIDEN ATR floor to -2.5% to reduce premature custom_stoploss triggers (14 TS exits at -2.4% avg in v0.99.83). -2.5% floor gives trades more room to recover before stop fires. Expected: more early_profit_take exits, fewer TS losses, R/R ≥ 1.2.
 - v0.99.82 (2026-04-03): REMOVE XRP/USDT + SOL/USDT from pairlist. v0.99.81 (15m/1H revert): 107 trades, 86% WR, 12.07% profit BUT R/R=0.72 (DANGER — below 0.8 threshold). Winner avg 3:59, loser avg 7:39 — holding time ratio reveals losers held 2× longer than winners. XRP: -$8.45 (66.7% WR, 12 trades), SOL: -$7.37 (72.7% WR, 11 trades). Both negative AND below 0.8 R/R individually. Removing both expected: R/R recovers to ~1.1+, fewer but higher quality trades.
@@ -768,7 +768,7 @@ class LiquiditySweep(IStrategy):
     # v0.34.0: ATR Multiplier increase to 2.0x (from 1.5x)
     # The avg TSL loss in v0.29.0 was -1.61% vs avg win +0.57%. Loosening SL
     # gives institutional reversals room to breathe.
-    atr_multiplier = DecimalParameter(1.0, 6.0, default=5.0, space="buy", optimize=True)  # v0.99.87: 4.0→5.0 — roadmap ATR Multiplier Tuning. Widens dynamic SL for non-BTC pairs (BTC already floor-limited at -2.0%).
+    atr_multiplier = DecimalParameter(1.0, 6.0, default=5.0, space="buy", optimize=True)  # v0.99.87: 4.0→5.0 — no effect (BTC floor-limited). Keep at 5.0.
     atr_period = IntParameter(10, 20, default=14, space="buy", optimize=False)
     
     # Entry filters
@@ -824,7 +824,7 @@ class LiquiditySweep(IStrategy):
     
     time_exit_2_enabled = CategoricalParameter([True, False], default=True, space="sell", optimize=False)  # v0.99.74: RE-ENABLED — v0.99.71 (disabled): 32 TS exits, R/R 0.85 CATASTROPHIC. v0.99.70 (enabled, floor=-2.0%): 17 TS exits, R/R 1.32. time_exit_2 handles stale trades at 8h before custom_stoploss has to exit them at -2.0%. Keeping it enabled is essential alongside -2.0% floor.
     time_exit_2_hours = IntParameter(5, 12, default=8, space="sell", optimize=False)
-    time_exit_2_profit = DecimalParameter(0.0, 0.04, default=0.030, space="sell", optimize=False)  # v0.99.79: RAISE 2.0%→3.0%. v0.99.78b: 33 time_exit_8h exits (35.5% of trades!) at 27.27% WR / -$73.46 = THE dominant loss source. These stale trades (0-2% profit at 8h) coast near zero. Raising to 3.0% means: if a trade has +3% profit at 8h, it exits cleanly (good). If it has <3%, custom_stoploss (ATR -2.0%) handles it instead of time_exit at near-zero. Expected: fewer near-zero time_exit exits, better R/R split.
+    time_exit_2_profit = DecimalParameter(0.0, 0.04, default=0.020, space="sell", optimize=False)  # v0.99.88: 3.0%→2.0%. v0.99.87: ATR mult had zero effect. Lowering time_exit_2 from 3.0% to 2.0% — early_profit_take (+2.0%) captures trades at 45min so time_exit_8h at 3.0% never fires; only catches stale near-zero trades. At 2.0%: trades that didn't build enough momentum in 45min but reach +2.0% at 8h exit cleanly (good). Trades <2.0% fall through to stoploss. Expected: fewer near-zero time_exit exits, better avg profit per trade.
 
     # ── Plotting ──────────────────────────────────────────────────────────────
     plot_config = {
