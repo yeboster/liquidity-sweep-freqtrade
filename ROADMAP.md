@@ -169,10 +169,20 @@ without triggering, then price reverses.
 | SOL/USDT | v0.99.82 | 72.7% WR, -$7.37, 11 trades, R/R < 0.8 |
 | UNI/USDT | v0.99.78 | 42.86% WR, -$15.17, R/R < 0.8 |
 | NEAR/USDT | v0.99.54 | 33.3% WR, -$3.68, 3 trades |
+| AVAX/USDT | v0.99.93 | 54.55% WR, -$8.44, 11 trades, R/R=0.72 |
 
 ---
 
-## REMAINING PAIRS (8)
+## REMAINING PAIRS (2)
+
+| Pair | Trades | WR | Profit | Notes |
+|------|--------|-----|--------|-------|
+| AAVE/USDT | 16 | 81.25% | $91.21 | ✅ Dominant performer |
+| ETH/USDT | 10 | 70.0% | $15.73 | ✅ Positive |
+
+> ⚠️ Only 2 pairs remain. Frequency ceiling confirmed at ~26 trades/yr (was 37 with 3 pairs).
+
+BTC, ETH, ADA, AVAX, AAVE, MATIC, ATOM, DOT, LINK
 
 BTC, ETH, ADA, AVAX, AAVE, MATIC, ATOM, DOT, LINK
 
@@ -226,3 +236,19 @@ Try adding one mid-cap with similar volatility profile to existing pairs.
 2. **Should we pivot?** The OTE-zone stop is the last structural fix attempt. If it doesn't work, the strategy may need a fundamental rethink (trend-following vs mean-reversion, or different timeframe).
 
 3. **What's the real goal?** Income? Capital growth? Learning? The answer changes whether ~5%/yr with 1.8% DD is acceptable.
+
+## v0.99.93 — REMOVE AVAX/USDT (Results: R/R=1.62 ✅ TARGET CROSSED!)
+```
+v0.99.93 backtest (2 pairs, ETH/AAVE): 26 trades, 76.92% WR, $106.94 profit (10.69%)
+avg_profit_per_win=$1.90, avg_loss_per_loss=$1.18, R/R=1.62 ✅ (crossed 1.5 target!)
+trailing_stop_loss: 2 trades (7.7%), 0% WR, -$15.16, avg -2.23%
+early_profit_take: 7 trades (27%), 100% WR, +$60.93, avg +2.55% ✅
+dynamic_tp: 5 trades (19%), 100% WR, +$41.36, avg +2.38% ✅
+time_exit_8h: 11 trades (42%), 63.64% WR, +$16.90, avg +0.44%
+Pairs: AAVE ($91.21, 81.25% WR, 16 trades), ETH ($15.73, 70% WR, 10 trades)
+```
+**Finding:** Removing AVAX (54.55% WR, -$8.44, R/R=0.72) improved R/R from 1.18→1.62.
+Trade frequency dropped 37→26 trades/yr but quality improved significantly.
+AAVE is the dominant performer ($91 of $107 total profit).
+**R/R TARGET (≥1.5) CROSSED ✅**
+
