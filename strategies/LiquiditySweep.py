@@ -12,9 +12,10 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.94
+Version: 0.99.95
 
 Changelog:
+- v0.99.95 (2026-04-05): REVERT time_exit_2 6h/1.5%→8h/2.0%. v0.99.94 (6h/1.5%): R/R dropped 1.62→1.29, trades 37→26. The shorter time window and lower profit floor caught weaker trades that reversed or fell through to stoploss. Restoring 8h/2.0% baseline from v0.99.93.
 - v0.99.94 (2026-04-05): LOWER time_exit_2_profit 2.0%→1.5% + time_exit_2_hours 8h→6h. v0.99.93: time_exit_8h = 11 trades (42% of exits), 63.64% WR, avg +0.44% — mixed quality. early_profit_take at 2.0% and time_exit_2_profit at 2.0% are competing at the same threshold. Lowering time_exit to 1.5%: catches stale trades earlier (1.5-2.0% range exits via time_exit instead of consolidating to stoploss), while early_profit_take at 2.0% still captures the stronger winners. Also shortening from 8h→6h: less time for losers to degrade. Expected: more clean exits, better avg_profit_per_trade.
 - v0.99.92 (2026-04-05): REVERT ATR floor -1.5%→-2.0%. v0.99.91 (floor=-1.5%): 7 TS exits at -2.06% avg, R/R=1.15 — WORSE than v0.99.90 (5 exits at -2.41%, R/R=1.26). Tighter floor = more triggers but NOT smaller losses. Pattern confirmed: -1.5% floor is too tight. Restoring -2.0% baseline.
 - v0.99.91 (2026-04-04): TIGHTEN ATR floor -2.0%→-1.5%. v0.99.90 (3 pairs, ETH/AVAX/AAVE): 5 custom_stoploss exits, 0% WR, avg -2.41% = -$41.25. These 5 trades are all losers. Tightening floor: more triggers but smaller avg loss (target ~-1.2-1.5%). Goal: R/R from 1.18 → 1.5.
@@ -827,8 +828,8 @@ class LiquiditySweep(IStrategy):
     time_exit_1_profit = DecimalParameter(-0.02, 0.01, default=0.0, space="sell", optimize=True)
     
     time_exit_2_enabled = CategoricalParameter([True, False], default=True, space="sell", optimize=False)  # v0.99.74: RE-ENABLED — v0.99.71 (disabled): 32 TS exits, R/R 0.85 CATASTROPHIC. v0.99.70 (enabled, floor=-2.0%): 17 TS exits, R/R 1.32. time_exit_2 handles stale trades at 8h before custom_stoploss has to exit them at -2.0%. Keeping it enabled is essential alongside -2.0% floor.
-    time_exit_2_hours = IntParameter(5, 12, default=6, space="sell", optimize=False)
-    time_exit_2_profit = DecimalParameter(0.0, 0.04, default=0.015, space="sell", optimize=False)  # v0.99.88: 3.0%→2.0%. v0.99.87: ATR mult had zero effect. Lowering time_exit_2 from 3.0% to 2.0% — early_profit_take (+2.0%) captures trades at 45min so time_exit_8h at 3.0% never fires; only catches stale near-zero trades. At 2.0%: trades that didn't build enough momentum in 45min but reach +2.0% at 8h exit cleanly (good). Trades <2.0% fall through to stoploss. Expected: fewer near-zero time_exit exits, better avg profit per trade.
+    time_exit_2_hours = IntParameter(5, 12, default=8, space="sell", optimize=False)
+    time_exit_2_profit = DecimalParameter(0.0, 0.04, default=0.020, space="sell", optimize=False)  # v0.99.88: 3.0%→2.0%. v0.99.87: ATR mult had zero effect. Lowering time_exit_2 from 3.0% to 2.0% — early_profit_take (+2.0%) captures trades at 45min so time_exit_8h at 3.0% never fires; only catches stale near-zero trades. At 2.0%: trades that didn't build enough momentum in 45min but reach +2.0% at 8h exit cleanly (good). Trades <2.0% fall through to stoploss. Expected: fewer near-zero time_exit exits, better avg profit per trade.
 
     # ── Plotting ──────────────────────────────────────────────────────────────
     plot_config = {
