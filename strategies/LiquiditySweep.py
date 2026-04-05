@@ -15,6 +15,7 @@ Author: Jarvis (OpenClaw)
 Version: 0.99.91
 
 Changelog:
+- v0.99.92 (2026-04-05): REVERT ATR floor -1.5%→-2.0%. v0.99.91 (floor=-1.5%): 7 TS exits at -2.06% avg, R/R=1.15 — WORSE than v0.99.90 (5 exits at -2.41%, R/R=1.26). Tighter floor = more triggers but NOT smaller losses. Pattern confirmed: -1.5% floor is too tight. Restoring -2.0% baseline.
 - v0.99.91 (2026-04-04): TIGHTEN ATR floor -2.0%→-1.5%. v0.99.90 (3 pairs, ETH/AVAX/AAVE): 5 custom_stoploss exits, 0% WR, avg -2.41% = -$41.25. These 5 trades are all losers. Tightening floor: more triggers but smaller avg loss (target ~-1.2-1.5%). Goal: R/R from 1.18 → 1.5.
 - v0.99.90 (2026-04-04): REMOVE DOT/USDT from pair_whitelist. v0.99.89 (atr_mult=3.0): ZERO effect vs v0.99.85 — BTC already floor-limited at -2.0%. time_exit_2_profit=2.0% also zero effect. Confirmed: structural parameters have hit a ceiling. Backtest summary paired data: DOT was the single negative pair (-$8.38, 54.55% WR, 11 trades). Removing it should eliminate the 5 custom_stoploss exits that were dragging R/R down. Remaining pairs: ETH, AVAX, AAVE (all positive).
 - v0.99.89 (2026-04-04): LOWER atr_multiplier 5.0→3.0. v0.99.88: time_exit_2_profit=2.0% had ZERO effect — results identical to v0.99.85 (47 trades, R/R=1.26). v0.99.87: atr_mult=5.0 also zero effect. BTC is floor-limited at -2.0% (floor tighter than any ATR calc). Trying 3.0×: tighter ATR stops for non-BTC pairs (ETH/AVAX/AAVE/DOT) may catch reversals earlier, reducing avg loss on the 5 custom_stoploss exits (-$41.22). Also check if DOT needs removal (-$8.38 in paired data from CI summary). v0.99.87 backtest: atr_mult=5.0 had ZERO effect — results identical to v0.99.85 (47 trades, R/R=1.26). BTC already floor-limited at -2.0%. Next roadmap item: time_exit_2 Profit Floor Tuning. Current: time_exit_2_profit=3.0% is too high — early_profit_take (+2.0%, 45min) captures all trades in 2.0-3.0% range, so time_exit_8h fires only on stale near-zero trades (+0.16% avg). Lowering to 2.0%: if trade didn't exit via early_profit_take (not enough momentum in 45min) but reaches +2.0% at 8h → exits cleanly. Trades at 0-2% → falls through to stoploss. Expected: more trades exit at 2.0% (vs near-zero), better R/R split.
@@ -1331,7 +1332,7 @@ class LiquiditySweep(IStrategy):
         atr_mult = self.get_param('atr_multiplier', pair, self.atr_multiplier.value)
         dynamic_sl = -(atr_mult * atr_pct)
         dynamic_sl = max(dynamic_sl, -0.08)
-        dynamic_sl = min(dynamic_sl, -0.015)  # Floor: -1.5% (v0.99.91: tighten from -2.0% — 5 TS exits at -2.41% avg = all losers. Tighter floor = more triggers but smaller avg loss)
+        dynamic_sl = min(dynamic_sl, -0.020)  # Floor: -2.0% (v0.99.92: revert -1.5%→-2.0%. v0.99.91: 7 TS exits at -2.06% avg, R/R=1.15 — tighter floor FAILED)
         from freqtrade.strategy import stoploss_from_open
         return stoploss_from_open(dynamic_sl, current_profit, is_short=trade.is_short)
 
