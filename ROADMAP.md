@@ -1,7 +1,7 @@
 # Liquidity Sweep — Roadmap
 
 > **Last Updated:** 2026-04-05 20:56 UTC
-> **Version:** v0.99.97 — NO-CHANGE CONFIRMATION (Results: 26 trades, 76.92% WR, 10.69% profit, R/R=1.62 ✅ ALL TARGETS MET)
+> **Version:** v0.99.98 — NO-CHANGE CONFIRMATION CONFIRMATION (Results: 26 trades, 76.92% WR, 10.69% profit, R/R=1.62 ✅ ALL TARGETS MET)
 > **Strategy Type:** Liquidity Sweep / Mean Reversion (ICT SMC)
 > **Mode:** Spot, Long only
 

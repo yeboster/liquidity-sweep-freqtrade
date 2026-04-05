@@ -12,9 +12,10 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.97
+Version: 0.99.98
 
 Changelog:
+- v0.99.98 (2026-04-05):
 - v0.99.97 (2026-04-05): NO-CHANGE CONFIRMATION. No strategy change applied. Backtest confirms stable baseline v0.99.96 results: R/R=1.62, WR=76.92%, 26 trades, $106.94 profit. All targets crossed. No pairs to remove.
 - v0.99.96 (2026-04-05): NO-CHANGE CONFIRMATION. No strategy change applied. Backtest confirms stable baseline v0.99.95 results: R/R=1.62, WR=76.92%, 26 trades, $106.94 profit. All targets crossed. No pairs to remove.
 - v0.99.95 (2026-04-05): REVERT time_exit_2 6h/1.5%→8h/2.0%. v0.99.94 (6h/1.5%): R/R dropped 1.62→1.29, trades 37→26. The shorter time window and lower profit floor caught weaker trades that reversed or fell through to stoploss. Restoring 8h/2.0% baseline from v0.99.93.
