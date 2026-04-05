@@ -12,9 +12,10 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.91
+Version: 0.99.93
 
 Changelog:
+- v0.99.93 (2026-04-05): REMOVE AVAX/USDT from pair_whitelist. v0.99.92 backtest (3 pairs, 6yr): AVAX = 11 trades, 54.55% WR, -$8.44 profit, R/R=0.72 — significantly negative. Only 2 pairs remain (ETH, AAVE). Expected: R/R improves, frequency drops (~26→~20 trades/yr).
 - v0.99.92 (2026-04-05): REVERT ATR floor -1.5%→-2.0%. v0.99.91 (floor=-1.5%): 7 TS exits at -2.06% avg, R/R=1.15 — WORSE than v0.99.90 (5 exits at -2.41%, R/R=1.26). Tighter floor = more triggers but NOT smaller losses. Pattern confirmed: -1.5% floor is too tight. Restoring -2.0% baseline.
 - v0.99.91 (2026-04-04): TIGHTEN ATR floor -2.0%→-1.5%. v0.99.90 (3 pairs, ETH/AVAX/AAVE): 5 custom_stoploss exits, 0% WR, avg -2.41% = -$41.25. These 5 trades are all losers. Tightening floor: more triggers but smaller avg loss (target ~-1.2-1.5%). Goal: R/R from 1.18 → 1.5.
 - v0.99.90 (2026-04-04): REMOVE DOT/USDT from pair_whitelist. v0.99.89 (atr_mult=3.0): ZERO effect vs v0.99.85 — BTC already floor-limited at -2.0%. time_exit_2_profit=2.0% also zero effect. Confirmed: structural parameters have hit a ceiling. Backtest summary paired data: DOT was the single negative pair (-$8.38, 54.55% WR, 11 trades). Removing it should eliminate the 5 custom_stoploss exits that were dragging R/R down. Remaining pairs: ETH, AVAX, AAVE (all positive).
@@ -622,7 +623,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.99.91"
+    STRATEGY_VERSION = "0.99.93"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy

@@ -39,7 +39,6 @@
     "ccxt_async_config": {},
     "pair_whitelist": [
       "ETH/USDT",
-      "AVAX/USDT",
       "AAVE/USDT"
     ],
     "pair_blacklist": []
