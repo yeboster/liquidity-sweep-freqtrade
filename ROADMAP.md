@@ -1,7 +1,7 @@
 # Liquidity Sweep — Roadmap
 
-> **Last Updated:** 2026-04-04 17:13 UTC
-> **Version:** v0.99.89 — CONFIRMED: BTC floor-limited, ATR+time_exit changes have ZERO effect
+> **Last Updated:** 2026-04-05 01:05 UTC
+> **Version:** v0.99.92 — ATR floor -1.5% FAILED, reverted to -2.0%
 > **Strategy Type:** Liquidity Sweep / Mean Reversion (ICT SMC)
 > **Mode:** Spot, Long only
 
@@ -66,6 +66,25 @@ These 4 exits handle ~85% of trades perfectly. The problem is the 15% that don't
 Wider floor = fewer TS triggers BUT worse R/R. The floor doesn't fix the root problem.
 
 ---
+
+## v0.99.92 — REVERT ATR floor -1.5%→-2.0% (Results: R/R=1.18 ✅ partial)
+```
+v0.99.92 backtest (3 pairs, ETH/AVAX/AAVE): 37 trades, 70.27% WR, $97.92 profit (9.79%)
+avg_profit_per_win=$1.71, avg_loss_per_loss=$1.44, R/R=1.18
+trailing_stop_loss: 5 trades (13.5%), 0% WR, -$41.25, avg -2.41%
+early_profit_take: 8 trades (22%), 100% WR, +$68.14, avg +2.5% ✅
+dynamic_tp: 6 trades (16%), 100% WR, +$44.08, avg +2.14% ✅
+time_exit_8h: 15 trades (40.5%), 60% WR, +$15.34, avg +0.29%
+```
+**Finding:** Reverting floor to -2.0% improved R/R from 1.15→1.18. TS exits increased 5→7 when tightening to -1.5% (v0.99.91), contradicting the hypothesis. Pair data still shows 4th pair (54.55% WR, -$8.44) — likely DOT not fully removed.
+
+## v0.99.91 — TIGHTEN ATR floor -2.0%→-1.5% (Results: R/R=1.15 ❌)
+```
+v0.99.91 backtest: 37 trades, 70.27% WR, $96.61 profit (9.66%)
+avg_profit_per_win=$1.71, avg_loss_per_loss=$1.48, R/R=1.15
+trailing_stop_loss: 7 trades (19%), 0% WR, -$49.26, avg -2.06%
+```
+**Finding:** FAILED. Tighter floor = more triggers AND worse R/R. Reverting.
 
 ## v0.99.85 — ATR floor revert -2.5%→-2.0% + REMOVE BTC/LINK (Results: R/R=1.26 ✅ CONFIRMED)
 ```
