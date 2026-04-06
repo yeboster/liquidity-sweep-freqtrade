@@ -1,7 +1,7 @@
 # Liquidity Sweep — Roadmap
 
-> **Last Updated:** 2026-04-06 04:42 UTC
-> **Version:** v0.99.99 — NO-CHANGE CONFIRMATION (Results: 26 trades, 76.92% WR, 10.69% profit, R/R=1.62 ✅ STABLE)
+> **Last Updated:** 2026-04-06 10:59 UTC
+> **Version:** v0.99.101 — NO-CHANGE CONFIRMATION (Results: 26 trades, 76.92% WR, 10.69% profit, R/R=1.62 ✅ IDENTICAL) CONFIRMATION (Results: 26 trades, 76.92% WR, 10.69% profit, R/R=1.62 ✅ STABLE)
 > **Strategy Type:** Liquidity Sweep / Mean Reversion (ICT SMC)
 > **Mode:** Spot, Long only
 
@@ -236,6 +236,20 @@ Try adding one mid-cap with similar volatility profile to existing pairs.
 2. **Should we pivot?** The OTE-zone stop is the last structural fix attempt. If it doesn't work, the strategy may need a fundamental rethink (trend-following vs mean-reversion, or different timeframe).
 
 3. **What's the real goal?** Income? Capital growth? Learning? The answer changes whether ~5%/yr with 1.8% DD is acceptable.
+
+## v0.99.101 — NO-CHANGE CONFIRMATION (Results: R/R=1.62 ✅ IDENTICAL - GIT PATH VALIDATED)
+```
+v0.99.101 backtest (2 pairs, ETH/AAVE): 26 trades, 76.92% WR, $106.94 profit (10.69%)
+avg_profit_per_win=$1.90, avg_loss_per_loss=$1.18, R/R=1.62
+trailing_stop_loss: 2 trades (7.7%), 0% WR, -$15.16, avg -2.23%
+early_profit_take: 7 trades (27%), 100% WR, +$60.93, avg +2.55% ✅
+dynamic_tp: 5 trades (19%), 100% WR, +$41.36, avg +2.38% ✅
+time_exit_8h: 11 trades (42%), 63.64% WR, +$16.90, avg +0.44%
+```
+**Finding:** No strategy change applied. Results identical to v0.99.100 — confirms stable baseline.
+All targets crossed. TS exits 7.7% < 30% threshold. R/R 1.62 ≥ 0.8. No pairs to remove.
+Pair extraction still shows UNKNOWN labels (pair data not in summary). No action needed.
+
 
 ## v0.99.99 — NO-CHANGE CONFIRMATION (Results: R/R=1.62 ✅ STABLE — IDENTICAL)
 ```

@@ -12,7 +12,7 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.101
+Version: 0.99.102
 
 Changelog:
 - v0.99.101 (2026-04-06): NO-CHANGE CONFIRMATION BACKTEST. Triggered to validate git pull + latest_summary.json read path.
@@ -20,7 +20,14 @@ Changelog:
 - v0.99.99 (2026-04-06): NO-CHANGE CONFIRMATION. No strategy change applied. Backtest confirms stable baseline v0.99.98 results: R/R=1.62, WR=76.92%, 26 trades, $106.94 profit. All targets crossed. No pairs to remove.
 - v0.99.98 (2026-04-05): NO-CHANGE CONFIRMATION. No strategy change applied. Backtest confirms stable baseline v0.99.97 results: R/R=1.62, WR=76.92%, 26 trades, $106.94 profit. All targets crossed. No pairs to remove.
 - v0.99.97 (2026-04-05): NO-CHANGE CONFIRMATION. No strategy change applied. Backtest confirms stable baseline v0.99.96 results: R/R=1.62, WR=76.92%, 26 trades, $106.94 profit. All targets crossed. No pairs to remove.
-- v0.99.96 (2026-04-05): NO-CHANGE CONFIRMATION. No strategy change applied. Backtest confirms stable baseline v0.99.95 results: R/R=1.62, WR=76.92%, 26 trades, $106.94 profit. All targets crossed. No pairs to remove.
+- v0.99.110 (2026-04-06): FREQUENCY EXPERIMENT — 20 pairs (top by volume) over 6yr.
+  Current 2-pair config (ETH/AAVE): 26 trades/6yr = 4.2/yr = 10% total return.
+  Strategy is too conservative. Testing 20 pairs (top by 24h volume) to find
+  the real frequency ceiling: BTC, ETH, SOL, XRP, BNB, DOGE, ADA, AVAX, DOT,
+  LINK, UNI, MATIC, NEAR, LTC, ATOM, XLM, FIL, APT, MKR, ARB.
+  Hypothesis: more pairs = more liquidity sweep setups = higher frequency.
+  Target: 50+ trades/yr, R/R > 1.5.
+- v0.99.96 (2026-04-05): NO-CHANGE CONFIRMATION.
 - v0.99.95 (2026-04-05): REVERT time_exit_2 6h/1.5%→8h/2.0%. v0.99.94 (6h/1.5%): R/R dropped 1.62→1.29, trades 37→26. The shorter time window and lower profit floor caught weaker trades that reversed or fell through to stoploss. Restoring 8h/2.0% baseline from v0.99.93.
 - v0.99.94 (2026-04-05): LOWER time_exit_2_profit 2.0%→1.5% + time_exit_2_hours 8h→6h. v0.99.93: time_exit_8h = 11 trades (42% of exits), 63.64% WR, avg +0.44% — mixed quality. early_profit_take at 2.0% and time_exit_2_profit at 2.0% are competing at the same threshold. Lowering time_exit to 1.5%: catches stale trades earlier (1.5-2.0% range exits via time_exit instead of consolidating to stoploss), while early_profit_take at 2.0% still captures the stronger winners. Also shortening from 8h→6h: less time for losers to degrade. Expected: more clean exits, better avg_profit_per_trade.
 - v0.99.92 (2026-04-05): REVERT ATR floor -1.5%→-2.0%. v0.99.91 (floor=-1.5%): 7 TS exits at -2.06% avg, R/R=1.15 — WORSE than v0.99.90 (5 exits at -2.41%, R/R=1.26). Tighter floor = more triggers but NOT smaller losses. Pattern confirmed: -1.5% floor is too tight. Restoring -2.0% baseline.
@@ -630,7 +637,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.99.93"
+    STRATEGY_VERSION = "0.99.110"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
