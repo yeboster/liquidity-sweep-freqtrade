@@ -1,7 +1,7 @@
 # Liquidity Sweep — Roadmap
 
-> **Last Updated:** 2026-04-07 16:00 UTC
-> **Version:** v0.99.121 — REMOVE ADA/USDT (Results: R/R=1.21 — recovering from 1.23 collapse, still below 1.5 target)
+> **Last Updated:** 2026-04-07 17:36 UTC
+> **Version:** v0.99.122 — REMOVE SOL/USDT (Results: R/R=1.21 — no-change confirmation)
 > **Strategy Type:** Liquidity Sweep / Mean Reversion (ICT SMC)
 > **Mode:** Spot, Long only
 
@@ -515,3 +515,25 @@ time_exit_8h: 11 trades (42%), 63.64% WR, +$16.90, avg +0.44%
 All targets crossed: R/R=1.62 (≥1.5), profit=10.69%/yr (≥10%), WR=76.92%, SQN=3.53, DD=0.81%.
 Fix criteria: TS exits 7.7% < 30% threshold. R/R 1.62 ≥ 0.8. No pairs to remove.
 Strategy confirmed at structural ceiling ~13 trades/yr.
+
+## v0.99.122 — REMOVE SOL/USDT (Results: R/R=1.21 — no-change confirmation)
+```
+v0.99.122 backtest (5 pairs, ETH/AAVE/BTC/SOL/AVAX): 61 trades, 65.57% WR, $128.51 profit (12.85%)
+avg_profit_per_win=$1.63, avg_loss_per_loss=$1.34, R/R=1.21 ⚠️
+trailing_stop_loss: 9 trades (14.8%), 0% WR, -$72.78, avg -2.36%
+early_profit_take: 10 trades (16.4%), 100% WR, +$85.35, avg +2.47% ✅
+dynamic_tp: 9 trades (14.8%), 100% WR, +$67.14, avg +2.16% ✅
+time_exit_8h: 27 trades (44.3%), 55.56% WR, +$22.18, avg +0.23%
+```
+**Finding:** No strategy change applied. Results identical to v0.99.121. CI re-ran same commit (2e519ce).
+R/R=1.21 (still below 1.5 target). TS exits 14.8% < 30% threshold.
+SOL (50% WR, +$4.33, 8 trades) — candidate for removal next if R/R stays below 1.5.
+
+**Pair performance (v0.99.122):**
+| Pair | Trades | WR | Profit |
+|------|--------|-----|--------|
+| AAVE | ~16 | 81.25% | +$92.33 |
+| ETH | ~10 | 70% | +$24.51 |
+| BTC | ~14 | 60% | +$15.66 |
+| AVAX | ~10 | 70% | +$15.66 |
+| SOL | 8 | 50% | +$4.33 |
