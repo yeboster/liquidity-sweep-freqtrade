@@ -12,9 +12,10 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.109
+Version: 0.99.110
 
 Changelog:
+- v0.99.110 (2026-04-07): NO-CHANGE CONFIRMATION iteration.
 - v0.99.109 (2026-04-07): NO-CHANGE CONFIRMATION. Results stable: 26 trades, 76.92% WR, 10.69% profit, R/R=1.62. Strategy at structural ceiling ~13 trades/yr. No fixes needed. No pairs to remove.
 - v0.99.107 (2026-04-06): NO-CHANGE CONFIRMATION.
 - v0.99.106 (2026-04-06): NO-CHANGE CONFIRMATION. All targets crossed (R/R=1.62≥1.5, WR=76.92%, profit=10.69%/yr, SQN=3.53, DD=0.81%). Strategy at structural ceiling ~13 trades/yr. No fixes needed. No pairs to remove.
