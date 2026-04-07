@@ -22,7 +22,11 @@ Changelog:
 - v0.99.110 (2026-04-07): NO-CHANGE CONFIRMATION iteration.
 - v0.99.109 (2026-04-07): NO-CHANGE CONFIRMATION. Results stable: 26 trades, 76.92% WR, 10.69% profit, R/R=1.62. Strategy at structural ceiling ~13 trades/yr. No fixes needed. No pairs to remove.
 - v0.99.107 (2026-04-06): NO-CHANGE CONFIRMATION.
-- v0.99.106 (2026-04-06): NO-CHANGE CONFIRMATION. All targets crossed (R/R=1.62≥1.5, WR=76.92%, profit=10.69%/yr, SQN=3.53, DD=0.81%). Strategy at structural ceiling ~13 trades/yr. No fixes needed. No pairs to remove.
+- v0.99.120 (2026-04-07): EXPAND to 6 pairs — ETH, AAVE, BTC, SOL, ADA, AVAX.
+  2-pair (ETH/AAVE): ~1.8%/yr CAGR — too low vs S&P500. Expanding to 6 pairs
+  to increase total trade count while maintaining R/R > 1.5. Previous 9-pair test
+  collapsed R/R to 1.08 with 20% TS exit rate. Trying more conservative expansion
+  with only proven+promising pairs. Target: 30+ trades/yr, R/R > 1.5.
 - v0.99.104 (2026-04-06): NO-CHANGE CONFIRMATION. All targets crossed (R/R=1.62≥1.5, WR=76.92%, profit=10.69%/yr, SQN=3.53, DD=0.81%). Strategy at structural ceiling ~13 trades/yr. No fixes needed. No pairs to remove.
 - v0.99.103 (2026-04-06): REVERT pair_whitelist 20→2 (ETH/AAVE). v0.99.110 (20 pairs): 169 trades, 60.36% WR, 25.06% profit BUT R/R=1.08 — COLLAPSED from stable 1.62. TS/custom_stoploss exits 35 trades (20.7%), 0% WR, -2.28% avg. 20 pairs adds volume but destroys R/R quality. Reverting to stable ETH/AAVE baseline (v0.99.101: 26 trades, 76.92% WR, 10.69% profit, R/R=1.62).
 
@@ -642,7 +646,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.99.110"
+    STRATEGY_VERSION = "0.99.120"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
