@@ -1,7 +1,7 @@
 # Liquidity Sweep — Roadmap
 
-> **Last Updated:** 2026-04-07 17:36 UTC
-> **Version:** v0.99.122 — REMOVE SOL/USDT (Results: R/R=1.21 — no-change confirmation)
+> **Last Updated:** 2026-04-07 19:14 UTC
+> **Version:** v0.99.123 — ETH/AAVE 2-pair confirmed stable (R/R=1.62 ✅)
 > **Strategy Type:** Liquidity Sweep / Mean Reversion (ICT SMC)
 > **Mode:** Spot, Long only
 
@@ -11,7 +11,7 @@
 
 | Metric | Current | Target | Status |
 |--------|---------|--------|--------|
-| R/R Ratio | 1.21 | ≥ 1.5 | ⚠️ below target |
+| R/R Ratio | 1.62 | ≥ 1.5 | ✅ crossed target |
 | Annualized Profit | ~12.9%/yr | ≥ 10%/yr | ✅ crossed target |
 | Trades/yr | ~30.5 | 100+ | ⚠️ structural ceiling |
 | Win Rate | 76.92% | any | ✅ excellent |
