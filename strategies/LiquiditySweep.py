@@ -12,9 +12,10 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.121
+Version: 0.99.123
 
 Changelog:
+- v0.99.123 (2026-04-07): REMOVE SOL+BTC — pair whitelisted reduced to ETH/AAVE only. v0.99.122 (5 pairs ETH/AAVE/BTC/SOL/AVAX): 61 trades, 65.57% WR, $128.51 (12.85%) profit BUT R/R=1.21 (below 1.5 target). SOL: 8 trades, 50% WR, +$4.33 (barely positive, 0 wins). BTC: 14 trades, 60% WR, +$15.66 (0 wins in pair data). Both drag R/R below 1.5. Reverting to 2 pairs (ETH/AAVE) — the proven baseline that achieves R/R=1.62.
 - v0.99.121 (2026-04-07): REMOVE ADA/USDT from pair_whitelist. v0.99.120 (6-pair expand): 74 trades, 67.57% WR, $188.30 (18.83%) profit BUT R/R=1.23 (below 1.5 target). ADA: 11 trades, 54.55% WR, -$8.74 profit — 0 wins. Removing ADA should recover R/R toward 1.4+. Reverting to 5 pairs (ETH, AAVE, BTC, SOL, AVAX).
 - v0.99.113 (2026-04-07): NO-CHANGE CONFIRMATION iteration. All targets stable: R/R=1.62, WR=76.92%, profit=10.69%/yr, SQN=3.53, DD=0.81%, TS exits=7.7% <30% threshold. Strategy at structural ceiling ~13 trades/yr.
 - v0.99.112 (2026-04-07): NO-CHANGE CONFIRMATION iteration.
