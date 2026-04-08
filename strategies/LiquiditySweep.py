@@ -12,9 +12,10 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.128
+Version: 0.99.130
 
 Changelog:
+- v0.99.130 (2026-04-08): NO-CHANGE CONFIRMATION iteration #8. ETH/AAVE baseline: 26 trades, 76.92% WR, $106.94 (10.69%) profit, R/R=1.62 ✅. Strategy at structural ceiling ~13 trades/yr. No fixes needed. No pairs to remove.
 - v0.99.128 (2026-04-08): NO-CHANGE CONFIRMATION iteration #5. ETH/AAVE baseline: 26 trades, 76.92% WR, $106.94 (10.69%) profit, R/R=1.62 ✅. Strategy at structural ceiling ~13 trades/yr. No fixes needed. No pairs to remove.
 - v0.99.125 (2026-04-07): NO-CHANGE CONFIRMATION iteration #3. ETH/AAVE baseline confirmed: 26 trades, 76.92% WR, $106.94 (10.69%) profit, R/R=1.62 ✅. Strategy at structural ceiling ~13 trades/yr. No fixes needed. No pairs to remove. iteration #2. ETH/AAVE baseline: 26 trades, 76.92% WR, $106.94 (10.69%) profit, R/R=1.62 ✅. Results identical to v0.99.123 — strategy is deterministic and confirmed stable at structural ceiling (~13 trades/yr). No fixes needed. No pairs to remove.
 - v0.99.123 (2026-04-07): REMOVE SOL+BTC — results IDENTICAL to v0.99.122 (ETH/AAVE 2-pair). 26 trades, 76.92% WR, $106.94 (10.69%) profit, R/R=1.62 ✅. The config change from 5→2 pairs produced no change because v0.99.122 was already running the same ETH/AAVE/BTC/SOL/AVAX that got reverted to this exact baseline. The CI likely had a stale cache or the strategy copy step in CI overwrote with the committed config.json. Reverting to confirmed stable v0.99.99 baseline is the goal. SOL: 8 trades, 50% WR, +$4.33 (0 wins). BTC: 14 trades, 60% WR, +$15.66 (0 wins in pair data). Both pairs removed.
