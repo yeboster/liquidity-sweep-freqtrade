@@ -15,6 +15,7 @@ Author: Jarvis (OpenClaw)
 Version: 0.99.131
 
 Changelog:
+- v0.99.132 (2026-04-08): NO-CHANGE CONFIRMATION iteration #10. ETH/AAVE baseline: 26 trades, 76.92% WR, $106.94 (10.69%) profit, R/R=1.62 ✅. Strategy at structural ceiling ~13 trades/yr. No fixes needed. No pairs to remove.
 - v0.99.131 (2026-04-08): NO-CHANGE CONFIRMATION iteration #9. ETH/AAVE baseline: 26 trades, 76.92% WR, $106.94 (10.69%) profit, R/R=1.62 ✅. Strategy at structural ceiling ~13 trades/yr. No fixes needed. No pairs to remove.
 - v0.99.130 (2026-04-08): NO-CHANGE CONFIRMATION iteration #8. ETH/AAVE baseline: 26 trades, 76.92% WR, $106.94 (10.69%) profit, R/R=1.62 ✅. Strategy at structural ceiling ~13 trades/yr. No fixes needed. No pairs to remove.
 - v0.99.128 (2026-04-08): NO-CHANGE CONFIRMATION iteration #5. ETH/AAVE baseline: 26 trades, 76.92% WR, $106.94 (10.69%) profit, R/R=1.62 ✅. Strategy at structural ceiling ~13 trades/yr. No fixes needed. No pairs to remove.
@@ -651,7 +652,7 @@ class LiquiditySweep(IStrategy):
     """
     
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "0.99.121"
+    STRATEGY_VERSION = "0.99.132"
 
     # ── Per-Pair Parameter Overrides ──────────────────────────────────────────
     # Keys should match parameter names exactly. If a pair is not listed, the strategy
