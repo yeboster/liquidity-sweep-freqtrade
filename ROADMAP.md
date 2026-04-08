@@ -1,7 +1,7 @@
 # Liquidity Sweep — Roadmap
 
-> **Last Updated:** 2026-04-08 10:56 UTC
-> **Version:** v0.99.131 — ETH/AAVE 2-pair CONFIRMED STABLE (R/R=1.62 ✅, 9 consecutive no-change confirmations)
+> **Last Updated:** 2026-04-08 13:11 UTC
+> **Version:** v0.99.132 — ETH/AAVE 2-pair CONFIRMED STABLE (R/R=1.62 ✅, 10 consecutive no-change confirmations)
 > **Strategy Type:** Liquidity Sweep / Mean Reversion (ICT SMC)
 > **Mode:** Spot, Long only
 
@@ -66,6 +66,17 @@ These 4 exits handle ~85% of trades perfectly. The problem is the 15% that don't
 Wider floor = fewer TS triggers BUT worse R/R. The floor doesn't fix the root problem.
 
 ---
+
+## v0.99.132 — NO-CHANGE CONFIRMATION #10 (Results: R/R=1.62 ✅)
+```
+v0.99.132 backtest: 26 trades, 76.92% WR, $106.94 (10.69%) profit, R/R=1.62
+avg_profit_per_win=1.899%, avg_loss_per_loss=1.175%, holding_avg=5h14m
+trailing_stop_loss: 2 trades (7.7%), 0% WR, -2.23% avg (below 30% threshold)
+early_profit_take: 7 trades (27%), 100% WR, +2.55% avg ✅
+dynamic_tp: 5 trades (19%), 100% WR, +2.38% avg ✅
+time_exit_8h: 11 trades (42%), 63.64% WR, +0.44% avg
+```
+**Status:** CONFIRMED STABLE #10. Results identical to v0.99.131 — strategy deterministic and confirmed at structural ceiling (~13 trades/yr). All targets crossed (R/R=1.62≥1.5, WR=76.92%, profit=10.69%/yr, SQN=3.53, DD=0.81%). No fixes needed. No pairs to remove.
 
 ## v0.99.92 — REVERT ATR floor -1.5%→-2.0% (Results: R/R=1.18 ✅ partial)
 ```
