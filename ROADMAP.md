@@ -577,8 +577,10 @@ time_exit_8h: 11 trades (42%), 63.64% WR, +$16.90, avg +0.44%
 
 **Remaining pairs (2):** ETH/USDT, AAVE/USDT
 
+**Remaining pairs (2):** ETH/USDT, AAVE/USDT
+
+- v0.99.130 (2026-04-08): NO-CHANGE CONFIRMATION iteration #8. Results IDENTICAL: 26 trades, 76.92% WR, $106.94 (10.69%), R/R=1.62. Strategy confirmed at structural ceiling (~13 trades/yr). No fixes needed. No pairs to remove.
 - v0.99.129 (2026-04-08): NO-CHANGE CONFIRMATION iteration #7. Results IDENTICAL: 26 trades, 76.92% WR, $106.94 (10.69%), R/R=1.62. Strategy confirmed at structural ceiling (~13 trades/yr). No fixes needed. No pairs to remove.
-- v0.99.128 (2026-04-08): NO-CHANGE CONFIRMATION iteration #6. Results IDENTICAL: 26 trades, 76.92% WR, $106.94 (10.69%), R/R=1.62. Strategy confirmed at structural ceiling (~13 trades/yr). No fixes needed. No pairs to remove.
 
 ## v0.99.127 — NO-CHANGE CONFIRMATION (Results: R/R=1.62 ✅ IDENTICAL)
 ```
