@@ -1,7 +1,7 @@
 # Liquidity Sweep — Roadmap
 
-> **Last Updated:** 2026-04-08 13:11 UTC
-> **Version:** v0.99.132 — ETH/AAVE 2-pair CONFIRMED STABLE (R/R=1.62 ✅, 10 consecutive no-change confirmations)
+> **Last Updated:** 2026-04-08 15:10 UTC
+> **Version:** v0.99.133 — ETH/AAVE 2-pair CONFIRMED STABLE (R/R=1.62 ✅, 11 consecutive no-change confirmations)
 > **Strategy Type:** Liquidity Sweep / Mean Reversion (ICT SMC)
 > **Mode:** Spot, Long only
 
