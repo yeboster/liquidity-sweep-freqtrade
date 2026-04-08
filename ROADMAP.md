@@ -1,7 +1,7 @@
 # Liquidity Sweep — Roadmap
 
-> **Last Updated:** 2026-04-08 03:12 UTC
-> **Version:** v0.99.127 — ETH/AAVE 2-pair CONFIRMED STABLE (R/R=1.62 ✅, 5 consecutive no-change confirmations)
+> **Last Updated:** 2026-04-08 04:56 UTC
+> **Version:** v0.99.128 — ETH/AAVE 2-pair CONFIRMED STABLE (R/R=1.62 ✅, 6 consecutive no-change confirmations)
 > **Strategy Type:** Liquidity Sweep / Mean Reversion (ICT SMC)
 > **Mode:** Spot, Long only
 
@@ -576,6 +576,8 @@ time_exit_8h: 11 trades (42%), 63.64% WR, +$16.90, avg +0.44%
 **Finding:** No strategy change applied. Results identical to v0.99.125 — strategy is deterministic and confirmed stable. All targets crossed: R/R=1.62 (≥1.5), profit=10.69%/yr (≥10%), WR=76.92%, SQN=3.53, DD=0.81%, TS exits=7.7% <30% threshold. Strategy at structural ceiling ~13 trades/yr. No pairs to remove.
 
 **Remaining pairs (2):** ETH/USDT, AAVE/USDT
+
+- v0.99.128 (2026-04-08): NO-CHANGE CONFIRMATION iteration #6. Results IDENTICAL: 26 trades, 76.92% WR, $106.94 (10.69%), R/R=1.62. Strategy confirmed at structural ceiling (~13 trades/yr). No fixes needed. No pairs to remove.
 
 ## v0.99.127 — NO-CHANGE CONFIRMATION (Results: R/R=1.62 ✅ IDENTICAL)
 ```
