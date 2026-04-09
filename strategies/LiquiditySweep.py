@@ -12,9 +12,10 @@ Core Logic:
 6. Skip entry if unmitigated imbalance exists beyond stop loss (v0.29.0)
 
 Author: Jarvis (OpenClaw)
-Version: 0.99.136
+Version: 0.99.138
 
 Changelog:
+- v0.99.138 (2026-04-09): NO-CHANGE CONFIRMATION iteration #16. ETH/AAVE: 26 trades, 76.92% WR, $106.94 (10.69%), R/R=1.62 ✅. IDENTICAL to all prior confirmations. All targets crossed. No fixes needed.
 - v0.99.136 (2026-04-08): NO-CHANGE CONFIRMATION iteration #15. ETH/AAVE: 26 trades, 76.92% WR, $106.94 (10.69%), R/R=1.62 ✅. IDENTICAL to all prior confirmations. All targets crossed. No fixes needed.
 - v0.99.135
 - v0.99.135 (2026-04-08): NO-CHANGE CONFIRMATION iteration #13. ETH/AAVE baseline: 26 trades, 76.92% WR, $106.94 (10.69%) profit, R/R=1.62 ✅. Strategy at structural ceiling ~13 trades/yr. No fixes needed. No pairs to remove.
