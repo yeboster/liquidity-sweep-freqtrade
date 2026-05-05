@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "1.0.0"
+    STRATEGY_VERSION = "1.0.7"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -58,8 +58,8 @@ class MeanReversionTrend(IStrategy):
         "1440": 1.0,   # 24h: floor at +1%
     }
 
-    # Hard stoploss (tightened)
-    stoploss = -0.015   # -1.5%
+    # Hard stoploss at -2.5% — was -1.5%, getting stopped out too fast
+    stoploss = -0.025   # -2.5%
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
@@ -87,8 +87,13 @@ class MeanReversionTrend(IStrategy):
     time_exit_hours = 24
     time_exit_profit_floor = 0.01  # 1% minimum profit before time exit fires
 
-    # Trailing — disabled (use fixed exits)
-    trailing_stop = False
+    # ── Exit Conditions ─────────────────────────────────────────────────────
+    # Long exit: RSI needs to reach 80 (was 65 — way too early)
+    # OR deviation fully reverted to +1% (was 0 — exits on any bounce)
+    # Short exit: RSI needs to drop to 20 (was 30)
+    exit_rsi_long = 80
+    exit_rsi_short = 20
+    exit_dev_revert_pct = 1.0   # price must be 1% above SMA before exiting
 
     # Max risk
     max_open_trades = 3
@@ -196,17 +201,17 @@ class MeanReversionTrend(IStrategy):
         dataframe["exit_long"] = 0
         dataframe["exit_short"] = 0
 
-        # Long exit: RSI overbought OR price crossed above SMA (deviation > 0)
+        # Long exit: RSI reaches 80 OR deviation reverted +1% above SMA
         dataframe.loc[
-            (dataframe["rsi"] > 65) |
-            (dataframe["deviation"] > 0),
+            (dataframe["rsi"] > self.exit_rsi_long) |
+            (dataframe["deviation"] > self.exit_dev_revert_pct),
             "exit_long"
         ] = 1
 
-        # Short exit: RSI oversold OR deviation reverted to within 0.5% above SMA
+        # Short exit: RSI drops to 20 OR deviation reverted -1% below SMA
         dataframe.loc[
-            (dataframe["rsi"] < self.rsi_oversold) |
-            (dataframe["deviation"] < 0.5),
+            (dataframe["rsi"] < self.exit_rsi_short) |
+            (dataframe["deviation"] < -self.exit_dev_revert_pct),
             "exit_short"
         ] = 1
 
@@ -217,6 +222,9 @@ class MeanReversionTrend(IStrategy):
     trailing_stop_positive = 0.008
     trailing_stop_positive_offset = 0.01
     trailing_only_offset_is_reached = True
+
+    # Scale-in: disabled — adding size on small profit was amplifying losses
+    scale_in_enabled = False
 
     def custom_stoploss(
         self, pair: str, trade: "Trade", current_time: datetime,
@@ -265,9 +273,5 @@ class MeanReversionTrend(IStrategy):
         self, trade: "Trade", current_time: datetime, current_rate: float,
         current_profit: float, current_profit_pct: float, **kwargs
     ) -> Optional[float]:
-        """
-        Scale in 25% if profit is in the 0.5-1.5% compression zone.
-        """
-        if 0.005 < current_profit_pct < 0.015:
-            return 0.25
+        """Scale in 25% if profit is in the 0.5-1.5% compression zone — DISABLED after v1.0.5."""
         return None
