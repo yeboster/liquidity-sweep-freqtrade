@@ -58,18 +58,18 @@ class MeanReversionTrend(IStrategy):
         "1440": 1.0,   # 24h: floor at +1%
     }
 
-    # Hard stoploss (absolute backstop — not normally reached)
-    stoploss = -0.025   # -2.5%
+    # Hard stoploss (tightened)
+    stoploss = -0.015   # -1.5%
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
     bb_length = 20
     bb_std = 2.0
-    entry_dev_threshold = 1.0   # σ multiplier for entry (loosened for initial test)
+    entry_dev_threshold = 1.5   # σ multiplier for entry
 
     # ATR volatility compression
     atr_length = 14
-    atr_compression_ratio = 0.9  # ATR must be < X% of 20-day ATR average (loosened)
+    atr_compression_ratio = 0.7  # ATR must be < 70% of average (moderate)
 
     # Volume confirmation
     volume_ma_length = 20
@@ -180,8 +180,8 @@ class MeanReversionTrend(IStrategy):
         dataframe["enter_long"] = 0
         dataframe["enter_short"] = 0
 
-        # R:R filter — min 1:1 (loosened for initial test)
-        rr_ok = dataframe["rr_ratio"] >= 1.0
+        # R:R filter — min 1.5:1
+        rr_ok = dataframe["rr_ratio"] >= 1.5
 
         long_mask = dataframe["long_condition"] & rr_ok
         dataframe.loc[long_mask, "enter_long"] = 1
@@ -196,10 +196,10 @@ class MeanReversionTrend(IStrategy):
         dataframe["exit_long"] = 0
         dataframe["exit_short"] = 0
 
-        # Long exit: RSI overbought OR deviation reverted to within 0.5% of SMA
+        # Long exit: RSI overbought OR price crossed above SMA (deviation > 0)
         dataframe.loc[
-            (dataframe["rsi"] > self.rsi_overbought) |
-            (dataframe["deviation"] > -0.5),
+            (dataframe["rsi"] > 65) |
+            (dataframe["deviation"] > 0),
             "exit_long"
         ] = 1
 
@@ -212,13 +212,19 @@ class MeanReversionTrend(IStrategy):
 
         return dataframe
 
+    # Trailing stop — activates at +1% profit, trails 0.8%
+    trailing_stop = True
+    trailing_stop_positive = 0.008
+    trailing_stop_positive_offset = 0.01
+    trailing_only_offset_is_reached = True
+
     def custom_stoploss(
         self, pair: str, trade: "Trade", current_time: datetime,
         current_rate: float, current_profit: float, after_fill: bool,
         **kwargs
     ) -> Optional[float]:
-        """Fixed -2.5% stoploss."""
-        return -0.025
+        """Fixed -1.5% stoploss."""
+        return -0.015
 
     def custom_exit(
         self, pair: str, trade: "Trade", current_time: datetime,
