@@ -1,0 +1,175 @@
+name: Backtest MeanReversionTrend
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'strategies/MeanReversionTrend.py'
+      - '.github/workflows/backtest_meanreversion.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare directories
+        run: |
+          mkdir -p user_data/data
+          mkdir -p user_data/strategies
+          mkdir -p user_data/backtest_results
+          chmod -R 777 user_data
+
+      - name: Download OHLCV Data (no cache — always fetch fresh)
+        run: |
+          # Always download fresh data to ensure full timerange coverage
+          rm -rf user_data/data/*
+          docker run --rm \
+            -v ${{ github.workspace }}/user_data:/freqtrade/user_data \
+            -v ${{ github.workspace }}/config.json:/freqtrade/config.json \
+            freqtradeorg/freqtrade:stable \
+            download-data \
+            --config /freqtrade/config.json \
+            --days 2190 \
+            --timeframes 1h 4h \
+            --pairs BTC/USDT ETH/USDT SOL/USDT BNB/USDT XRP/USDT \
+            --data-format-ohlcv feather
+
+      - name: Run Freqtrade Backtest — MeanReversionTrend
+        run: |
+          # Copy strategy fresh
+          cp strategies/MeanReversionTrend.py user_data/strategies/MeanReversionTrend.py
+          docker run --rm \
+            -v ${{ github.workspace }}/user_data:/freqtrade/user_data \
+            -v ${{ github.workspace }}/config.json:/freqtrade/config.json \
+            -v ${{ github.workspace }}/strategies:/freqtrade/strategies \
+            --entrypoint /bin/bash \
+            freqtradeorg/freqtrade:stable \
+            -c "freqtrade backtesting \
+            --config /freqtrade/config.json \
+            --strategy MeanReversionTrend \
+            --timerange 20200101- \
+            --data-format-ohlcv feather \
+            --export trades \
+            --export-filename user_data/backtest_results/backtest-trades.json"
+
+      - name: Extract Backtest Metrics
+        run: |
+          python3 << 'PYEOF'
+          import json
+          import sys
+          import os
+          import zipfile
+          from datetime import datetime
+
+          result_dir = 'user_data/backtest_results'
+          zip_files = [f for f in os.listdir(result_dir) if f.startswith('backtest-result') and f.endswith('.zip')]
+          if not zip_files:
+              print("No backtest result zip found!")
+              sys.exit(1)
+
+          latest_zip = sorted(zip_files)[-1]
+          latest_name = latest_zip.replace('.zip', '')
+          zip_path = os.path.join(result_dir, latest_zip)
+
+          with zipfile.ZipFile(zip_path, 'r') as z:
+              with z.open(latest_name + '.json') as f:
+                  data = json.load(f)
+
+          strat = data.get('strategy', {}).get('MeanReversionTrend', data.get('strategy', {}))
+          trades = strat.get('trades', [])
+          total_trades = strat.get('total_trades', len(trades))
+          profit_abs = strat.get('profit_total_abs', 0)
+          wallet = strat.get('dry_run_wallet', 1000)
+          profit_pct = (profit_abs / wallet) * 100
+
+          wins = [t for t in trades if t.get('profit_ratio', 0) > 0]
+          losses = [t for t in trades if t.get('profit_ratio', 0) < 0]
+          win_count = len(wins)
+          loss_count = len(losses)
+          wr = (win_count / total_trades * 100) if total_trades > 0 else 0
+
+          win_profits = [t['profit_ratio'] * 100 for t in wins]
+          loss_profits = [abs(t['profit_ratio']) * 100 for t in losses]
+          avg_win_pct = (sum(win_profits) / len(win_profits)) if win_profits else 0
+          avg_loss_pct = (sum(loss_profits) / len(loss_profits)) if loss_profits else 0
+          rr = avg_win_pct / avg_loss_pct if avg_loss_pct > 0 else 0
+
+          exit_sum = strat.get('exit_reason_summary', [])
+          exits = []
+          for e in exit_sum:
+              exits.append({
+                  'exit': e.get('key', ''),
+                  'trades': e.get('trades', 0),
+                  'wr': round(e.get('winrate', 0) * 100, 2),
+                  'profit_mean_pct': round(e.get('profit_mean_pct', 0), 4),
+                  'profit_abs': round(e.get('profit_total_abs', 0), 2)
+              })
+
+          pairs_data = strat.get('results_per_pair', [])
+          pairs = []
+          if isinstance(pairs_data, list):
+              for p in pairs_data:
+                  pairs.append({
+                      'pair': p.get('pair', 'UNKNOWN'),
+                      'trades': p.get('trade_count', 0),
+                      'wr': round(p.get('winrate', 0) * 100, 2),
+                      'profit': round(p.get('profit_total_abs', 0), 2)
+                  })
+
+          summary = {
+              'version': 'MeanReversionTrend',
+              'timestamp': datetime.utcnow().isoformat() + 'Z',
+              'latest_backtest_file': latest_name,
+              'total_trades': total_trades,
+              'trades_per_year': round(total_trades / 2, 1),
+              'win_count': win_count,
+              'loss_count': loss_count,
+              'win_rate': round(wr, 2),
+              'profit_abs': round(profit_abs, 2),
+              'profit_pct': round(profit_pct, 2),
+              'avg_profit_per_trade': round(profit_abs / total_trades, 4) if total_trades > 0 else 0,
+              'avg_profit_per_win': round(avg_win_pct, 4),
+              'avg_loss_per_loss': round(avg_loss_pct, 4),
+              'rr_ratio': round(rr, 4),
+              'expectancy': round(strat.get('expectancy', 0), 4),
+              'profit_factor': round(strat.get('profit_factor', 0), 4),
+              'sqn': round(strat.get('sqn', 0), 4),
+              'drawdown_abs': round(strat.get('max_drawdown_abs', 0), 2),
+              'drawdown_pct': round(strat.get('max_drawdown_account', 0) * 100, 4),
+              'holding_avg': strat.get('holding_avg', '0'),
+              'exits': exits,
+              'pairs': sorted(pairs, key=lambda x: x['profit'], reverse=True)
+          }
+
+          with open('latest_summary.json', 'w') as f:
+              json.dump(summary, f, indent=2)
+
+          print("=== BACKTEST SUMMARY ===")
+          print("Trades: %d (%s/yr)" % (total_trades, summary['trades_per_year']))
+          print("Win Rate: %.2f%%" % wr)
+          print("Profit: $%.2f (%.2f%%)" % (profit_abs, profit_pct))
+          print("Avg profit/WIN: %.4f%%" % avg_win_pct)
+          print("Avg loss/LOSS: %.4f%%" % avg_loss_pct)
+          print("R/R ratio: %.4f" % rr)
+          print("Profit factor: %.4f" % summary['profit_factor'])
+          print("SQN: %.4f" % summary['sqn'])
+          for ex in exits:
+              print("  %s: %d trades, %.2f%% WR, %.4f%% avg" % (ex['exit'], ex['trades'], ex['wr'], ex['profit_mean_pct']))
+          print("Pairs:")
+          for p in pairs:
+              print("  %s: %d trades, %.2f%% WR, $%.2f" % (p['pair'], p['trades'], p['wr'], p['profit']))
+          print("Summary written to latest_summary.json")
+          PYEOF
+
+      - name: Commit Backtest Summary
+        run: |
+          git config --local user.email "jarvis@openclaw"
+          git config --local user.name "Jarvis"
+          git add latest_summary.json
+          git diff --staged --quiet || git commit -m "ci: MeanReversionTrend backtest $(date +%Y-%m-%d)" || echo "No changes"
+          git push || echo "Push skipped"
