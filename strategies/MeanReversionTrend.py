@@ -110,10 +110,9 @@ class MeanReversionTrend(IStrategy):
             informative["atr_4h"] = ta.ATR(informative, length=14)
             informative["atr_pct_4h"] = informative["atr_4h"] / informative["close"] * 100
 
-            # Resample 4H → 1H
-            informative["date_4h"] = informative["date"]
-            informative = informative[["date_4h", "ema200_4h", "atr_pct_4h"]]
-            dataframe = dataframe.merge(informative, on="date_4h", how="left")
+            # Resample 4H → 1H by merging on date
+            informative = informative[["date", "ema200_4h", "atr_pct_4h"]]
+            dataframe = dataframe.merge(informative, on="date", how="left")
         else:
             dataframe["ema200_4h"] = np.nan
             dataframe["atr_pct_4h"] = np.nan
