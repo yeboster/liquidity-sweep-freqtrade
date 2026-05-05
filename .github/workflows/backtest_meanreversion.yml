@@ -30,7 +30,7 @@ jobs:
           rm -rf user_data/data/*
           docker run --rm \
             -v ${{ github.workspace }}/user_data:/freqtrade/user_data \
-            -v ${{ github.workspace }}/config.json:/freqtrade/config.json \
+            -v ${{ github.workspace }}/config_meanreversion.json:/freqtrade/config.json \
             freqtradeorg/freqtrade:stable \
             download-data \
             --config /freqtrade/config.json \
@@ -45,7 +45,7 @@ jobs:
           cp strategies/MeanReversionTrend.py user_data/strategies/MeanReversionTrend.py
           docker run --rm \
             -v ${{ github.workspace }}/user_data:/freqtrade/user_data \
-            -v ${{ github.workspace }}/config.json:/freqtrade/config.json \
+            -v ${{ github.workspace }}/config_meanreversion.json:/freqtrade/config.json \
             -v ${{ github.workspace }}/strategies:/freqtrade/strategies \
             --entrypoint /bin/bash \
             freqtradeorg/freqtrade:stable \
