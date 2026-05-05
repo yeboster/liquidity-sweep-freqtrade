@@ -124,16 +124,11 @@ class MeanReversionTrend(IStrategy):
         # Deviation from SMA (%)
         dataframe["deviation"] = (dataframe["close"] - dataframe["sma20"]) / dataframe["sma20"] * 100
 
-        # Bollinger Bands
-        bollinger = ta.BBANDS(
-            dataframe["close"],
-            length=self.bb_length,
-            nbdevup=self.bb_std,
-            nbdevdn=self.bb_std
-        )
-        dataframe["bb_upper"] = bollinger["BBU_20_2.0"]
-        dataframe["bb_middle"] = bollinger["BBM_20_2.0"]
-        dataframe["bb_lower"] = bollinger["BBL_20_2.0"]
+        # Bollinger Bands (manual calc to avoid ta-lib column name issues)
+        dataframe["bb_middle"] = dataframe["sma20"]
+        std = dataframe["close"].rolling(window=self.bb_length).std()
+        dataframe["bb_upper"] = dataframe["bb_middle"] + (self.bb_std * std)
+        dataframe["bb_lower"] = dataframe["bb_middle"] - (self.bb_std * std)
 
         # ATR and ATR compression
         dataframe["atr"] = ta.ATR(dataframe, length=self.atr_length)
@@ -191,8 +186,9 @@ class MeanReversionTrend(IStrategy):
         long_mask = dataframe["long_condition"] & rr_ok
         dataframe.loc[long_mask, "enter_long"] = 1
 
-        short_mask = dataframe["short_condition"] & rr_ok
-        dataframe.loc[short_mask, "enter_short"] = 1
+        # Shorts disabled — spot mode only
+        # short_mask = dataframe["short_condition"] & rr_ok
+        # dataframe.loc[short_mask, "enter_short"] = 1
 
         return dataframe
 
