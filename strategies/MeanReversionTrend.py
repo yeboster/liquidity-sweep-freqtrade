@@ -65,23 +65,23 @@ class MeanReversionTrend(IStrategy):
     # Bollinger + mean reversion
     bb_length = 20
     bb_std = 2.0
-    entry_dev_threshold = 2.0   # σ multiplier for entry
+    entry_dev_threshold = 1.0   # σ multiplier for entry (loosened for initial test)
 
     # ATR volatility compression
     atr_length = 14
-    atr_compression_ratio = 0.5  # ATR must be < X% of 20-day ATR average
+    atr_compression_ratio = 0.9  # ATR must be < X% of 20-day ATR average (loosened)
 
     # Volume confirmation
     volume_ma_length = 20
-    volume_multiplier = 1.5     # volume > X × SMA20
+    volume_multiplier = 1.2     # volume > X × SMA20 (loosened)
 
     # RSI confirmation
     rsi_length = 14
-    rsi_oversold = 30
-    rsi_overbought = 70
+    rsi_oversold = 20
+    rsi_overbought = 80
 
     # Trend filter: 4H EMA200
-    use_trend_filter = True
+    use_trend_filter = False    # disabled for initial test
 
     # Time-based exit
     time_exit_hours = 24
@@ -180,8 +180,8 @@ class MeanReversionTrend(IStrategy):
         dataframe["enter_long"] = 0
         dataframe["enter_short"] = 0
 
-        # R:R filter — min 2:1
-        rr_ok = dataframe["rr_ratio"] >= 2.0
+        # R:R filter — min 1:1 (loosened for initial test)
+        rr_ok = dataframe["rr_ratio"] >= 1.0
 
         long_mask = dataframe["long_condition"] & rr_ok
         dataframe.loc[long_mask, "enter_long"] = 1
