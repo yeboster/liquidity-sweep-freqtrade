@@ -44,56 +44,62 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "1.0.17"
+    STRATEGY_VERSION = "2.0.0"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
     informative_timeframe = "4h"   # Used for trend context
 
     # ── Minimal ROI ──────────────────────────────────────────────────────────
+    # Research: target mid-band (SMA) not tiny trail. Let winners run to +3-5%.
     minimal_roi = {
-        "0": 5.0,      # +5% initial target — let early exits handle via custom_exit
-        "60": 3.0,     # 1h: +3%
-        "180": 2.0,    # 3h: +2%
-        "1440": 1.0,   # 24h: floor at +1%
+        "0": 8.0,      # +8% — let big moves play out
+        "120": 5.0,    # 2h: +5%
+        "480": 3.0,    # 8h: +3%
+        "1440": 1.5,   # 24h: floor at +1.5%
     }
 
-    # Hard stoploss at -2.5% — was -1.5%, getting stopped out too fast
-    stoploss = -0.025   # -2.5%
+    # Research: ATR-based or structure stops > fixed %. Use wider hard stop as safety net.
+    stoploss = -0.04   # -4% hard floor (only hits if custom_stoploss fails)
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
     bb_length = 20
     bb_std = 2.0
-    entry_dev_threshold = 1.2   # σ multiplier for entry
+    entry_dev_threshold = 1.8   # σ multiplier — tight enough for real extremes (research: 1.5-2.0)
 
     # ATR volatility compression
     atr_length = 14
-    atr_compression_ratio = 0.8  # ATR filter disabled (ratio >= 1.0 always passes)
+    atr_compression_ratio = 0.95  # ATR must be < 95% of 20-day avg (relaxed — was 0.8)
 
     # Volume confirmation
     volume_ma_length = 20
-    volume_multiplier = 1.1     # volume > X × SMA20 (very loose)
+    volume_multiplier = 1.3     # volume > 1.3× SMA20 (tightened for quality)
 
-    # RSI confirmation
+    # RSI confirmation — research: BB touch + RSI < 35 gave 68% WR, 1.71 PF
     rsi_length = 14
-    rsi_oversold = 15
-    rsi_overbought = 85
+    rsi_oversold = 25   # Was 15 (too extreme — never triggers)
+    rsi_overbought = 75  # Was 85
 
-    # Trend filter: 4H EMA200
-    use_trend_filter = False    # disabled for initial test
+    # Trend filter: 4H EMA200 — RESEARCH SAYS THIS IS NON-NEGOTIABLE
+    # Without: 49% WR, 0.96 PF. With: 58% WR, 1.34 PF.
+    use_trend_filter = True
 
-    # Time-based exit
+    # ADX regime filter — research: skip mean reversion when ADX > 25 (trending)
+    use_adx_filter = True
+    adx_threshold = 25
+
+    # Time-based exit — research: if it hasn't reverted in 24h, get out
     time_exit_hours = 24
-    time_exit_profit_floor = 0.01  # 1% minimum profit before time exit fires
+    time_exit_profit_floor = 0.005  # 0.5% minimum profit before time exit fires (lowered)
 
     # ── Exit Conditions ─────────────────────────────────────────────────────
-    # Long exit: RSI needs to reach 80 (was 65 — way too early)
-    # OR deviation fully reverted to +1% (was 0 — exits on any bounce)
-    # Short exit: RSI needs to drop to 20 (was 30)
-    exit_rsi_long = 80
-    exit_rsi_short = 20
-    exit_dev_revert_pct = 1.0   # price must be 1% above SMA before exiting
+    # Research: target = mid-band (SMA), not a tight trail. Exit when reverted.
+    # Long exit: RSI reaches 65 (momentum normalized) OR deviation reverted to SMA
+    # Short exit: RSI drops to 35 OR deviation reverted below SMA
+    exit_rsi_long = 65
+    exit_rsi_short = 35
+    exit_dev_revert_pct = 0.0   # price must reach SMA (0% deviation) before exiting
 
     # Max risk
     max_open_trades = 3
@@ -149,32 +155,46 @@ class MeanReversionTrend(IStrategy):
         # RSI
         dataframe["rsi"] = ta.RSI(dataframe["close"], length=self.rsi_length)
 
+        # ADX — regime filter: skip mean reversion in strong trends
+        dataframe["adx"] = ta.ADX(dataframe, length=14)
+
         # ── Entry Conditions ───────────────────────────────────────────────────
         threshold = self.entry_dev_threshold
 
-        # Trend direction (4H EMA)
-        dataframe["trend_bullish"] = dataframe["close"] > dataframe["ema200_4h"]
-        dataframe["trend_bearish"] = dataframe["close"] < dataframe["ema200_4h"]
+        # Trend direction (4H EMA) — only used when trend filter is enabled
+        if self.use_trend_filter:
+            dataframe["trend_bullish"] = dataframe["close"] > dataframe["ema200_4h"]
+            dataframe["trend_bearish"] = dataframe["close"] < dataframe["ema200_4h"]
+        else:
+            dataframe["trend_bullish"] = True
+            dataframe["trend_bearish"] = True
 
         # Long: deviation < -threshold (price significantly below mean), compression, volume, RSI exiting oversold
         dataframe["long_condition"] = (
             (dataframe["deviation"] < -threshold) &
             dataframe["in_compression"] &
             dataframe["volume_confirm"] &
-            (dataframe["rsi"] > self.rsi_oversold) &  # RSI has EXITED oversold (<30)
+            (dataframe["rsi"] > self.rsi_oversold) &  # RSI has EXITED oversold
             (dataframe["rsi"] < 50) &  # Still in bottom half
             dataframe["trend_bullish"]
         )
+
+        # ADX filter: skip if trending strongly (ADX > threshold = trending, not mean-reverting)
+        if self.use_adx_filter:
+            dataframe["long_condition"] = dataframe["long_condition"] & (dataframe["adx"] < self.adx_threshold)
 
         # Short: deviation > +threshold (price significantly above mean), compression, volume, RSI exiting overbought
         dataframe["short_condition"] = (
             (dataframe["deviation"] > threshold) &
             dataframe["in_compression"] &
             dataframe["volume_confirm"] &
-            (dataframe["rsi"] < self.rsi_overbought) &  # RSI has EXITED overbought (>70)
+            (dataframe["rsi"] < self.rsi_overbought) &  # RSI has EXITED overbought
             (dataframe["rsi"] > 50) &  # Still in top half
             dataframe["trend_bearish"]
         )
+
+        if self.use_adx_filter:
+            dataframe["short_condition"] = dataframe["short_condition"] & (dataframe["adx"] < self.adx_threshold)
 
         # R:R ratio (deviation / threshold)
         dataframe["rr_ratio"] = dataframe["deviation"].abs() / threshold
@@ -201,14 +221,15 @@ class MeanReversionTrend(IStrategy):
         dataframe["exit_long"] = 0
         dataframe["exit_short"] = 0
 
-        # Long exit: RSI reaches 80 OR deviation reverted +1% above SMA
+        # Long exit: RSI reaches 65 (momentum normalized) OR deviation reverted to SMA
+        # Research: target = mid-band (SMA), not extreme RSI levels
         dataframe.loc[
             (dataframe["rsi"] > self.exit_rsi_long) |
             (dataframe["deviation"] > self.exit_dev_revert_pct),
             "exit_long"
         ] = 1
 
-        # Short exit: RSI drops to 20 OR deviation reverted -1% below SMA
+        # Short exit: RSI drops to 35 OR deviation reverted below SMA
         dataframe.loc[
             (dataframe["rsi"] < self.exit_rsi_short) |
             (dataframe["deviation"] < -self.exit_dev_revert_pct),
@@ -217,10 +238,11 @@ class MeanReversionTrend(IStrategy):
 
         return dataframe
 
-    # Trailing stop — activates at +1% profit, trails 0.8%
-    trailing_stop = True
-    trailing_stop_positive = 0.008
-    trailing_stop_positive_offset = 0.01
+    # Trailing stop — DISABLED. Research: trailing stops strangle mean reversion winners.
+    # Winners averaged +0.86% because trail cut them at 1%. Let exits handle profit-taking.
+    trailing_stop = False
+    trailing_stop_positive = 0.015
+    trailing_stop_positive_offset = 0.03
     trailing_only_offset_is_reached = True
 
     # Scale-in: disabled — adding size on small profit was amplifying losses
@@ -231,8 +253,15 @@ class MeanReversionTrend(IStrategy):
         current_rate: float, current_profit: float, after_fill: bool,
         **kwargs
     ) -> Optional[float]:
-        """Fixed -1.5% stoploss."""
-        return -0.015
+        """ATR-based dynamic stop: 2× ATR from entry, floor -1.5%, ceiling -4%."""
+        df, _ = self.dp.get_pair_dataframe(pair, self.timeframe)
+        if df.empty:
+            return -0.025
+        last = df.iloc[-1]
+        atr_pct = last.get("atr_pct", 1.5)
+        # 2× ATR with floor/cap
+        stop_pct = -max(0.015, min(0.04, atr_pct * 2.0 / 100))
+        return stop_pct
 
     def custom_exit(
         self, pair: str, trade: "Trade", current_time: datetime,
