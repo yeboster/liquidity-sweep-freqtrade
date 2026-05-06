@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.0"
+    STRATEGY_VERSION = "2.0.1"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -60,7 +60,7 @@ class MeanReversionTrend(IStrategy):
     }
 
     # Research: ATR-based or structure stops > fixed %. Use wider hard stop as safety net.
-    stoploss = -0.04   # -4% hard floor (only hits if custom_stoploss fails)
+    stoploss = -0.0370   # -4% hard floor (only hits if custom_stoploss fails)
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
@@ -241,8 +241,8 @@ class MeanReversionTrend(IStrategy):
     # Trailing stop — DISABLED. Research: trailing stops strangle mean reversion winners.
     # Winners averaged +0.86% because trail cut them at 1%. Let exits handle profit-taking.
     trailing_stop = False
-    trailing_stop_positive = 0.015
-    trailing_stop_positive_offset = 0.03
+    trailing_stop_positive = 0.0200
+    trailing_stop_positive_offset = 0.0350
     trailing_only_offset_is_reached = True
 
     # Scale-in: disabled — adding size on small profit was amplifying losses

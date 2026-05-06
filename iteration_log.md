@@ -78,3 +78,9 @@ Formula: `(target_sl_price - current_rate) / current_rate`.
 - Profit: -2.53% | Trades: 8 | WR: 50.0% | R/R: 0.3092 | DD: 2.5337%
 - Changes: Loosen: dev 1.2→1.2, atr 0.8→0.8, Version: 1.0.16→1.0.17
 - Reason: profit < 10% — loosen filters (lower dev threshold, widen ATR compression)
+
+## Iteration v2: 2026-05-06 21:05:41
+- Profit: -6.02% | Trades: 29 | WR: 55.2% | R/R: 0.4988 | SQN: -1.1495 | DD: 6.83%
+- Exit breakdown: trailing=0(0%WR, $0.00), stop=11(0%WR, $-150.42), time=0(0%WR, $0.00)
+- Changes: Fix R/R: trail 0.015→0.02, offset 0.03→0.034999999999999996, stop -0.04→-0.037, v2.0.0→2.0.1
+- Reason: R/R broken — trailing stop too tight vs stop loss
