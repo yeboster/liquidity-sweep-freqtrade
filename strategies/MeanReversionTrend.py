@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "1.0.7"
+    STRATEGY_VERSION = "1.0.8"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -69,7 +69,7 @@ class MeanReversionTrend(IStrategy):
 
     # ATR volatility compression
     atr_length = 14
-    atr_compression_ratio = 1.0  # ATR filter disabled (ratio >= 1.0 always passes)
+    atr_compression_ratio = 0.8  # ATR filter disabled (ratio >= 1.0 always passes)
 
     # Volume confirmation
     volume_ma_length = 20

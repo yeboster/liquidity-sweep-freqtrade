@@ -28,3 +28,8 @@ By returning a fixed percentage (e.g. -0.05 based on entry) from `custom_stoplos
 **Action Plan (v0.18.0):**
 Fix `custom_stoploss` to calculate percentage relative to **current_rate** so that the target price remains fixed.
 Formula: `(target_sl_price - current_rate) / current_rate`.
+
+## Iteration: 2026-05-06 01:09:39
+- Profit: -32.98% | Trades: 192 | WR: 48.96% | R/R: 0.3836 | DD: None%
+- Changes: Loosen: dev 1.2→1.2, atr 1.0→0.8, Version: 1.0.7→1.0.8
+- Reason: profit < 10% — loosen filters (lower dev threshold, widen ATR compression)
