@@ -253,14 +253,16 @@ class MeanReversionTrend(IStrategy):
         current_rate: float, current_profit: float, after_fill: bool,
         **kwargs
     ) -> Optional[float]:
-        """ATR-based dynamic stop: 2× ATR from entry, floor -1.5%, ceiling -4%."""
+        """ATR-based dynamic stop: 1× ATR from entry, floor -2%, ceiling -3.5%.
+        Research: 2× ATR was too wide — stop loss always hit floor at -4%.
+        Tighten to 1× ATR so the dynamic stop actually works vs a hard floor."""
         df, _ = self.dp.get_pair_dataframe(pair, self.timeframe)
         if df.empty:
             return -0.025
         last = df.iloc[-1]
         atr_pct = last.get("atr_pct", 1.5)
-        # 2× ATR with floor/cap
-        stop_pct = -max(0.015, min(0.04, atr_pct * 2.0 / 100))
+        # 1× ATR (tightened from 2×) — floor/cap guard
+        stop_pct = -max(0.020, min(0.035, atr_pct * 1.0 / 100))
         return stop_pct
 
     def custom_exit(
