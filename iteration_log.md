@@ -33,3 +33,8 @@ Formula: `(target_sl_price - current_rate) / current_rate`.
 - Profit: -32.98% | Trades: 192 | WR: 48.96% | R/R: 0.3836 | DD: None%
 - Changes: Loosen: dev 1.2→1.2, atr 1.0→0.8, Version: 1.0.7→1.0.8
 - Reason: profit < 10% — loosen filters (lower dev threshold, widen ATR compression)
+
+## Iteration: 2026-05-06 03:05:48
+- Profit: -2.53% | Trades: 8 | WR: 50.0% | R/R: 0.3092 | DD: 2.5337%
+- Changes: Loosen: dev 1.2→1.2, atr 0.8→0.8, Version: 1.0.8→1.0.9
+- Reason: profit < 10% — loosen filters (lower dev threshold, widen ATR compression)

@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "1.0.8"
+    STRATEGY_VERSION = "1.0.9"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
