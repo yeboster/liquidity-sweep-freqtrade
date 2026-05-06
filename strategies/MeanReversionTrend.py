@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.2"
+    STRATEGY_VERSION = "2.0.3"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -59,8 +59,8 @@ class MeanReversionTrend(IStrategy):
         "1440": 1.5,   # 24h: floor at +1.5%
     }
 
-    # Research: ATR-based or structure stops > fixed %. Use wider hard stop as safety net.
-    stoploss = -0.0340   # -4% hard floor (only hits if custom_stoploss fails)
+    # Research: ATR-based or structure stops > fixed %. Safety net only.
+    stoploss = -0.05   # -5% hard floor — widen from -4% (ATR-based stop handles dynamic exit)
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
@@ -245,6 +245,10 @@ class MeanReversionTrend(IStrategy):
     trailing_stop_positive_offset = 0.0400
     trailing_only_offset_is_reached = True
 
+    # Research: widen ATR stop. Floor at 3% so custom_stoploss actually uses dynamic ATR (1.5-2×)
+    # instead of always hitting the hard stop. BTC ATR ~1.5-2% → 1.5× = 2.25-3%, 2× = 3-4%.
+    atr_stop_floor = 0.030
+
     # Scale-in: disabled — adding size on small profit was amplifying losses
     scale_in_enabled = False
 
@@ -253,16 +257,16 @@ class MeanReversionTrend(IStrategy):
         current_rate: float, current_profit: float, after_fill: bool,
         **kwargs
     ) -> Optional[float]:
-        """ATR-based dynamic stop: 1× ATR from entry, floor -2%, ceiling -3.5%.
-        Research: 2× ATR was too wide — stop loss always hit floor at -4%.
-        Tighten to 1× ATR so the dynamic stop actually works vs a hard floor."""
+        """ATR-based dynamic stop: 1.5× ATR from entry, floor 3%, ceiling 5%.
+        Research: 2× ATR was too wide — stop hit floor at -4% anyway.
+        Widen to 1.5× so the dynamic stop competes with hard stop."""
         df, _ = self.dp.get_pair_dataframe(pair, self.timeframe)
         if df.empty:
-            return -0.025
+            return -0.035
         last = df.iloc[-1]
         atr_pct = last.get("atr_pct", 1.5)
-        # 1× ATR (tightened from 2×) — floor/cap guard
-        stop_pct = -max(0.020, min(0.035, atr_pct * 1.0 / 100))
+        # 1.5× ATR — floor 3%, cap 5% (hard stop handles the rest)
+        stop_pct = -max(self.atr_stop_floor, min(0.05, atr_pct * 1.5 / 100))
         return stop_pct
 
     def custom_exit(
