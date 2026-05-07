@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.19"
+    STRATEGY_VERSION = "2.0.20"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -52,11 +52,11 @@ class MeanReversionTrend(IStrategy):
 
     # ── Minimal ROI ──────────────────────────────────────────────────────────
     # Research: target mid-band (SMA) not tiny trail. Let winners run to +3-5%.
+    # Research: custom_exit handles all exit logic. minimal_roi at +4% forced exits before
+    # custom_exit conditions fired — cutting winners short at +4% when avg win was ~2%.
+    # "0": 0.0 = no unconditional ROI floor, let custom_exit control everything.
     minimal_roi = {
-        "0": 4.0,      # +4% — was 8% (too high, exited before mean reversion)
-        "120": 3.0,    # 2h: +3%
-        "480": 2.0,    # 8h: +2%
-        "1440": 1.0,   # 24h: floor at +1%
+        "0": 0.0,
     }
 
     # Research: STOP LOSS KILLS mean reversion. Widen to -8% so ATR stop (1.5-2×) handles exits.
@@ -285,11 +285,11 @@ class MeanReversionTrend(IStrategy):
 
         # Phase-based stop
         if current_profit > 0.08:
-            # Phase 3: big winner — lock in 1% trailing below current rate
-            return -0.010
+            # Phase 3: big winner — lock in 0.8% (tightened from 1% to reduce loss damage)
+            return -0.008
         elif current_profit > 0.03:
-            # Phase 2: solid profit — lock in 2%
-            return -0.020
+            # Phase 2: solid profit — lock in 1.5% (tightened from 2% to limit loss damage)
+            return -0.015
         else:
             # Phase 1: initial wide stop — 3× ATR, floor 8%, cap 15%
             stop_pct = min(0.15, max(0.08, atr_pct * 3.0 / 100))
