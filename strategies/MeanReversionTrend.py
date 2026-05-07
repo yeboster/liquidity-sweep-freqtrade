@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.4"
+    STRATEGY_VERSION = "2.0.5"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -59,14 +59,17 @@ class MeanReversionTrend(IStrategy):
         "1440": 1.5,   # 24h: floor at +1.5%
     }
 
-    # Research: ATR-based or structure stops > fixed %. Safety net only.
-    stoploss = -0.0470   # -5% hard floor — widen from -4% (ATR-based stop handles dynamic exit)
+    # Research: STOP LOSS KILLS mean reversion. Widen to -8% so ATR stop (1.5-2×) handles exits.
+    # BTC ATR ~2-4% → 2× ATR = 4-8% entry dynamic stop, hard stop is the floor.
+    # v2.0.4 had -4.7% hard stop → stopped out before ATR stop could activate.
+    stoploss = -0.0800   # -5% hard floor — widen from -4% (ATR-based stop handles dynamic exit)
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
     bb_length = 20
     bb_std = 2.0
-    entry_dev_threshold = 1.8   # σ multiplier — tight enough for real extremes (research: 1.5-2.0)
+    entry_dev_threshold = 1.5   # σ multiplier — lower from 1.8 to capture more mean reversion setups
+                               # Research: BB touch at ±2σ is rare in crypto; 1.5σ is practical extreme
 
     # ATR volatility compression
     atr_length = 14
@@ -249,6 +252,10 @@ class MeanReversionTrend(IStrategy):
     # instead of always hitting the hard stop. BTC ATR ~1.5-2% → 1.5× = 2.25-3%, 2× = 3-4%.
     atr_stop_floor = 0.030
 
+    # ATR stop: 2× ATR (widened from 1.5×) — compete with hard -8% stop on high-ATR days
+    # BTC ATR ~2-4%: 2× = 4-8% stop distance from entry
+    atr_stop_mult = 2.0
+
     # Scale-in: disabled — adding size on small profit was amplifying losses
     scale_in_enabled = False
 
@@ -257,16 +264,16 @@ class MeanReversionTrend(IStrategy):
         current_rate: float, current_profit: float, after_fill: bool,
         **kwargs
     ) -> Optional[float]:
-        """ATR-based dynamic stop: 1.5× ATR from entry, floor 3%, ceiling 5%.
-        Research: 2× ATR was too wide — stop hit floor at -4% anyway.
-        Widen to 1.5× so the dynamic stop competes with hard stop."""
+        """ATR-based dynamic stop: 2× ATR from entry, floor 3%, ceiling 8%.
+        Research v2.0.5: hard stop widened to -8% so ATR stop can compete.
+        With BTC ATR ~2-4%, 2× ATR = 4-8% dynamic stop window."""
         df, _ = self.dp.get_pair_dataframe(pair, self.timeframe)
         if df.empty:
             return -0.035
         last = df.iloc[-1]
-        atr_pct = last.get("atr_pct", 1.5)
-        # 1.5× ATR — floor 3%, cap 5% (hard stop handles the rest)
-        stop_pct = -max(self.atr_stop_floor, min(0.05, atr_pct * 1.5 / 100))
+        atr_pct = last.get("atr_pct", 2.0)
+        # 2× ATR — floor 3%, cap 8% (hard stop handles the rest)
+        stop_pct = -max(self.atr_stop_floor, min(0.08, atr_pct * self.atr_stop_mult / 100))
         return stop_pct
 
     def custom_exit(
