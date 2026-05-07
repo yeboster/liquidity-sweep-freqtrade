@@ -120,3 +120,9 @@ Formula: `(target_sl_price - current_rate) / current_rate`.
 - Exit breakdown: trailing=0(0%WR, $0.00), stop=2(0%WR, $-78.77), time=0(0%WR, $0.00)
 - Changes: Fix R/R: trail 0.03→0.03, offset 0.06→0.065, stop -0.117→-0.114, v2.0.9→2.0.10
 - Reason: R/R broken — trailing stop too tight vs stop loss
+
+## Iteration v2.0.16 [research]: 2026-05-07 15:24
+- Profit: 6.45% | Trades: 34 | WR: 82.3% | R/R: 0.3341 | SQN: 0.9025 | DD: 3.97%
+- Exit breakdown: exit_signal=32(87.5%WR, $141.59, mean 1.34%), stop=2(0%WR, $-77.05, mean -11.66%)
+- Changes: minimal_roi 8%→4%, exit_dev_revert_pct 0.0→0.5%
+- Reason: Research — 8% ROI forced premature exit (avg win only $1.01). Partial reversion more realistic than exact SMA. Mean reversion optimal: WR 70-80%, R/R 1:1-1.5.
