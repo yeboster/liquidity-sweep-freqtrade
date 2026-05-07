@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.21"
+    STRATEGY_VERSION = "2.0.22"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -67,9 +67,11 @@ class MeanReversionTrend(IStrategy):
     # v2.0.4 had -4.7% hard stop → stopped out before ATR stop could activate.
     use_custom_stoploss = True   # Enable custom_stoploss() — THIS WAS MISSING!
 
-    # Research: Widen base stoploss to -12%. Custom_stoploss controls dynamic ATR-based exit.
-    # Without this flag, custom_stoploss() is NEVER called — hard -7.4% stop kills mean reversion.
-    stoploss = -0.1050
+    # Research: HARD stoploss must be the disaster floor, not the active stop.
+    # v2.0.22: Widen from -10.5% to -20%. Research: tight hard stop kills mean reversion
+    # because the edge STRENGTHENS as price moves against you — cutting early destroys the edge.
+    # Custom_stoploss() controls the active stop; hard stop only fires in catastrophic moves.
+    stoploss = -0.2000
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
@@ -273,8 +275,8 @@ class MeanReversionTrend(IStrategy):
         """Stepped ATR-based stop loss — enables custom_stoploss() to be called.
 
         Phase 1: Wide initial stop (ATR * 3, floor 8%, cap 15%) — give trades room to work.
-        Phase 2: Once profit > 3%, tighten to 2% lock-in — capture without strangling winners.
-        Phase 3: Once profit > 8%, tighten to 1% — let big moves run.
+        Phase 2: Once profit > 3%, tighten to 1.5% lock-in — capture without strangling winners.
+        Phase 3: Once profit > 8%, tighten to 0.8% — let big moves run.
 
         Research: freqtrade docs confirm custom_stoploss default = self.stoploss (static).
         Only with use_custom_stoploss=True does the dynamic ATR logic activate.
