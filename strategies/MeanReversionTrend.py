@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.7"
+    STRATEGY_VERSION = "2.0.8"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -62,7 +62,11 @@ class MeanReversionTrend(IStrategy):
     # Research: STOP LOSS KILLS mean reversion. Widen to -8% so ATR stop (1.5-2×) handles exits.
     # BTC ATR ~2-4% → 2× ATR = 4-8% entry dynamic stop, hard stop is the floor.
     # v2.0.4 had -4.7% hard stop → stopped out before ATR stop could activate.
-    stoploss = -0.0740   # -5% hard floor — widen from -4% (ATR-based stop handles dynamic exit)
+    use_custom_stoploss = True   # Enable custom_stoploss() — THIS WAS MISSING!
+
+    # Research: Widen base stoploss to -12%. Custom_stoploss controls dynamic ATR-based exit.
+    # Without this flag, custom_stoploss() is NEVER called — hard -7.4% stop kills mean reversion.
+    stoploss = -0.12
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
@@ -248,13 +252,10 @@ class MeanReversionTrend(IStrategy):
     trailing_stop_positive_offset = 0.0550
     trailing_only_offset_is_reached = True
 
-    # Research: widen ATR stop. Floor at 3% so custom_stoploss actually uses dynamic ATR (1.5-2×)
-    # instead of always hitting the hard stop. BTC ATR ~1.5-2% → 1.5× = 2.25-3%, 2× = 3-4%.
-    atr_stop_floor = 0.030
-
-    # ATR stop: 2× ATR (widened from 1.5×) — compete with hard -8% stop on high-ATR days
-    # BTC ATR ~2-4%: 2× = 4-8% stop distance from entry
-    atr_stop_mult = 2.0
+    # Research: widened base stoploss to -12%, use_custom_stoploss=True (was missing — custom_stoploss never called!)
+    # Stepped ATR stop: Phase1 wide (3×ATR, 8-15%), Phase2 2% lock-in at >3% profit, Phase3 1% at >8% profit
+    # Key insight from freqtrade docs + GH #6955: use_custom_stoploss=True must be set explicitly
+    # Without it, custom_stoploss() is never called regardless of method existence.
 
     # Scale-in: disabled — adding size on small profit was amplifying losses
     scale_in_enabled = False
@@ -264,17 +265,33 @@ class MeanReversionTrend(IStrategy):
         current_rate: float, current_profit: float, after_fill: bool,
         **kwargs
     ) -> Optional[float]:
-        """ATR-based dynamic stop: 2× ATR from entry, floor 3%, ceiling 8%.
-        Research v2.0.5: hard stop widened to -8% so ATR stop can compete.
-        With BTC ATR ~2-4%, 2× ATR = 4-8% dynamic stop window."""
+        """Stepped ATR-based stop loss — enables custom_stoploss() to be called.
+
+        Phase 1: Wide initial stop (ATR * 3, floor 8%, cap 15%) — give trades room to work.
+        Phase 2: Once profit > 3%, tighten to 2% lock-in — capture without strangling winners.
+        Phase 3: Once profit > 8%, tighten to 1% — let big moves run.
+
+        Research: freqtrade docs confirm custom_stoploss default = self.stoploss (static).
+        Only with use_custom_stoploss=True does the dynamic ATR logic activate.
+        """
         df, _ = self.dp.get_pair_dataframe(pair, self.timeframe)
         if df.empty:
-            return -0.035
+            return -0.08
+
         last = df.iloc[-1]
         atr_pct = last.get("atr_pct", 2.0)
-        # 2× ATR — floor 3%, cap 8% (hard stop handles the rest)
-        stop_pct = -max(self.atr_stop_floor, min(0.08, atr_pct * self.atr_stop_mult / 100))
-        return stop_pct
+
+        # Phase-based stop
+        if current_profit > 0.08:
+            # Phase 3: big winner — lock in 1% trailing below current rate
+            return -0.010
+        elif current_profit > 0.03:
+            # Phase 2: solid profit — lock in 2%
+            return -0.020
+        else:
+            # Phase 1: initial wide stop — 3× ATR, floor 8%, cap 15%
+            stop_pct = min(0.15, max(0.08, atr_pct * 3.0 / 100))
+            return -stop_pct
 
     def custom_exit(
         self, pair: str, trade: "Trade", current_time: datetime,
