@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.20"
+    STRATEGY_VERSION = "2.0.21"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -52,11 +52,14 @@ class MeanReversionTrend(IStrategy):
 
     # ── Minimal ROI ──────────────────────────────────────────────────────────
     # Research: target mid-band (SMA) not tiny trail. Let winners run to +3-5%.
-    # Research: custom_exit handles all exit logic. minimal_roi at +4% forced exits before
-    # custom_exit conditions fired — cutting winners short at +4% when avg win was ~2%.
-    # "0": 0.0 = no unconditional ROI floor, let custom_exit control everything.
+    # v2.0.21: CRITICAL FIX — {"0": 0.0} broke strategy (freqtrade reads as "exit at 0% profit")
+    # The stepped {"0": 4.0} was the actual profit target capturing mean reversion bounces.
+    # Reverted to stepped with 0.5% floor (was 1.0%) to let custom_exit control winners.
     minimal_roi = {
-        "0": 0.0,
+        "0": 4.0,      # +4% — captures mean reversion bounce
+        "120": 3.0,    # 2h: +3%
+        "480": 2.0,    # 8h: +2%
+        "1440": 0.5,   # 24h: floor at +0.5% (lowered from 1.0%)
     }
 
     # Research: STOP LOSS KILLS mean reversion. Widen to -8% so ATR stop (1.5-2×) handles exits.
