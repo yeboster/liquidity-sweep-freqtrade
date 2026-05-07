@@ -102,3 +102,9 @@ Formula: `(target_sl_price - current_rate) / current_rate`.
 - Exit breakdown: trailing=0(0%WR, $0.00), stop=9(0%WR, $-144.40), time=0(0%WR, $0.00)
 - Changes: Fix R/R: trail 0.03→0.03, offset 0.045→0.049999999999999996, stop -0.08→-0.077, v2.0.5→2.0.6
 - Reason: R/R broken — trailing stop too tight vs stop loss
+
+## Iteration v2: 2026-05-07 03:05:47
+- Profit: -1.09% | Trades: 34 | WR: 73.5% | R/R: 0.3375 | SQN: -0.1600 | DD: 3.62%
+- Exit breakdown: trailing=0(0%WR, $0.00), stop=5(0%WR, $-132.77), time=0(0%WR, $0.00)
+- Changes: Fix R/R: trail 0.03→0.03, offset 0.05→0.055, stop -0.077→-0.074, v2.0.6→2.0.7
+- Reason: R/R broken — trailing stop too tight vs stop loss

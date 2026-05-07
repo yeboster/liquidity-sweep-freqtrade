@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.6"
+    STRATEGY_VERSION = "2.0.7"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -62,7 +62,7 @@ class MeanReversionTrend(IStrategy):
     # Research: STOP LOSS KILLS mean reversion. Widen to -8% so ATR stop (1.5-2×) handles exits.
     # BTC ATR ~2-4% → 2× ATR = 4-8% entry dynamic stop, hard stop is the floor.
     # v2.0.4 had -4.7% hard stop → stopped out before ATR stop could activate.
-    stoploss = -0.0770   # -5% hard floor — widen from -4% (ATR-based stop handles dynamic exit)
+    stoploss = -0.0740   # -5% hard floor — widen from -4% (ATR-based stop handles dynamic exit)
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
@@ -245,7 +245,7 @@ class MeanReversionTrend(IStrategy):
     # Winners averaged +0.86% because trail cut them at 1%. Let exits handle profit-taking.
     trailing_stop = False
     trailing_stop_positive = 0.0300
-    trailing_stop_positive_offset = 0.0500
+    trailing_stop_positive_offset = 0.0550
     trailing_only_offset_is_reached = True
 
     # Research: widen ATR stop. Floor at 3% so custom_stoploss actually uses dynamic ATR (1.5-2×)
