@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.10"
+    STRATEGY_VERSION = "2.0.16"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -53,10 +53,10 @@ class MeanReversionTrend(IStrategy):
     # ── Minimal ROI ──────────────────────────────────────────────────────────
     # Research: target mid-band (SMA) not tiny trail. Let winners run to +3-5%.
     minimal_roi = {
-        "0": 8.0,      # +8% — let big moves play out
-        "120": 5.0,    # 2h: +5%
-        "480": 3.0,    # 8h: +3%
-        "1440": 1.5,   # 24h: floor at +1.5%
+        "0": 4.0,      # +4% — was 8% (too high, exited before mean reversion)
+        "120": 3.0,    # 2h: +3%
+        "480": 2.0,    # 8h: +2%
+        "1440": 1.0,   # 24h: floor at +1%
     }
 
     # Research: STOP LOSS KILLS mean reversion. Widen to -8% so ATR stop (1.5-2×) handles exits.
@@ -106,7 +106,9 @@ class MeanReversionTrend(IStrategy):
     # Short exit: RSI drops to 35 OR deviation reverted below SMA
     exit_rsi_long = 65
     exit_rsi_short = 35
-    exit_dev_revert_pct = 0.0   # price must reach SMA (0% deviation) before exiting
+    # v2.0.16: Was 0.0 — mean reversion rarely hits exact SMA, partial reversion is realistic.
+    # Tightening to 0.5% lets winners run past exact SMA touch while still ensuring meaningful reversion.
+    exit_dev_revert_pct = 0.5   # price must reach SMA (within 0.5%) before exiting
 
     # Max risk
     max_open_trades = 3
