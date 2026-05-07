@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.22"
+    STRATEGY_VERSION = "2.0.23"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -77,12 +77,12 @@ class MeanReversionTrend(IStrategy):
     # Bollinger + mean reversion
     bb_length = 20
     bb_std = 2.0
-    entry_dev_threshold = 1.5   # σ multiplier — lower from 1.8 to capture more mean reversion setups
+    entry_dev_threshold = 1.4   # σ multiplier — lower from 1.8 to capture more mean reversion setups
                                # Research: BB touch at ±2σ is rare in crypto; 1.5σ is practical extreme
 
     # ATR volatility compression
     atr_length = 14
-    atr_compression_ratio = 0.95  # ATR must be < 95% of 20-day avg (relaxed — was 0.8)
+    atr_compression_ratio = 0.90  # ATR must be < 95% of 20-day avg (relaxed — was 0.8)
 
     # Volume confirmation
     volume_ma_length = 20
