@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.23"
+    STRATEGY_VERSION = "2.0.24"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -55,11 +55,14 @@ class MeanReversionTrend(IStrategy):
     # v2.0.21: CRITICAL FIX — {"0": 0.0} broke strategy (freqtrade reads as "exit at 0% profit")
     # The stepped {"0": 4.0} was the actual profit target capturing mean reversion bounces.
     # Reverted to stepped with 0.5% floor (was 1.0%) to let custom_exit control winners.
+    # Research v2.0.24: Lower ROI steps to be achievable for mean reversion.
+    # v2.0.23 used 4% as entry target — research says 3-5% is realistic for crypto MR on 1H.
+    # Lowering slightly so Phase 3 of custom_stoploss can engage (needs > 3% profit).
     minimal_roi = {
-        "0": 4.0,      # +4% — captures mean reversion bounce
-        "120": 3.0,    # 2h: +3%
+        "0": 3.5,      # +3.5% — captures mean reversion bounce (was 4.0)
+        "120": 2.5,    # 2h: +2.5% (was 3.0)
         "480": 2.0,    # 8h: +2%
-        "1440": 0.5,   # 24h: floor at +0.5% (lowered from 1.0%)
+        "1440": 0.5,   # 24h: floor at +0.5%
     }
 
     # Research: STOP LOSS KILLS mean reversion. Widen to -8% so ATR stop (1.5-2×) handles exits.
@@ -77,8 +80,10 @@ class MeanReversionTrend(IStrategy):
     # Bollinger + mean reversion
     bb_length = 20
     bb_std = 2.0
-    entry_dev_threshold = 1.4   # σ multiplier — lower from 1.8 to capture more mean reversion setups
-                               # Research: BB touch at ±2σ is rare in crypto; 1.5σ is practical extreme
+    # Research v2.0.24: BB at ±2σ is rare in crypto → lower from 1.4 to 1.2 to capture more MR setups.
+    # Strategy #3 from stratbase.ai: "BB touch + RSI < 35 gave 68% WR, 1.71 PF" but only 31 signals.
+    # 1.2σ is a more practical extreme while still requiring real deviation.
+    entry_dev_threshold = 1.2   # σ multiplier — lowered from 1.4
 
     # ATR volatility compression
     atr_length = 14
@@ -88,10 +93,13 @@ class MeanReversionTrend(IStrategy):
     volume_ma_length = 20
     volume_multiplier = 1.3     # volume > 1.3× SMA20 (tightened for quality)
 
-    # RSI confirmation — research: BB touch + RSI < 35 gave 68% WR, 1.71 PF
+    # Research v2.0.24: Widen RSI entry band for more signals.
+    # Strategy #2 stratbase: "RSI cross back above 30" as trigger — entry at RSI > 30 vs RSI > 25.
+    # v2.0.23 had RSI 25 (oversold) — only fires when RSI has already left extreme zone.
+    # Widening to 30/70 gives more setups while staying in bottom/top half.
     rsi_length = 14
-    rsi_oversold = 25   # Was 15 (too extreme — never triggers)
-    rsi_overbought = 75  # Was 85
+    rsi_oversold = 30   # Was 25 — widened for more entry signals
+    rsi_overbought = 70  # Was 75 — widened for more entry signals
 
     # Trend filter: 4H EMA200 — RESEARCH SAYS THIS IS NON-NEGOTIABLE
     # Without: 49% WR, 0.96 PF. With: 58% WR, 1.34 PF.
@@ -109,8 +117,12 @@ class MeanReversionTrend(IStrategy):
     # Research: target = mid-band (SMA), not a tight trail. Exit when reverted.
     # Long exit: RSI reaches 65 (momentum normalized) OR deviation reverted to SMA
     # Short exit: RSI drops to 35 OR deviation reverted below SMA
-    exit_rsi_long = 65
-    exit_rsi_short = 35
+    # Research v2.0.24: Tighten exit RSI from 65/35 to 60/40.
+    # stratbase.ai research: "sell when RSI returns above 50 (momentum has normalized)".
+    # Current 65/35 is too conservative — winners sit too long while RSI normalizes slowly.
+    # 60/40 captures momentum normalization faster, improving avg trade time and R/R.
+    exit_rsi_long = 60   # Was 65
+    exit_rsi_short = 40  # Was 35
     # v2.0.16: Was 0.0 — mean reversion rarely hits exact SMA, partial reversion is realistic.
     # Tightening to 0.5% lets winners run past exact SMA touch while still ensuring meaningful reversion.
     exit_dev_revert_pct = 0.5   # price must reach SMA (within 0.5%) before exiting
@@ -290,11 +302,11 @@ class MeanReversionTrend(IStrategy):
 
         # Phase-based stop
         if current_profit > 0.08:
-            # Phase 3: big winner — lock in 0.8% (tightened from 1% to reduce loss damage)
-            return -0.008
+            # Phase 3: big winner — lock in 0.5% (tightened from 0.8% — research: partial at 1× ATR is common target)
+            return -0.005
         elif current_profit > 0.03:
-            # Phase 2: solid profit — lock in 1.5% (tightened from 2% to limit loss damage)
-            return -0.015
+            # Phase 2: solid profit — lock in 1% (tightened from 1.5%)
+            return -0.01
         else:
             # Phase 1: initial wide stop — 3× ATR, floor 8%, cap 15%
             stop_pct = min(0.15, max(0.08, atr_pct * 3.0 / 100))
