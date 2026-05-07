@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.16"
+    STRATEGY_VERSION = "2.0.17"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -66,7 +66,7 @@ class MeanReversionTrend(IStrategy):
 
     # Research: Widen base stoploss to -12%. Custom_stoploss controls dynamic ATR-based exit.
     # Without this flag, custom_stoploss() is NEVER called — hard -7.4% stop kills mean reversion.
-    stoploss = -0.1140
+    stoploss = -0.1110
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
@@ -251,7 +251,7 @@ class MeanReversionTrend(IStrategy):
     # Winners averaged +0.86% because trail cut them at 1%. Let exits handle profit-taking.
     trailing_stop = False
     trailing_stop_positive = 0.0300
-    trailing_stop_positive_offset = 0.0650
+    trailing_stop_positive_offset = 0.0700
     trailing_only_offset_is_reached = True
 
     # Research: widened base stoploss to -12%, use_custom_stoploss=True (was missing — custom_stoploss never called!)
