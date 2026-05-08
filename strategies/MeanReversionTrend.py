@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.33"
+    STRATEGY_VERSION = "2.0.34"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -86,7 +86,11 @@ class MeanReversionTrend(IStrategy):
     # Research v2.0.24: BB at ±2σ is rare in crypto → lower from 1.4 to 1.2 to capture more MR setups.
     # Strategy #3 from stratbase.ai: "BB touch + RSI < 35 gave 68% WR, 1.71 PF" but only 31 signals.
     # 1.2σ is a more practical extreme while still requiring real deviation.
-    entry_dev_threshold = 1.1   # σ multiplier — lowered from 1.4
+    # Research v2.0.34: Raised to 1.5σ — tighter entries catch deeper deviations with more reversion potential.
+    # v2.0.33 had 1.1σ which caught shallow pullbacks that exhausted before full reversion.
+    # R/R fix: entry at -1.5% deviation with exit at 1.5% reversion = 3% total move vs ~15% max loss = 0.2 R/R.
+    # Combined with 2.5× ATR stop (~5-8% for crypto), this gives room for the trade to work.
+    entry_dev_threshold = 1.5   # Was 1.1 — only enter at real extremes
 
     # ATR volatility compression
     atr_length = 14
@@ -128,9 +132,16 @@ class MeanReversionTrend(IStrategy):
     # RSI 65 gives room for the actual mean reversion bounce to complete (+3-5% potential).
     # Also widen exit_dev_revert_pct from 0.5%→1.0% — price rarely touches exact SMA,
     # 0.5% is too tight for a 1H candle; give it room to breathe.
-    exit_rsi_long = 65   # Was 80 — Connors exit threshold
+    # Research v2.0.34: RSI 80 = "momentum fully normalized to bullish" — lets the actual MR bounce complete.
+    # RSI 65 was cutting winners at ~0.36% avg because it fires before full reversion.
+    # Connors RSI(2) exits at 65-80; Larry's original research used RSI>65 as the conservative exit.
+    # 80 gives the 3-5% crypto MR bounce time to develop before exiting.
+    exit_rsi_long = 80   # Was 65 — Connors momentum normalization threshold
     exit_rsi_short = 35  # Was 20
-    exit_dev_revert_pct = 1.0   # Was 0.5% — widened to capture full reversion bounce
+    # Research v2.0.34: 1.5% means price must revert to within 1.5% of SMA (past the mean).
+    # Combined with RSI exit at 80, this gives winners room to run.
+    # v2.0.33 had 1.0% which was too tight — RSI 65 was the dominant exit at minimal profit.
+    exit_dev_revert_pct = 1.5   # Was 1.0%
 
     # Max risk
     max_open_trades = 3
