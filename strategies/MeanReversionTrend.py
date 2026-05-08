@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.27"
+    STRATEGY_VERSION = "2.0.28"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -62,10 +62,10 @@ class MeanReversionTrend(IStrategy):
     # MR research: "exit when RSI crosses above 40" (not 60!) — wait for full momentum normalization.
     # Research also says 3-5% realistic for crypto MR on 1H with trend confirmation.
     minimal_roi = {
-        "0": 5.0,      # +5% — wait for full reversion
-        "120": 4.0,    # 2h: +4%
-        "480": 3.0,    # 8h: +3%
-        "1440": 1.0,   # 24h: floor at +1%
+        "0": 8.0,      # +8% — let RSI 80 / deviation exit compete
+        "120": 6.0,    # 2h: +6%
+        "480": 4.0,    # 8h: +4%
+        "1440": 1.5,   # 24h: floor at +1.5%
     }
 
     # Research: STOP LOSS KILLS mean reversion. Widen to -8% so ATR stop (1.5-2×) handles exits.
@@ -303,12 +303,12 @@ class MeanReversionTrend(IStrategy):
         atr_pct = last.get("atr_pct", 2.0)
 
         # Phase-based stop
-        if current_profit > 0.10:
-            # Phase 3: big winner — lock in 1% (was 0.5%, widened to give room)
-            return -0.01
-        elif current_profit > 0.05:
-            # Phase 2: solid profit — lock in 2% (was 1%, widened for safety)
-            return -0.02
+        if current_profit > 0.15:
+            # Phase 3: major winner — lock in 1.5% (tightened from 1% with higher ROI floor)
+            return -0.015
+        elif current_profit > 0.08:
+            # Phase 2: solid profit — lock in 2.5% (tightened from 2%)
+            return -0.025
         else:
             # Phase 1: initial wide stop — 4× ATR, floor 10%, cap 20%
             # v2.0.26: widened from 3×/8%/15% — research confirms MR needs WIDE initial stops
