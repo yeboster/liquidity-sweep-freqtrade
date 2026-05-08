@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.39"
+    STRATEGY_VERSION = "2.0.40"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -62,10 +62,10 @@ class MeanReversionTrend(IStrategy):
     # MR research: "exit when RSI crosses above 40" (not 60!) — wait for full momentum normalization.
     # Research also says 3-5% realistic for crypto MR on 1H with trend confirmation.
     minimal_roi = {
-        "0": 8.0,      # +8% — let RSI 80 / deviation exit compete
-        "120": 6.0,    # 2h: +6%
-        "480": 4.0,    # 8h: +4%
-        "1440": 1.5,   # 24h: floor at +1.5%
+        "0": 6.0,      # +6% — let RSI / deviation exit compete
+        "60": 4.0,     # 1h: +4% — achievable for 2% deviation entries
+        "360": 2.5,    # 6h: +2.5% — tighter for mid-term MR
+        "1440": 1.0,   # 24h: floor at +1%
     }
 
     # Research: STOP LOSS KILLS mean reversion. Widen to -8% so ATR stop (1.5-2×) handles exits.
@@ -90,11 +90,15 @@ class MeanReversionTrend(IStrategy):
     # v2.0.33 had 1.1σ which caught shallow pullbacks that exhausted before full reversion.
     # R/R fix: entry at -1.5% deviation with exit at 1.5% reversion = 3% total move vs ~15% max loss = 0.2 R/R.
     # Combined with 2.5× ATR stop (~5-8% for crypto), this gives room for the trade to work.
-    entry_dev_threshold = 1.1   # Was 1.1 — only enter at real extremes
+    # Research v2.0.40: entry at 1.1% deviation catches shallow pullbacks in larger trends
+    # → raise to 2.0%. Research: BTC 1H 2-3% below 20 SMA is the true abnormal deviation zone.
+    # Deeper entry = larger reversion potential = better R/R. BB std at 1.5 already gives ±1.5σ
+    # (≈95% of price in band) — 2% threshold requires real extremes.
+    entry_dev_threshold = 2.0   # Was 1.1
 
     # ATR volatility compression
     atr_length = 14
-    atr_compression_ratio = 0.90  # ATR must be < 95% of 20-day avg (relaxed — was 0.8)
+    atr_compression_ratio = 0.80  # Was 0.90 — require true volatility compression, not normal vol
 
     # Volume confirmation
     volume_ma_length = 20
@@ -105,7 +109,7 @@ class MeanReversionTrend(IStrategy):
     # v2.0.23 had RSI 25 (oversold) — only fires when RSI has already left extreme zone.
     # Widening to 30/70 gives more setups while staying in bottom/top half.
     rsi_length = 14
-    rsi_oversold = 30   # Was 25 — widened for more entry signals
+    rsi_oversold = 35   # Was 30 — enter when RSI has recovered past deep oversold (cross-back confirm)
     rsi_overbought = 70  # Was 75 — widened for more entry signals
 
     # Trend filter: 4H EMA200 — RESEARCH SAYS THIS IS NON-NEGOTIABLE
@@ -136,12 +140,17 @@ class MeanReversionTrend(IStrategy):
     # RSI 65 was cutting winners at ~0.36% avg because it fires before full reversion.
     # Connors RSI(2) exits at 65-80; Larry's original research used RSI>65 as the conservative exit.
     # 80 gives the 3-5% crypto MR bounce time to develop before exiting.
-    exit_rsi_long = 80   # Was 65 — Connors momentum normalization threshold
+    # Research v2.0.40: RSI 80 fires after full momentum normalization — exits too late.
+    # Larry Connors RSI(2) exits at 65 for conservative MR. 80 was cutting winners.
+    # v2.0.32 used 65 but avg trade was only +0.58%. Deeper entries (2.0%) + RSI 65 should align.
+    exit_rsi_long = 65   # Was 80
     exit_rsi_short = 35  # Was 20
     # Research v2.0.34: 1.5% means price must revert to within 1.5% of SMA (past the mean).
     # Combined with RSI exit at 80, this gives winners room to run.
     # v2.0.33 had 1.0% which was too tight — RSI 65 was the dominant exit at minimal profit.
-    exit_dev_revert_pct = 1.5   # Was 1.0%
+    # Research v2.0.40: deeper entries (2.0%) need tighter exit band to capture 1-2% reversions
+    # without waiting for full SMA touch. 0.5% gives room for the candle while locking in smaller wins.
+    exit_dev_revert_pct = 0.5   # Was 1.5%
 
     # Max risk
     max_open_trades = 3
