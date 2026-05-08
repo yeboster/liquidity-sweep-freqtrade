@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.35"
+    STRATEGY_VERSION = "2.0.36"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -90,7 +90,7 @@ class MeanReversionTrend(IStrategy):
     # v2.0.33 had 1.1σ which caught shallow pullbacks that exhausted before full reversion.
     # R/R fix: entry at -1.5% deviation with exit at 1.5% reversion = 3% total move vs ~15% max loss = 0.2 R/R.
     # Combined with 2.5× ATR stop (~5-8% for crypto), this gives room for the trade to work.
-    entry_dev_threshold = 1.4   # Was 1.1 — only enter at real extremes
+    entry_dev_threshold = 1.3   # Was 1.1 — only enter at real extremes
 
     # ATR volatility compression
     atr_length = 14
