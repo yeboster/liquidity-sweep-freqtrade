@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.29"
+    STRATEGY_VERSION = "2.0.30"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -303,16 +303,19 @@ class MeanReversionTrend(IStrategy):
         atr_pct = last.get("atr_pct", 2.0)
 
         # Phase-based stop
+        # v2.0.30: tighten phases — research says 1.5-2× ATR for MR stops, not 4×.
+        # Phase 2 at >5% (lowered from >8%) — lock in 2% once we have cushion.
+        # Phase 3 at >15% — tighten to 1% to protect mega-winners.
         if current_profit > 0.15:
-            # Phase 3: major winner — lock in 1.5% (tightened from 1% with higher ROI floor)
-            return -0.015
-        elif current_profit > 0.08:
-            # Phase 2: solid profit — lock in 2.5% (tightened from 2%)
-            return -0.025
+            # Phase 3: major winner — lock in 1.0% (tightened from 1.5%)
+            return -0.010
+        elif current_profit > 0.05:
+            # Phase 2: solid profit — lock in 2.0% (tightened from 2.5%, lowered trigger from 8%)
+            return -0.020
         else:
-            # Phase 1: initial wide stop — 4× ATR, floor 10%, cap 20%
-            # v2.0.26: widened from 3×/8%/15% — research confirms MR needs WIDE initial stops
-            stop_pct = min(0.20, max(0.10, atr_pct * 4.0 / 100))
+            # Phase 1: initial wide stop — 3× ATR, floor 8%, cap 18%
+            # v2.0.30: tightened from 4×/10%/20% — research confirms 1.5-2× ATR is sufficient for MR
+            stop_pct = min(0.18, max(0.08, atr_pct * 3.0 / 100))
             return -stop_pct
 
     def custom_exit(
