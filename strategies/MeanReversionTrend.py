@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.25"
+    STRATEGY_VERSION = "2.0.26"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -58,11 +58,14 @@ class MeanReversionTrend(IStrategy):
     # Research v2.0.24: Lower ROI steps to be achievable for mean reversion.
     # v2.0.23 used 4% as entry target — research says 3-5% is realistic for crypto MR on 1H.
     # Lowering slightly so Phase 3 of custom_stoploss can engage (needs > 3% profit).
+    # Research v2.0.26: Raised to 5% — avg trade was +0.58% because RSI 60 exit fires too early.
+    # MR research: "exit when RSI crosses above 40" (not 60!) — wait for full momentum normalization.
+    # Research also says 3-5% realistic for crypto MR on 1H with trend confirmation.
     minimal_roi = {
-        "0": 3.5,      # +3.5% — captures mean reversion bounce (was 4.0)
-        "120": 2.5,    # 2h: +2.5% (was 3.0)
-        "480": 2.0,    # 8h: +2%
-        "1440": 0.5,   # 24h: floor at +0.5%
+        "0": 5.0,      # +5% — wait for full reversion
+        "120": 4.0,    # 2h: +4%
+        "480": 3.0,    # 8h: +3%
+        "1440": 1.0,   # 24h: floor at +1%
     }
 
     # Research: STOP LOSS KILLS mean reversion. Widen to -8% so ATR stop (1.5-2×) handles exits.
@@ -117,12 +120,11 @@ class MeanReversionTrend(IStrategy):
     # Research: target = mid-band (SMA), not a tight trail. Exit when reverted.
     # Long exit: RSI reaches 65 (momentum normalized) OR deviation reverted to SMA
     # Short exit: RSI drops to 35 OR deviation reverted below SMA
-    # Research v2.0.24: Tighten exit RSI from 65/35 to 60/40.
-    # stratbase.ai research: "sell when RSI returns above 50 (momentum has normalized)".
-    # Current 65/35 is too conservative — winners sit too long while RSI normalizes slowly.
-    # 60/40 captures momentum normalization faster, improving avg trade time and R/R.
-    exit_rsi_long = 60   # Was 65
-    exit_rsi_short = 40  # Was 35
+    # Research v2.0.26: 60/40 fires too early — avg trade only +0.58%.
+    # "Exit when RSI crosses above 40" (Larry Connors) — wait for FULL momentum normalization.
+    # 80/20 gives winners time to run to 3-5% MR targets. 60/40 exits at half the potential.
+    exit_rsi_long = 80   # Was 60
+    exit_rsi_short = 20  # Was 40
     # v2.0.16: Was 0.0 — mean reversion rarely hits exact SMA, partial reversion is realistic.
     # Tightening to 0.5% lets winners run past exact SMA touch while still ensuring meaningful reversion.
     exit_dev_revert_pct = 0.5   # price must reach SMA (within 0.5%) before exiting
@@ -301,15 +303,16 @@ class MeanReversionTrend(IStrategy):
         atr_pct = last.get("atr_pct", 2.0)
 
         # Phase-based stop
-        if current_profit > 0.08:
-            # Phase 3: big winner — lock in 0.5% (tightened from 0.8% — research: partial at 1× ATR is common target)
-            return -0.005
-        elif current_profit > 0.03:
-            # Phase 2: solid profit — lock in 1% (tightened from 1.5%)
+        if current_profit > 0.10:
+            # Phase 3: big winner — lock in 1% (was 0.5%, widened to give room)
             return -0.01
+        elif current_profit > 0.05:
+            # Phase 2: solid profit — lock in 2% (was 1%, widened for safety)
+            return -0.02
         else:
-            # Phase 1: initial wide stop — 3× ATR, floor 8%, cap 15%
-            stop_pct = min(0.15, max(0.08, atr_pct * 3.0 / 100))
+            # Phase 1: initial wide stop — 4× ATR, floor 10%, cap 20%
+            # v2.0.26: widened from 3×/8%/15% — research confirms MR needs WIDE initial stops
+            stop_pct = min(0.20, max(0.10, atr_pct * 4.0 / 100))
             return -stop_pct
 
     def custom_exit(
