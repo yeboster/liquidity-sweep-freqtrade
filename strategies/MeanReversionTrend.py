@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.31"
+    STRATEGY_VERSION = "2.0.32"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -123,11 +123,14 @@ class MeanReversionTrend(IStrategy):
     # Research v2.0.26: 60/40 fires too early — avg trade only +0.58%.
     # "Exit when RSI crosses above 40" (Larry Connors) — wait for FULL momentum normalization.
     # 80/20 gives winners time to run to 3-5% MR targets. 60/40 exits at half the potential.
-    exit_rsi_long = 80   # Was 60
-    exit_rsi_short = 20  # Was 40
-    # v2.0.16: Was 0.0 — mean reversion rarely hits exact SMA, partial reversion is realistic.
-    # Tightening to 0.5% lets winners run past exact SMA touch while still ensuring meaningful reversion.
-    exit_dev_revert_pct = 0.5   # price must reach SMA (within 0.5%) before exiting
+    # Research: exit at RSI 65-70, not 80. Larry Connors exits at RSI(2) > 65.
+    # v2.0.32: Exit RSI 80→65. RSI 80 is "momentum fully normalized" which fires too early.
+    # RSI 65 gives room for the actual mean reversion bounce to complete (+3-5% potential).
+    # Also widen exit_dev_revert_pct from 0.5%→1.0% — price rarely touches exact SMA,
+    # 0.5% is too tight for a 1H candle; give it room to breathe.
+    exit_rsi_long = 65   # Was 80 — Connors exit threshold
+    exit_rsi_short = 35  # Was 20
+    exit_dev_revert_pct = 1.0   # Was 0.5% — widened to capture full reversion bounce
 
     # Max risk
     max_open_trades = 3
@@ -313,9 +316,12 @@ class MeanReversionTrend(IStrategy):
             # Phase 2: solid profit — lock in 2.0% (tightened from 2.5%, lowered trigger from 8%)
             return -0.020
         else:
-            # Phase 1: initial wide stop — 3× ATR, floor 8%, cap 18%
-            # v2.0.30: tightened from 4×/10%/20% — research confirms 1.5-2× ATR is sufficient for MR
-            stop_pct = min(0.18, max(0.08, atr_pct * 3.0 / 100))
+            # Phase 1: initial wide stop — 2× ATR, floor 12%, cap 20%
+            # v2.0.32: Research: mean reversion needs WIDER stops than trend following.
+            # 3× ATR was too tight — BTC can move 5-8% in 1H during mean reversion failure.
+            # Connors research: "tight stops destroy mean reversion edge before it can play out".
+            # 2× ATR gives trades room to work; disaster floor at 20% hard stop handles the rest.
+            stop_pct = min(0.20, max(0.12, atr_pct * 2.0 / 100))
             return -stop_pct
 
     def custom_exit(
