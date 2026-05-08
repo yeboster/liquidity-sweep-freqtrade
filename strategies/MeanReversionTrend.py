@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.24"
+    STRATEGY_VERSION = "2.0.25"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -83,7 +83,7 @@ class MeanReversionTrend(IStrategy):
     # Research v2.0.24: BB at ±2σ is rare in crypto → lower from 1.4 to 1.2 to capture more MR setups.
     # Strategy #3 from stratbase.ai: "BB touch + RSI < 35 gave 68% WR, 1.71 PF" but only 31 signals.
     # 1.2σ is a more practical extreme while still requiring real deviation.
-    entry_dev_threshold = 1.2   # σ multiplier — lowered from 1.4
+    entry_dev_threshold = 1.1   # σ multiplier — lowered from 1.4
 
     # ATR volatility compression
     atr_length = 14
