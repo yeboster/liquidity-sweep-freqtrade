@@ -192,3 +192,9 @@ Formula: `(target_sl_price - current_rate) / current_rate`.
 - Exit breakdown: trailing=0(0%WR, $0.00), stop=0(0%WR, $0.00), time=0(0%WR, $0.00)
 - Changes: Loosen: dev 1.4→1.2999999999999998, atr 0.9→0.9, v2.0.35→2.0.36
 - Reason: General loosen to increase signals
+
+## Iteration v2: 2026-05-08 17:18:10
+- Profit: 5.13% | Trades: 27 | WR: 63.0% | R/R: 0.8842 | SQN: 0.8002 | DD: 3.82%
+- Exit breakdown: trailing=0(0%WR, $0.00), stop=0(0%WR, $0.00), time=0(0%WR, $0.00)
+- Changes: Loosen: dev 1.3→1.2, atr 0.9→0.9, v2.0.36→2.0.37
+- Reason: General loosen to increase signals
