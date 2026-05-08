@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.26"
+    STRATEGY_VERSION = "2.0.27"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -77,7 +77,7 @@ class MeanReversionTrend(IStrategy):
     # v2.0.22: Widen from -10.5% to -20%. Research: tight hard stop kills mean reversion
     # because the edge STRENGTHENS as price moves against you — cutting early destroys the edge.
     # Custom_stoploss() controls the active stop; hard stop only fires in catastrophic moves.
-    stoploss = -0.2000
+    stoploss = -0.1970
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
@@ -270,7 +270,7 @@ class MeanReversionTrend(IStrategy):
     # Winners averaged +0.86% because trail cut them at 1%. Let exits handle profit-taking.
     trailing_stop = False
     trailing_stop_positive = 0.0300
-    trailing_stop_positive_offset = 0.0800
+    trailing_stop_positive_offset = 0.0850
     trailing_only_offset_is_reached = True
 
     # Research: widened base stoploss to -12%, use_custom_stoploss=True (was missing — custom_stoploss never called!)
