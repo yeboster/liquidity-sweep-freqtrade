@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.55"
+    STRATEGY_VERSION = "2.0.56"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -68,14 +68,15 @@ class MeanReversionTrend(IStrategy):
         "1440": 1.0,   # 24h: floor at +1%
     }
 
-    # Research v2.0.54: Connors/Cesar Alvarez found stops HURT mean reversion — the edge
-    # STRENGTHENS as price moves further from mean. Medium stops (1.5×ATR/6%) are the worst:
-    # tight enough to fire at max edge zone, wide enough to cause catastrophic losses.
-    # Solution: widen Phase 1 to 2.5×ATR (floor 10%, cap 18%) — let MR edge fully develop.
-    # Hard stoploss widens to -15% as pure disaster floor.
+    # Research v2.0.56: v2.0.54-55 had catastrophic R/R — Phase 1 at 10-18% stop vs 2.3% avg win
+    # meant risking 5x the reward per trade. 62.5% WR can't overcome R/R of 0.39.
+    # Connors/Cesar Alvarez: stops HURT MR edge BUT crypto needs protection.
+    # Solution: tighten Phase 1 to 1.5×ATR (floor 3%, cap 6%) — align R/R toward 1:1.
+    # Hard stoploss at -8% as pure disaster floor (not primary exit).
+    # This targets avg loss ~3-5% vs avg win ~3-4% for R/R approaching 1.0.
     use_custom_stoploss = True
 
-    stoploss = -0.1500
+    stoploss = -0.0800
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
@@ -92,17 +93,24 @@ class MeanReversionTrend(IStrategy):
     # → raise to 2.0%. Research: BTC 1H 2-3% below 20 SMA is the true abnormal deviation zone.
     # Deeper entry = larger reversion potential = better R/R. BB std at 1.5 already gives ±1.5σ
     # (≈95% of price in band) — 2% threshold requires real extremes.
-    entry_dev_threshold = 1.4   # Was 1.0
+    # Research v2.0.56: deeper entries → better R/R. v2.0.55 at 1.4% deviation
+    # caught too many shallow pullbacks that didn't have enough reversion potential.
+    # BTC 1H: 2-3% below 20 SMA is true abnormal zone (stratbase). 1.6% is a
+    # practical compromise — deep enough for real edge, not so rare it never fires.
+    entry_dev_threshold = 1.6   # Was 1.4
 
-    # ATR volatility compression — v2.0.54: tighten to 0.85 for true compression.
-    # Research: entry during normal vol (1.00) picks poor MR setups. Real compression
-    # (ATR < 85% of 20-period avg) improves entry quality and reduces stop-outs.
+    # ATR volatility compression — v2.0.56: restored 0.85 from research.
+    # v2.0.55 loosened to 1.00 (no filter) → 72 trades, 62.5% WR, terrible quality.
+    # True compression (ATR < 85% of 20-period avg) filters for quality setups.
+    # stratbase.ai: vol compression + BB touch + RSI < 35 = 68% WR, 1.71 PF.
     atr_length = 14
-    atr_compression_ratio = 1.00
+    atr_compression_ratio = 0.85
 
-    # Volume confirmation — v2.0.54: raise to 1.3× for quality confirmation.
+    # Volume confirmation — v2.0.56: tighten to 1.35× for quality.
+    # v2.0.55 loosened to 1.2 → too many low-conviction entries.
+    # Research: volume confirmation filters noise trades in crypto MR.
     volume_ma_length = 20
-    volume_multiplier = 1.2
+    volume_multiplier = 1.35
 
     # Research v2.0.24: Widen RSI entry band for more signals.
     # Strategy #2 stratbase: "RSI cross back above 30" as trigger — entry at RSI > 30 vs RSI > 25.
@@ -143,18 +151,18 @@ class MeanReversionTrend(IStrategy):
     # Research v2.0.40: RSI 80 fires after full momentum normalization — exits too late.
     # Larry Connors RSI(2) exits at 65 for conservative MR. 80 was cutting winners.
     # v2.0.32 used 65 but avg trade was only +0.58%. Deeper entries (2.0%) + RSI 65 should align.
-    exit_rsi_long = 65   # Was 80
-    exit_rsi_short = 35  # Was 20
-    # Research v2.0.34: 1.5% means price must revert to within 1.5% of SMA (past the mean).
-    # Combined with RSI exit at 80, this gives winners room to run.
-    # v2.0.33 had 1.0% which was too tight — RSI 65 was the dominant exit at minimal profit.
-    # Research v2.0.40: deeper entries (2.0%) need tighter exit band to capture 1-2% reversions
-    # without waiting for full SMA touch. 0.5% gives room for the candle while locking in smaller wins.
-    # v2.0.48: 0.5% was TOO TIGHT — avg win only 2.0% because RSI 65 exit fires before deviation hits 0.5%.
-    # Research: price rarely retraces to within 0.5% of SMA on 1H candles before momentum normalizes.
-    # Reverting to 1.0% — lets the actual MR bounce complete (3-5% potential) and improves R/R ratio.
-    # Combined with Phase 2 lock-in at 1.5% (3%+ profit), this protects winners without strangling them.
-    exit_dev_revert_pct = 1.0   # Was 0.5%
+    # Research v2.0.56: Connors crypto adaptation — exit RSI > 70, not 65.
+    # stratbase: RSI(2) > 70 for crypto exit gives stronger bounces room to run.
+    # v2.0.55 at 65 cut winners at 2.3% avg — too early for 1.6% deviation entries.
+    # 70 lets the actual MR bounce complete (3-5% potential) before exiting.
+    exit_rsi_long = 70   # Was 65
+    exit_rsi_short = 30  # Was 35 — mirror symmetry
+    # Research v2.0.56: 1.0% deviation reversion target — lets MR bounce complete.
+    # Combined with RSI 70 exit, this creates a dual exit: either momentum normalizes
+    # (RSI > 70) or price reverts to within 1% of SMA. Whichever comes first.
+    # 1.0% is tight enough to lock in gains on shallow bounces, wide enough for
+    # deeper reversions to reach before RSI 70 triggers.
+    exit_dev_revert_pct = 1.0
 
     # Max risk
     max_open_trades = 3
@@ -300,11 +308,13 @@ class MeanReversionTrend(IStrategy):
     trailing_stop_positive_offset = 0.1050
     trailing_only_offset_is_reached = True
 
-    # Research v2.0.54: Stepped ATR stop — Phase1 wide (2.5×ATR, 10-18%), Phase2 1% lock-in at >2% profit,
-    # Phase3 1.5% at >5% profit. Key insight: Connors/Cesar Alvarez found medium stops (1.5×ATR, 6% floor)
-    # are destructive — exit at worst point when MR edge is strongest. Wider stops let edge develop.
+    # Research v2.0.56: Stepped ATR stop — Phase1 tight (1.5×ATR, 3-6%), Phase2 1% lock-in at >3% profit,
+    # Phase3 1.5% at >5% profit. Key insight: v2.0.54 Phase1 at 10-18% created catastrophic R/R (0.39).
+    # Avg loss 5.96% vs avg win 2.30% = impossible to overcome. Tighten to 1.5×ATR with 3-6% bounds
+    # targets R/R approaching 1:1 — essential for mean reversion systems (tradingcryptocourse.com).
 
-    # Scale-in: disabled — adding size on small profit was amplifying losses
+    # Scale-in: disabled — adding size on small profit was amplifying losses.
+    # v2.0.56: confirmed disabled. Research shows martingale is destructive for MR.
     scale_in_enabled = False
 
     def custom_stoploss(
@@ -314,13 +324,14 @@ class MeanReversionTrend(IStrategy):
     ) -> Optional[float]:
         """Stepped ATR-based stop loss — enables custom_stoploss() to be called.
 
-        Phase 1: Wide initial stop (2.5x ATR, floor 10%, cap 18%) — let MR edge develop.
-        Phase 2: Once profit > 2%, tighten to 1% lock-in — capture without strangling winners.
+        Phase 1: Tight initial stop (1.5x ATR, floor 3%, cap 6%) — align risk with reward.
+        Phase 2: Once profit > 3%, tighten to 1% lock-in — protect against reversals.
         Phase 3: Once profit > 5%, tighten to 1.5% — protect mega-winners.
 
-        Research v2.0.54: Connors found 1.5×ATR stops kill MR — the edge is strongest
-        at maximum deviation. 2.5×ATR with 10% floor lets the trade either revert (high
-        probability at deep deviation) or fail cleanly. Medium stops hit at worst spot.
+        Research v2.0.56: v2.0.54 Phase1 (10-18%) created 5:1 risk/reward mismatch.
+        With avg win 2.3%, even 80% WR can't overcome. 1.5×ATR with 3-6% bounds
+        targets R/R approaching 1:1. Connors' research confirms stops HURT MR,
+        but crypto volatility demands some protection — this is the compromise.
         """
         df, _ = self.dp.get_pair_dataframe(pair, self.timeframe)
         if df.empty:
@@ -329,16 +340,16 @@ class MeanReversionTrend(IStrategy):
         last = df.iloc[-1]
         atr_pct = last.get("atr_pct", 2.0)
 
-        # Phase 2 at >2% — lock in 1% once we have cushion. Phase 3 at >5% — tighten to 1.5%.
+        # Phase 2 at >3% — lock in 1% once we have cushion. Phase 3 at >5% — tighten to 1.5%.
         if current_profit > 0.05:
             # Phase 3: major winner (>5%) — lock in 1.5%
             return -0.015
-        elif current_profit > 0.02:
-            # Phase 2: solid profit (>2%) — lock in 1%
+        elif current_profit > 0.03:
+            # Phase 2: solid profit (>3%) — lock in 1%
             return -0.010
         else:
-            # Phase 1: initial wide stop — 2.5x ATR, floor 10%, cap 18%
-            stop_pct = min(0.18, max(0.10, atr_pct * 2.5 / 100))
+            # Phase 1: tight ATR stop — 1.5x ATR, floor 3%, cap 6%
+            stop_pct = min(0.06, max(0.03, atr_pct * 1.5 / 100))
             return -stop_pct
 
     def custom_exit(
