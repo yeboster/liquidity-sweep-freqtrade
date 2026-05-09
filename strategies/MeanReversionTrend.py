@@ -341,7 +341,7 @@ class MeanReversionTrend(IStrategy):
             stop_pct = min(0.12, max(0.06, atr_pct * 1.5 / 100))
             return -stop_pct
 
-def custom_exit(
+    def custom_exit(
         self, pair: str, trade: "Trade", current_time: datetime,
         current_rate: float, current_profit: float, current_profit_pct: float,
         **kwargs
