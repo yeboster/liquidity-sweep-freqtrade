@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.53"
+    STRATEGY_VERSION = "2.0.54"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -68,16 +68,14 @@ class MeanReversionTrend(IStrategy):
         "1440": 1.0,   # 24h: floor at +1%
     }
 
-    # Research: STOP LOSS KILLS mean reversion. Widen to -8% so ATR stop (1.5-2×) handles exits.
-    # BTC ATR ~2-4% → 2× ATR = 4-8% entry dynamic stop, hard stop is the floor.
-    # v2.0.4 had -4.7% hard stop → stopped out before ATR stop could activate.
-    use_custom_stoploss = True   # Enable custom_stoploss() — THIS WAS MISSING!
+    # Research v2.0.54: Connors/Cesar Alvarez found stops HURT mean reversion — the edge
+    # STRENGTHENS as price moves further from mean. Medium stops (1.5×ATR/6%) are the worst:
+    # tight enough to fire at max edge zone, wide enough to cause catastrophic losses.
+    # Solution: widen Phase 1 to 2.5×ATR (floor 10%, cap 18%) — let MR edge fully develop.
+    # Hard stoploss widens to -15% as pure disaster floor.
+    use_custom_stoploss = True
 
-    # Research: HARD stoploss must be the disaster floor, not the active stop.
-    # v2.0.22: Widen from -10.5% to -20%. Research: tight hard stop kills mean reversion
-    # because the edge STRENGTHENS as price moves against you — cutting early destroys the edge.
-    # Custom_stoploss() controls the active stop; hard stop only fires in catastrophic moves.
-    stoploss = -0.0970
+    stoploss = -0.1500
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
@@ -96,13 +94,15 @@ class MeanReversionTrend(IStrategy):
     # (≈95% of price in band) — 2% threshold requires real extremes.
     entry_dev_threshold = 1.7   # Was 1.0
 
-    # ATR volatility compression
+    # ATR volatility compression — v2.0.54: tighten to 0.85 for true compression.
+    # Research: entry during normal vol (1.00) picks poor MR setups. Real compression
+    # (ATR < 85% of 20-period avg) improves entry quality and reduces stop-outs.
     atr_length = 14
-    atr_compression_ratio = 1.00  # Was 0.90 — require true volatility compression, not normal vol
+    atr_compression_ratio = 0.85
 
-    # Volume confirmation
+    # Volume confirmation — v2.0.54: raise to 1.3× for quality confirmation.
     volume_ma_length = 20
-    volume_multiplier = 1.1     # volume > 1.3× SMA20 (tightened for quality)
+    volume_multiplier = 1.3
 
     # Research v2.0.24: Widen RSI entry band for more signals.
     # Strategy #2 stratbase: "RSI cross back above 30" as trigger — entry at RSI > 30 vs RSI > 25.
@@ -300,10 +300,9 @@ class MeanReversionTrend(IStrategy):
     trailing_stop_positive_offset = 0.1050
     trailing_only_offset_is_reached = True
 
-    # Research: widened base stoploss to -12%, use_custom_stoploss=True (was missing — custom_stoploss never called!)
-    # Stepped ATR stop: Phase1 wide (3×ATR, 8-15%), Phase2 2% lock-in at >3% profit, Phase3 1% at >8% profit
-    # Key insight from freqtrade docs + GH #6955: use_custom_stoploss=True must be set explicitly
-    # Without it, custom_stoploss() is never called regardless of method existence.
+    # Research v2.0.54: Stepped ATR stop — Phase1 wide (2.5×ATR, 10-18%), Phase2 1% lock-in at >2% profit,
+    # Phase3 1.5% at >5% profit. Key insight: Connors/Cesar Alvarez found medium stops (1.5×ATR, 6% floor)
+    # are destructive — exit at worst point when MR edge is strongest. Wider stops let edge develop.
 
     # Scale-in: disabled — adding size on small profit was amplifying losses
     scale_in_enabled = False
@@ -315,16 +314,17 @@ class MeanReversionTrend(IStrategy):
     ) -> Optional[float]:
         """Stepped ATR-based stop loss — enables custom_stoploss() to be called.
 
-        Phase 1: Wide initial stop (1.5x ATR, floor 6%, cap 12%) — give trades room to work.
+        Phase 1: Wide initial stop (2.5x ATR, floor 10%, cap 18%) — let MR edge develop.
         Phase 2: Once profit > 2%, tighten to 1% lock-in — capture without strangling winners.
         Phase 3: Once profit > 5%, tighten to 1.5% — protect mega-winners.
 
-        Research: freqtrade docs confirm custom_stoploss default = self.stoploss (static).
-        Only with use_custom_stoploss=True does the dynamic ATR logic activate.
+        Research v2.0.54: Connors found 1.5×ATR stops kill MR — the edge is strongest
+        at maximum deviation. 2.5×ATR with 10% floor lets the trade either revert (high
+        probability at deep deviation) or fail cleanly. Medium stops hit at worst spot.
         """
         df, _ = self.dp.get_pair_dataframe(pair, self.timeframe)
         if df.empty:
-            return -0.08
+            return -0.10
 
         last = df.iloc[-1]
         atr_pct = last.get("atr_pct", 2.0)
@@ -337,8 +337,8 @@ class MeanReversionTrend(IStrategy):
             # Phase 2: solid profit (>2%) — lock in 1%
             return -0.010
         else:
-            # Phase 1: initial wide stop — 1.5x ATR, floor 6%, cap 12%
-            stop_pct = min(0.12, max(0.06, atr_pct * 1.5 / 100))
+            # Phase 1: initial wide stop — 2.5x ATR, floor 10%, cap 18%
+            stop_pct = min(0.18, max(0.10, atr_pct * 2.5 / 100))
             return -stop_pct
 
     def custom_exit(
