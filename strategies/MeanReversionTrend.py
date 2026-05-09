@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.47"
+    STRATEGY_VERSION = "2.0.48"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -150,7 +150,11 @@ class MeanReversionTrend(IStrategy):
     # v2.0.33 had 1.0% which was too tight — RSI 65 was the dominant exit at minimal profit.
     # Research v2.0.40: deeper entries (2.0%) need tighter exit band to capture 1-2% reversions
     # without waiting for full SMA touch. 0.5% gives room for the candle while locking in smaller wins.
-    exit_dev_revert_pct = 0.5   # Was 1.5%
+    # v2.0.48: 0.5% was TOO TIGHT — avg win only 2.0% because RSI 65 exit fires before deviation hits 0.5%.
+    # Research: price rarely retraces to within 0.5% of SMA on 1H candles before momentum normalizes.
+    # Reverting to 1.0% — lets the actual MR bounce complete (3-5% potential) and improves R/R ratio.
+    # Combined with Phase 2 lock-in at 1.5% (3%+ profit), this protects winners without strangling them.
+    exit_dev_revert_pct = 1.0   # Was 0.5%
 
     # Max risk
     max_open_trades = 3
@@ -332,9 +336,10 @@ class MeanReversionTrend(IStrategy):
         if current_profit > 0.15:
             # Phase 3: major winner — lock in 1.0% (tightened from 1.5%)
             return -0.010
-        elif current_profit > 0.05:
-            # Phase 2: solid profit — lock in 2.0% (tightened from 2.5%, lowered trigger from 8%)
-            return -0.020
+        elif current_profit > 0.03:
+            # Phase 2: solid profit (>3%) — lock in 1.5% (tightened from 2.0%, trigger lowered from 5%)
+            # v2.0.48: avg win is ~2% so 3% trigger is more achievable. 1.5% lock-in protects without strangling.
+            return -0.015
         else:
             # Phase 1: initial wide stop — 2× ATR, floor 12%, cap 20%
             # v2.0.32: Research: mean reversion needs WIDER stops than trend following.
