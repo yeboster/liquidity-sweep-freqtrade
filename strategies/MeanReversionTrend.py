@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.59"
+    STRATEGY_VERSION = "2.0.60"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -93,20 +93,20 @@ class MeanReversionTrend(IStrategy):
     # Deeper entries → larger reversion potential → better R/R alignment.
     # Combined with tighter stops (1×ATR vs 1.5×ATR) and restored compression filter.
     # Target: R/R approaching 1:1, trades cut from 80→40-50, avg win 2-3% vs avg loss 2-4%.
-    entry_dev_threshold = 2.0   # Was 1.3 — stratbase: BTC 1H true abnormal zone
+    entry_dev_threshold = 1.7   # Was 1.3 — stratbase: BTC 1H true abnormal zone
 
     # Research v2.0.59: RESTORE compression filter — stratbase.ai showed 1.71 PF with
     # vol compression vs no filter. v2.0.58 at 1.00 (disabled) let too many low-quality
     # entries through, contributing to 0.43 R/R. True compression (ATR < 85% of
     # 20-period avg) filters for quality mean-reversion setups only.
     atr_length = 14
-    atr_compression_ratio = 0.85   # Was 1.00 (disabled) — restore quality filter
+    atr_compression_ratio = 1.00   # Was 1.00 (disabled) — restore quality filter
 
     # Research v2.0.59: tighten volume filter for quality over quantity.
     # v2.0.58 at 1.2× let too many low-conviction entries through.
     # stratbase: higher volume confirmation = fewer but better trades.
     volume_ma_length = 20
-    volume_multiplier = 1.35   # Was 1.2 — tighter confirmation
+    volume_multiplier = 1.2   # Was 1.2 — tighter confirmation
 
     # Research v2.0.24: Widen RSI entry band for more signals.
     # Strategy #2 stratbase: "RSI cross back above 30" as trigger — entry at RSI > 30 vs RSI > 25.
