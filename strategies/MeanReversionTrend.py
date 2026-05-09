@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.57"
+    STRATEGY_VERSION = "2.0.58"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -76,7 +76,7 @@ class MeanReversionTrend(IStrategy):
     # This targets avg loss ~3-5% vs avg win ~3-4% for R/R approaching 1.0.
     use_custom_stoploss = True
 
-    stoploss = -0.0800
+    stoploss = -0.0770
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
@@ -305,7 +305,7 @@ class MeanReversionTrend(IStrategy):
     # Winners averaged +0.86% because trail cut them at 1%. Let exits handle profit-taking.
     trailing_stop = False
     trailing_stop_positive = 0.0300
-    trailing_stop_positive_offset = 0.1050
+    trailing_stop_positive_offset = 0.1100
     trailing_only_offset_is_reached = True
 
     # Research v2.0.56: Stepped ATR stop — Phase1 tight (1.5×ATR, 3-6%), Phase2 1% lock-in at >3% profit,
