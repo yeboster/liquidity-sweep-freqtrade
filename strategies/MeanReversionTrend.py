@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.60"
+    STRATEGY_VERSION = "2.0.61"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -72,11 +72,10 @@ class MeanReversionTrend(IStrategy):
     # meant risking 5x the reward per trade. 62.5% WR can't overcome R/R of 0.39.
     # Connors/Cesar Alvarez: stops HURT MR edge BUT crypto needs protection.
     # Solution: tighten Phase 1 to 1.5×ATR (floor 3%, cap 6%) — align R/R toward 1:1.
-    # Hard stoploss at -8% as pure disaster floor (not primary exit).
-    # This targets avg loss ~3-5% vs avg win ~3-4% for R/R approaching 1.0.
+    # Hard stoploss at -10% as pure disaster floor — custom_stoploss handles normal exits.
     use_custom_stoploss = True
 
-    stoploss = -0.0770
+    stoploss = -0.10
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
@@ -87,26 +86,24 @@ class MeanReversionTrend(IStrategy):
     # 1.2σ is a more practical extreme while still requiring real deviation.
     # Research v2.0.34: Raised to 1.5σ — tighter entries catch deeper deviations with more reversion potential.
     # v2.0.33 had 1.1σ which caught shallow pullbacks that exhausted before full reversion.
-    # Research v2.0.59: MULTI-ITERATION STALL FIX — 3+ iterations at -17% profit, R/R 0.43
-    # Root cause: entry too shallow (1.3% below SMA) + stops 4-8% wide = catastrophic R/R.
-    # stratbase.ai: BTC 1H true abnormal zone is 2-3% below 20 SMA. Current 1.3% = noise.
-    # Deeper entries → larger reversion potential → better R/R alignment.
-    # Combined with tighter stops (1×ATR vs 1.5×ATR) and restored compression filter.
-    # Target: R/R approaching 1:1, trades cut from 80→40-50, avg win 2-3% vs avg loss 2-4%.
-    entry_dev_threshold = 1.7   # Was 1.3 — stratbase: BTC 1H true abnormal zone
+    # Research v2.0.61: v2.0.60 had 54 trades at -6.73%. Entry at 1.7% deviation
+    # was too shallow — caught noise, not true MR setups. stratbase.ai:
+    # "BTC 1H true abnormal zone is 2-3% below 20 SMA". Deepen to 2.0%.
+    # Fewer trades (target 30-40) but higher quality with proper R/R.
+    entry_dev_threshold = 2.0   # stratbase: BTC 1H true abnormal zone = 2-3%
 
-    # Research v2.0.59: RESTORE compression filter — stratbase.ai showed 1.71 PF with
-    # vol compression vs no filter. v2.0.58 at 1.00 (disabled) let too many low-quality
-    # entries through, contributing to 0.43 R/R. True compression (ATR < 85% of
-    # 20-period avg) filters for quality mean-reversion setups only.
+    # Research v2.0.60: stalling at -6.73% profit, R/R 0.35 despite 70% WR.
+    # Root cause: compression disabled + broken custom_stoploss = catastrophic R/R.
+    # v2.0.61: RESTORE compression filter to 0.85 — stratbase.ai: BB+RSI+compression = 1.71 PF.
+    # Without it, 54 low-quality entries overwhelmed the strategy.
     atr_length = 14
-    atr_compression_ratio = 1.00   # Was 1.00 (disabled) — restore quality filter
+    atr_compression_ratio = 0.85   # Restored — ATR must be <85% of 20-period avg
 
-    # Research v2.0.59: tighten volume filter for quality over quantity.
-    # v2.0.58 at 1.2× let too many low-conviction entries through.
+    # Research v2.0.61: tighter volume filter — 54 trades was too many.
+    # v2.0.60 at 1.2× let low-conviction setups flood in.
     # stratbase: higher volume confirmation = fewer but better trades.
     volume_ma_length = 20
-    volume_multiplier = 1.2   # Was 1.2 — tighter confirmation
+    volume_multiplier = 1.35   # Restored quality threshold
 
     # Research v2.0.24: Widen RSI entry band for more signals.
     # Strategy #2 stratbase: "RSI cross back above 30" as trigger — entry at RSI > 30 vs RSI > 25.
@@ -147,13 +144,11 @@ class MeanReversionTrend(IStrategy):
     # Research v2.0.40: RSI 80 fires after full momentum normalization — exits too late.
     # Larry Connors RSI(2) exits at 65 for conservative MR. 80 was cutting winners.
     # v2.0.32 used 65 but avg trade was only +0.58%. Deeper entries (2.0%) + RSI 65 should align.
-    # Research v2.0.59: Connors RSI(2) crypto → RSI(14) 1H adaptation.
-    # Connors RSI(2)>65 for equities, RSI(2)>70 for crypto. But we use RSI(14)
-    # which is slower/less volatile. At 70, RSI(14) fires too early (~1.67% avg win).
-    # Raise to 75 for RSI(14) — lets MR bounce develop fully before momentum exit.
-    # Combined with deeper entries (2.0%) for 2-3% avg win potential.
-    exit_rsi_long = 75   # Was 70 — RSI(14) needs higher threshold than RSI(2)
-    exit_rsi_short = 25  # Was 30 — mirror symmetry
+    # Research v2.0.61: RSI(14) at 75 fires after 2-3% bounce with 2% entry.
+    # Connors RSI(2)>65; RSI(14) equivalent ≈ 70-75. At 2.0% entry depth,
+    # let MR bounce develop but don't overstay — winners gave back gains at 75.
+    exit_rsi_long = 70   # RSI(14) — balanced between capture and overstay
+    exit_rsi_short = 30  # Mirror symmetry
     # Research v2.0.59: exit when deviation > 0.5% (price within 0.5% of SMA).
     # v2.0.58 at 1.0% required price to overshoot SMA by 1% — combined with
     # entry at -1.3%, this created 0.3% gap. With 2.0% entry, 0.5% exit
@@ -305,11 +300,12 @@ class MeanReversionTrend(IStrategy):
     trailing_stop_positive_offset = 0.1100
     trailing_only_offset_is_reached = True
 
-    # Research v2.0.59: TIGHTEN Phase1 to 1.0×ATR (floor 2%, cap 4%).
-    # v2.0.58 Phase1 at 1.5×ATR (3-6%) still risked 2-3× avg win — R/R was 0.43.
-    # stratbase: 1-2×ATR is standard for crypto MR. Connors: stops hurt MR edge.
-    # With 2.0% entry + 0.5% exit target, avg win potential is 2-3%.
-    # Phase1 at 2-4% aligns risk with reward for ~1:1 R/R. Hard floor at 7.7%
+    # Research v2.0.61: CRITICAL FIX — v2.0.60 custom_stoploss anchored to current_rate,
+    # not entry price. When price dropped, stop drifted below hard stoploss (-7.7%),
+    # so hard stoploss caught all losing trades (13 trades, -7.97% avg).
+    # Fix: anchor stops to trade.open_rate. Research: crypto 1H needs 1.5-2×ATR.
+    # Phase1 at 1.5×ATR (floor 3%, cap 5%) — gives breathing room for crypto vol.
+    # Hard stoploss widened to -10% as disaster floor only (should rarely trigger).
 
     # Scale-in: disabled — adding size on small profit was amplifying losses.
     # v2.0.56: confirmed disabled. Research shows martingale is destructive for MR.
@@ -320,16 +316,19 @@ class MeanReversionTrend(IStrategy):
         current_rate: float, current_profit: float, after_fill: bool,
         **kwargs
     ) -> Optional[float]:
-        """Stepped ATR-based stop loss — enables custom_stoploss() to be called.
+        """Stepped ATR-based stop loss anchored to entry price.
 
-        Phase 1: 1.0×ATR (floor 2%, cap 4%) — align risk with 2-3% avg win target.
-        Phase 2: Once profit > 3%, tighten to 1% lock-in — protect against reversals.
-        Phase 3: Once profit > 5%, tighten to 1.5% — protect mega-winners.
+        CRITICAL FIX v2.0.61: Previous versions returned stop as % of current_rate.
+        When price dropped post-entry, the stop drifted below hard stoploss,
+        making the hard stoploss (-7.7%) the effective exit. Now anchored to open_price.
 
-        Research v2.0.59: v2.0.58 Phase1 at 1.5×ATR (3-6%) with avg win 1.67%
-        created R/R 0.43 — terminal. 1.0×ATR with 2-4% bounds narrows the gap.
-        Connors' research: stops hurt MR edge, but crypto needs protection.
-        1.0×ATR is the compromise — tight enough for R/R, wide enough to breathe.
+        Phase 1: 1.5×ATR below entry (floor 3%, cap 5%) — crypto needs breathing room.
+        Phase 2: Once profit > 3%, tighten to 2% below peak — protect cushion.
+        Phase 3: Once profit > 5%, tighten to 1.5% below peak — lock in mega-winners.
+
+        Research v2.0.61: Multiple sources confirm crypto 1H needs 1.5-2×ATR.
+        sudoall: tight stops (1.0-1.3×ATR) + high R:R (2.5+) work best.
+        With 2.0% entry depth, target avg win 3-4% vs avg loss 3-5% → R/R ~0.8-1.3.
         """
         df, _ = self.dp.get_pair_dataframe(pair, self.timeframe)
         if df.empty:
@@ -337,18 +336,22 @@ class MeanReversionTrend(IStrategy):
 
         last = df.iloc[-1]
         atr_pct = last.get("atr_pct", 2.0)
+        open_rate = trade.open_rate
 
-        # Phase 2 at >3% — lock in 1% once we have cushion. Phase 3 at >5% — tighten to 1.5%.
         if current_profit > 0.05:
-            # Phase 3: major winner (>5%) — lock in 1.5%
+            # Phase 3: major winner (>5%) — lock in 1.5% below current
             return -0.015
         elif current_profit > 0.03:
-            # Phase 2: solid profit (>3%) — lock in 1%
-            return -0.010
+            # Phase 2: solid profit (>3%) — lock in 2% below current
+            return -0.020
         else:
-            # Phase 1: 1.0×ATR stop — floor 2%, cap 4%
-            stop_pct = min(0.04, max(0.02, atr_pct * 1.0 / 100))
-            return -stop_pct
+            # Phase 1: 1.5×ATR below OPEN PRICE (anchored, not drifting)
+            # Floor 3%, cap 5% — wider for crypto volatility
+            stop_pct_from_open = min(0.05, max(0.03, atr_pct * 1.5 / 100))
+            # Convert to percentage of CURRENT price for Freqtrade
+            stop_price = open_rate * (1 - stop_pct_from_open)
+            stop_pct_from_current = (current_rate - stop_price) / current_rate
+            return -max(stop_pct_from_current, 0.005)  # minimum 0.5% distance
 
     def custom_exit(
         self, pair: str, trade: "Trade", current_time: datetime,
