@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.41"
+    STRATEGY_VERSION = "2.0.42"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -94,11 +94,11 @@ class MeanReversionTrend(IStrategy):
     # → raise to 2.0%. Research: BTC 1H 2-3% below 20 SMA is the true abnormal deviation zone.
     # Deeper entry = larger reversion potential = better R/R. BB std at 1.5 already gives ±1.5σ
     # (≈95% of price in band) — 2% threshold requires real extremes.
-    entry_dev_threshold = 1.7   # Was 1.1
+    entry_dev_threshold = 1.6   # Was 1.1
 
     # ATR volatility compression
     atr_length = 14
-    atr_compression_ratio = 0.95  # Was 0.90 — require true volatility compression, not normal vol
+    atr_compression_ratio = 0.90  # Was 0.90 — require true volatility compression, not normal vol
 
     # Volume confirmation
     volume_ma_length = 20
