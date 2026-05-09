@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.56"
+    STRATEGY_VERSION = "2.0.57"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -97,20 +97,20 @@ class MeanReversionTrend(IStrategy):
     # caught too many shallow pullbacks that didn't have enough reversion potential.
     # BTC 1H: 2-3% below 20 SMA is true abnormal zone (stratbase). 1.6% is a
     # practical compromise — deep enough for real edge, not so rare it never fires.
-    entry_dev_threshold = 1.6   # Was 1.4
+    entry_dev_threshold = 1.3   # Was 1.4
 
     # ATR volatility compression — v2.0.56: restored 0.85 from research.
     # v2.0.55 loosened to 1.00 (no filter) → 72 trades, 62.5% WR, terrible quality.
     # True compression (ATR < 85% of 20-period avg) filters for quality setups.
     # stratbase.ai: vol compression + BB touch + RSI < 35 = 68% WR, 1.71 PF.
     atr_length = 14
-    atr_compression_ratio = 0.85
+    atr_compression_ratio = 1.00
 
     # Volume confirmation — v2.0.56: tighten to 1.35× for quality.
     # v2.0.55 loosened to 1.2 → too many low-conviction entries.
     # Research: volume confirmation filters noise trades in crypto MR.
     volume_ma_length = 20
-    volume_multiplier = 1.35
+    volume_multiplier = 1.2
 
     # Research v2.0.24: Widen RSI entry band for more signals.
     # Strategy #2 stratbase: "RSI cross back above 30" as trigger — entry at RSI > 30 vs RSI > 25.
