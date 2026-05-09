@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.50"
+    STRATEGY_VERSION = "2.0.51"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -77,7 +77,7 @@ class MeanReversionTrend(IStrategy):
     # v2.0.22: Widen from -10.5% to -20%. Research: tight hard stop kills mean reversion
     # because the edge STRENGTHENS as price moves against you — cutting early destroys the edge.
     # Custom_stoploss() controls the active stop; hard stop only fires in catastrophic moves.
-    stoploss = -0.1850
+    stoploss = -0.10
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
@@ -94,7 +94,7 @@ class MeanReversionTrend(IStrategy):
     # → raise to 2.0%. Research: BTC 1H 2-3% below 20 SMA is the true abnormal deviation zone.
     # Deeper entry = larger reversion potential = better R/R. BB std at 1.5 already gives ±1.5σ
     # (≈95% of price in band) — 2% threshold requires real extremes.
-    entry_dev_threshold = 1.0   # Was 1.1
+    entry_dev_threshold = 2.0   # Was 1.0
 
     # ATR volatility compression
     atr_length = 14
@@ -315,9 +315,9 @@ class MeanReversionTrend(IStrategy):
     ) -> Optional[float]:
         """Stepped ATR-based stop loss — enables custom_stoploss() to be called.
 
-        Phase 1: Wide initial stop (ATR * 3, floor 8%, cap 15%) — give trades room to work.
-        Phase 2: Once profit > 3%, tighten to 1.5% lock-in — capture without strangling winners.
-        Phase 3: Once profit > 8%, tighten to 0.8% — let big moves run.
+        Phase 1: Wide initial stop (1.5x ATR, floor 6%, cap 12%) — give trades room to work.
+        Phase 2: Once profit > 2%, tighten to 1% lock-in — capture without strangling winners.
+        Phase 3: Once profit > 5%, tighten to 1.5% — protect mega-winners.
 
         Research: freqtrade docs confirm custom_stoploss default = self.stoploss (static).
         Only with use_custom_stoploss=True does the dynamic ATR logic activate.
@@ -329,27 +329,19 @@ class MeanReversionTrend(IStrategy):
         last = df.iloc[-1]
         atr_pct = last.get("atr_pct", 2.0)
 
-        # Phase-based stop
-        # v2.0.30: tighten phases — research says 1.5-2× ATR for MR stops, not 4×.
-        # Phase 2 at >5% (lowered from >8%) — lock in 2% once we have cushion.
-        # Phase 3 at >15% — tighten to 1% to protect mega-winners.
-        if current_profit > 0.15:
-            # Phase 3: major winner — lock in 1.0% (tightened from 1.5%)
-            return -0.010
-        elif current_profit > 0.03:
-            # Phase 2: solid profit (>3%) — lock in 1.5% (tightened from 2.0%, trigger lowered from 5%)
-            # v2.0.48: avg win is ~2% so 3% trigger is more achievable. 1.5% lock-in protects without strangling.
+        # Phase 2 at >2% — lock in 1% once we have cushion. Phase 3 at >5% — tighten to 1.5%.
+        if current_profit > 0.05:
+            # Phase 3: major winner (>5%) — lock in 1.5%
             return -0.015
+        elif current_profit > 0.02:
+            # Phase 2: solid profit (>2%) — lock in 1%
+            return -0.010
         else:
-            # Phase 1: initial wide stop — 2× ATR, floor 12%, cap 20%
-            # v2.0.32: Research: mean reversion needs WIDER stops than trend following.
-            # 3× ATR was too tight — BTC can move 5-8% in 1H during mean reversion failure.
-            # Connors research: "tight stops destroy mean reversion edge before it can play out".
-            # 2× ATR gives trades room to work; disaster floor at 20% hard stop handles the rest.
-            stop_pct = min(0.20, max(0.12, atr_pct * 2.0 / 100))
+            # Phase 1: initial wide stop — 1.5x ATR, floor 6%, cap 12%
+            stop_pct = min(0.12, max(0.06, atr_pct * 1.5 / 100))
             return -stop_pct
 
-    def custom_exit(
+def custom_exit(
         self, pair: str, trade: "Trade", current_time: datetime,
         current_rate: float, current_profit: float, current_profit_pct: float,
         **kwargs
