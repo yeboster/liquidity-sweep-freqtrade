@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.75"
+    STRATEGY_VERSION = "2.0.76"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -100,26 +100,23 @@ class MeanReversionTrend(IStrategy):
     # Fewer trades (target 30-40) but higher quality with proper R/R.
     entry_dev_threshold = 2.0   # v2.0.67: 2.0% = true abnormal zone (stratbase)
 
-    # Research v2.0.75: v2.0.74 had 47% stop-out rate — entries catching noise not MR.
-    # Vantixs (2026): ATR ratio filter prevented 72% of largest losing trades.
-    # stratbase.ai: BB+RSI+compression gives 68% WR, 1.71 PF on BTC 4H.
-    # v2.0.61-74: compression at 1.00 was too loose (ATR < avg trivially true).
-    # Tighten to 0.75: ATR must be <75% of 20-period average = real compression.
+    # Research v2.0.76: v2.0.75 at 0.75 compression = 0 trades (too tight).
+    # Recalibrate to 0.85 — Vantixs tier-1 compression (<85% avg = moderate squeeze).
+    # stratbase.ai: BB+RSI+compression gives 1.71 PF. This is the key missing filter.
+    # Combined with wider stop (-5.5%) to let quality entries breathe per Connors.
     atr_length = 14
-    atr_compression_ratio = 0.75   # Vantixs: ATR < 75% of 20-period avg — true squeeze
+    atr_compression_ratio = 0.85   # Vantixs moderate squeeze: ATR < 85% of 20-period avg
 
-    # Research v2.0.75: 34 trades with 47% stop-outs = entries on low-conviction candles.
-    # stratbase recommends 1.5× for quality; v2.0.74 at 1.2× let noise through.
-    # Modest tighten to 1.3× — enough to filter weak volume without starving signals.
+    # Research v2.0.76: revert to 1.2× — v2.0.75 at 1.3× contributed to 0 trades.
+    # stratbase: higher volume = better, but crypto 1H needs balance. 1.2× already filters noise.
     volume_ma_length = 20
-    volume_multiplier = 1.3   # Modest tighten from 1.2 — filter low-conviction candles
+    volume_multiplier = 1.2   # Quality threshold — already reduced 54→34 trades
 
-    # Research v2.0.75: Connors RSI cross-back: enter when RSI crosses above 30 after being below 25.
-    # stratbase: RSI < 35 + BB = 68% WR, 1.71 PF. Entry at >35 catches many false signals.
-    # RSI(14) oversold at 30: deeper sell-off required = stronger reversion snap.
-    # Combined with RSI < 50 filter, this means entries in 30-50 zone only.
+    # Research v2.0.76: revert RSI to 35 — v2.0.75 at 30 was too restrictive when stacked.
+    # Connors RSI(2) cross-back at 30; but our RSI(14) is less sensitive.
+    # stratbase: RSI 35 + BB = 68% WR, 1.71 PF on BTC 4H. Keep this proven level.
     rsi_length = 14
-    rsi_oversold = 30   # Was 35 — Connors deeper oversold entry, cross-back after true extreme
+    rsi_oversold = 35   # stratbase-validated: RSI(14) < 35 + BB = strongest MR combo
     rsi_overbought = 70  # Was 75 — widened for more entry signals
 
     # Trend filter: 4H EMA200 — RESEARCH SAYS THIS IS NON-NEGOTIABLE
