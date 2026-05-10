@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.88"
+    STRATEGY_VERSION = "2.0.89"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -81,11 +81,11 @@ class MeanReversionTrend(IStrategy):
     # Connors: "fixed stoplosses reduced performance" — but our time-based exit handles that.
     use_custom_stoploss = False
 
-    # v2.0.85: RESEARCH-DRIVEN — MR edge strengthens as price deviates more.
-    # Wider stop (-9%) gives deep-edge MR setups room to work before time exit cuts them.
-    # nf-china research: "mean reversion strategies tend to work better the wider the stop"
-    # Combined with faster time_exit_loss (16h) so slow grinders exit before hitting this.
-    stoploss = -0.0870
+    # v2.0.89: RESEARCH-DRIVEN — nf-china: "MR strategies work better the wider the stop."
+    # v2.0.88 proved tightening from -9% to -8.7% INCREASED stop-outs (5→7).
+    # The stop loss exits trades when MR edge is strongest — go WIDER, not tighter.
+    # -10% gives deep-deviation trades room; losers exit via time_exit_loss at cheaper -3%.
+    stoploss = -0.10
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
@@ -109,7 +109,9 @@ class MeanReversionTrend(IStrategy):
     # Entries are clearly higher quality but too few. Loosen to 0.90 for 15-25 target.
     # Vantixs: ATR < 1.0×avg = normal MR conditions. 0.90 filters only volatile expansions.
     atr_length = 14
-    atr_compression_ratio = 1.00   # Vantixs normal range: ATR < 90% of 20-period avg
+    # v2.0.89: Tighten to 0.90 — Vantixs research: ATR < 0.9x avg prevented 72% of
+    # largest MR losses. Only enter when volatility is clearly compressing, not just normal.
+    atr_compression_ratio = 0.90
 
     # Research v2.0.81: v2.0.80 at 1.1× = 65 trades, 37% stop-outs. Low-quality volume entries.
     # stratbase: volume confirmation is essential. Vantixs: declining volume on move improves WR +5pp.
