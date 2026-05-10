@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.67"
+    STRATEGY_VERSION = "2.0.68"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -335,7 +335,10 @@ class MeanReversionTrend(IStrategy):
         """
         df, _ = self.dp.get_pair_dataframe(pair, self.timeframe)
         if df.empty:
-            return -0.06  # fallback: tighter than hard stoploss
+            # v2.0.68: fallback MUST be tighter than hard stoploss
+            # -6% from current can become wider than -8.5% from entry as price drops
+            # Use min(3%, 85% of hard stoploss) to always fire first
+            return -min(0.03, abs(self.stoploss) * 0.85)
 
         last = df.iloc[-1]
         atr_pct = last.get("atr_pct", 2.0)
@@ -359,18 +362,19 @@ class MeanReversionTrend(IStrategy):
             
             # Normal: calculate % distance to anchored stop from current
             stop_pct_from_current = (current_rate - stop_price) / current_rate
-            # Ensure we never return a stop wider than hard stoploss
-            return -min(stop_pct_from_current, hard_stop_pct * 0.95)
+            # Ensure we never return a stop wider than 85% of hard stoploss
+            return -min(stop_pct_from_current, hard_stop_pct * 0.85)
 
     def custom_exit(
         self, pair: str, trade: "Trade", current_time: datetime,
-        current_rate: float, current_profit: float, current_profit_pct: float,
-        **kwargs
+        current_rate: float, current_profit: float, **kwargs
     ) -> Optional[str]:
         """
         Time exit: if holding > N hours AND profit >= floor → exit.
+        v2.0.68: Fixed signature — removed current_profit_pct (not in CI Freqtrade ver).
+        current_profit is the ratio (e.g. 0.05 = 5%).
         """
-        if current_profit_pct >= self.time_exit_profit_floor:
+        if current_profit >= self.time_exit_profit_floor:
             if trade.open_date_utc:
                 holding_hours = (current_time - trade.open_date_utc).total_seconds() / 3600
                 if holding_hours >= self.time_exit_hours:
