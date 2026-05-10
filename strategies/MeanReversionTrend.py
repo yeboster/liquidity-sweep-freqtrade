@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.86"
+    STRATEGY_VERSION = "2.0.87"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -100,10 +100,10 @@ class MeanReversionTrend(IStrategy):
     # was too shallow — caught noise, not true MR setups. stratbase.ai:
     # "BTC 1H true abnormal zone is 2-3% below 20 SMA". Deepen to 2.0%.
     # Fewer trades (target 30-40) but higher quality with proper R/R.
-    # v2.0.86: REVERTED from 2.0→1.85 — v2.0.85 proved 2.0% too restrictive (41 trades, 44% WR).
-    # 2.0% caught trending breakdowns, not MR bounces. v2.0.83-84 at 1.8% = 69% WR.
-    # Slight bump to 1.85% as compromise — slightly higher bar than 1.8%.
-    entry_dev_threshold = 1.85
+    # v2.0.87: REVERTED from 1.85→1.80 — proven sweet spot from v2.0.83 (69% WR).
+    # v2.0.85-86 experiment: 1.85-2.0% cut exit_signals from 31→15-19.
+    # Lower deviation catches more real MR setups with 100% WR exit_signals.
+    entry_dev_threshold = 1.80
 
     # Research v2.0.77: v2.0.76 at 0.85 = 4 trades, avg win +4.55%, R/R 0.79, DD 1.9%.
     # Entries are clearly higher quality but too few. Loosen to 0.90 for 15-25 target.
@@ -138,11 +138,11 @@ class MeanReversionTrend(IStrategy):
     # Also exit LOSING trades at 24h (prevent bag-holding on failed setups)
     time_exit_hours = 18
     time_exit_profit_floor = 0.005  # 0.5% minimum profit for PROFITABLE time exit (lowered)
-    # v2.0.85: RESEARCH-DRIVEN — Cut losers at 16h, not 24h.
-    # forextester: "if it hasn't reverted in 12-18h, it probably won't"
-    # v2.0.83-84 had 8 time_exit_loss trades at avg -2.97% — cutting 8h earlier
-    # should reduce avg loss on these trades by ~1% (less time to drift).
-    time_exit_loss_hours = 16       # v2.0.85: faster cut on failing MR setups
+    # v2.0.87: REVERTED from 16h→24h — 16h was KILLING winners.
+    # v2.0.86 lost 12 exit_signal (100% WR) trades because they got cut at 16h
+    # before developing to exit_signal at 17-24h. Crypto 1H MR needs full 24h.
+    # Keep -9% stop as ultimate floor (nf-china: MR works better with wider stops).
+    time_exit_loss_hours = 24       # REVERTED: crypto MR reversions need the full day
 
     # ── Exit Conditions ─────────────────────────────────────────────────────
     # Research: target = mid-band (SMA), not a tight trail. Exit when reverted.
