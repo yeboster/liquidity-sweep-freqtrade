@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.82"
+    STRATEGY_VERSION = "2.0.83"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -68,23 +68,20 @@ class MeanReversionTrend(IStrategy):
         "1440": 1.0,   # 24h: floor at +1%
     }
 
-    # Research v2.0.81: MAJOR REWRITE — 37% of trades hit fixed stop (-5.48% avg, $417 total loss).
-    # Exit signal works perfectly (98% WR, +2.74% mean) → the ONLY problem is entries that don't revert.
+    # Research v2.0.83: COMPLETE REVERSION of custom_stoploss approach.
+    # v2.0.81-82 proved custom_stoploss kills MR winners:
+    #   v2.0.80 (no custom_stoploss): 40 exit_signal winners at +2.74%, 24 stop-outs at -5.48%
+    #   v2.0.82 (custom_stoploss): 17 exit_signal winners at +1.70%, 30 trailing_stop at -1.68%
+    #   custom_stoploss prevented winners from reaching exit_signal → worse R/R, worse profit
     #
-    # Research synthesis:
-    #   1. Connors/Cesar Alvarez: fixed stops HURT MR performance (premature bounces)
-    #   2. YouTube backtest: "timed exit if showing loss" improved net profit/drawdown by 93%
-    #   3. Vantixs: ATR/ADX filters prevented 72% of largest losses in crypto MR backtests
-    #   4. quantifiedstrategies: volatility-based stops (2×ATR) + time stops outperform fixed stops
+    # New approach: NO custom stoploss. WIDE hard stop (-8.5%) as ultimate disaster floor.
+    # Losing trades exit via time_exit_loss at 24h (prevent bag-holding).
+    # Winning trades exit via exit_signal (RSI/deviations) — which has been 98-100% WR.
     #
-    # New approach:
-    #   - ENABLE custom_stoploss with TIME-GRADUATED dynamic stops (wider initially, tightening over time)
-    #   - Hard stoploss at -8.5% as ULTIMATE disaster floor (should rarely trigger)
-    #   - Time-graduated: <12h = -7% (let MR develop), 12-24h = -4%, >24h = -2.5% (force exit)
-    #   - Profitable trades get tight trailing lock-in
-    use_custom_stoploss = True
+    # Connors: "fixed stoplosses reduced performance" — but our time-based exit handles that.
+    use_custom_stoploss = False
 
-    # v2.0.81: Widened to -8.5% as ultimate disaster floor. custom_stoploss handles normal exits.
+    # v2.0.83: Wide -8.5% as ULTIMATE disaster floor. Time exit handles normal losing trades.
     stoploss = -0.085
 
     # ── Entry Parameters ────────────────────────────────────────────────────
