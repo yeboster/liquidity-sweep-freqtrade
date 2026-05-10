@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.85"
+    STRATEGY_VERSION = "2.0.86"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -100,11 +100,10 @@ class MeanReversionTrend(IStrategy):
     # was too shallow — caught noise, not true MR setups. stratbase.ai:
     # "BTC 1H true abnormal zone is 2-3% below 20 SMA". Deepen to 2.0%.
     # Fewer trades (target 30-40) but higher quality with proper R/R.
-    # v2.0.85: RESEARCH-DRIVEN — Raise to 2.0% deviation for deeper entry edge.
-    # stratbase: "BTC 1H true abnormal zone is 2-3% below 20 SMA"
-    # v2.0.83-84 at 1.8% = 49 trades but 15 losers (8 time-exit-loss). Too noisy.
-    # Fewer, higher-quality entries with deeper deviation → stronger reversion edge.
-    entry_dev_threshold = 2.0
+    # v2.0.86: REVERTED from 2.0→1.85 — v2.0.85 proved 2.0% too restrictive (41 trades, 44% WR).
+    # 2.0% caught trending breakdowns, not MR bounces. v2.0.83-84 at 1.8% = 69% WR.
+    # Slight bump to 1.85% as compromise — slightly higher bar than 1.8%.
+    entry_dev_threshold = 1.85
 
     # Research v2.0.77: v2.0.76 at 0.85 = 4 trades, avg win +4.55%, R/R 0.79, DD 1.9%.
     # Entries are clearly higher quality but too few. Loosen to 0.90 for 15-25 target.
@@ -122,8 +121,8 @@ class MeanReversionTrend(IStrategy):
     # Connors RSI(2) cross-back at 30; but our RSI(14) is less sensitive.
     # stratbase: RSI 35 + BB = 68% WR, 1.71 PF on BTC 4H. Keep this proven level.
     rsi_length = 14
-    rsi_oversold = 32   # v2.0.85: RESEARCH — Connors original RSI(2)<10 ≈ RSI(14)<30-32.
-    # Slightly tighter than 35 to filter borderline setups that become time-exit-loss.
+    rsi_oversold = 35   # v2.0.86: REVERTED from 32→35 — stratbase-validated: RSI(14) < 35 + BB = strongest MR combo.
+    # v2.0.85 at 32 collapsed WR to 44% — too restrictive when stacked with other filters.
     rsi_overbought = 70  # Was 75 — widened for more entry signals
 
     # Trend filter: 4H EMA200 — RESEARCH SAYS THIS IS NON-NEGOTIABLE
