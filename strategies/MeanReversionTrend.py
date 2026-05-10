@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.83"
+    STRATEGY_VERSION = "2.0.84"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -82,7 +82,7 @@ class MeanReversionTrend(IStrategy):
     use_custom_stoploss = False
 
     # v2.0.83: Wide -8.5% as ULTIMATE disaster floor. Time exit handles normal losing trades.
-    stoploss = -0.085
+    stoploss = -0.0820
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
@@ -305,7 +305,7 @@ class MeanReversionTrend(IStrategy):
     # Winners averaged +0.86% because trail cut them at 1%. Let exits handle profit-taking.
     trailing_stop = False
     trailing_stop_positive = 0.0300
-    trailing_stop_positive_offset = 0.1300
+    trailing_stop_positive_offset = 0.1350
     # v2.0.66: research confirms trailing stops kill MR (ekx.ai, Connors).
     # Settings preserved as dead code per Freqtrade convention.
     trailing_only_offset_is_reached = True
