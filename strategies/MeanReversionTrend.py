@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.68"
+    STRATEGY_VERSION = "2.0.70"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -347,14 +347,16 @@ class MeanReversionTrend(IStrategy):
         hard_stop_pct = abs(self.stoploss)  # 0.085
 
         if current_profit > 0.05:
-            # Phase 3: major winner (>5%) — lock in 1.5% below current
-            return -0.015
+            # Phase 3: major winner (>5%) — lock in 2.5% below current (was 1.5%)
+            return -0.025
         elif current_profit > 0.03:
-            # Phase 2: solid profit (>3%) — lock in 2% below current
-            return -0.020
+            # Phase 2: solid profit (>3%) — lock in 3% below current (was 2%)
+            return -0.030
         else:
-            # Phase 1: 2×ATR ANCHORED TO ENTRY (not floating)
-            stop_from_entry_pct = min(0.07, max(0.03, atr_pct * 2.0 / 100))
+            # Phase 1: 2.5×ATR ANCHORED TO ENTRY (v2.0.70: widened)
+            # Floor 5% (was 3%) — crypto 1H needs breathing room
+            # Cap 8% (was 7%) — disaster protection
+            stop_from_entry_pct = min(0.08, max(0.05, atr_pct * 2.5 / 100))
             stop_price = trade.open_rate * (1 - stop_from_entry_pct)
             
             if current_rate <= stop_price:
