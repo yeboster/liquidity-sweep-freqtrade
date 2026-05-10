@@ -333,7 +333,9 @@ class MeanReversionTrend(IStrategy):
         Research: stratbase ATR 2.0-2.5× optimal for crypto.
         Phase 1: 2×ATR anchored to entry, floor 3% cap 7%.
         """
-        df, _ = self.dp.get_pair_dataframe(pair, self.timeframe)
+        # v2.0.69: get_pair_dataframe returns single DF in CI Freqtrade ver
+        result = self.dp.get_pair_dataframe(pair, self.timeframe)
+        df = result[0] if isinstance(result, tuple) else result
         if df.empty:
             # v2.0.68: fallback MUST be tighter than hard stoploss
             # -6% from current can become wider than -8.5% from entry as price drops
@@ -395,7 +397,9 @@ class MeanReversionTrend(IStrategy):
         side: str, **kwargs
     ) -> bool:
         """Validate compression still active at entry moment."""
-        df, _ = self.dp.get_pair_dataframe(pair, self.timeframe)
+        # v2.0.69: get_pair_dataframe returns single DF in CI Freqtrade ver
+        result = self.dp.get_pair_dataframe(pair, self.timeframe)
+        df = result[0] if isinstance(result, tuple) else result
         if df.empty:
             return True
         last = df.iloc[-1]
