@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.79"
+    STRATEGY_VERSION = "2.0.80"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -83,7 +83,7 @@ class MeanReversionTrend(IStrategy):
     # entries should be higher quality → fewer stop-outs → wider stop gives MR room to work.
     # -5.5% is compromise: wider than -4.9% (v2.0.74) to let MR dips develop,
     # but tighter than -5.5% original to cap risk on remaining bad entries.
-    stoploss = -0.0520
+    stoploss = -0.0490
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
