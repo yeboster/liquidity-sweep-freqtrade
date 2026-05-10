@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.81"
+    STRATEGY_VERSION = "2.0.82"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -100,7 +100,7 @@ class MeanReversionTrend(IStrategy):
     # was too shallow — caught noise, not true MR setups. stratbase.ai:
     # "BTC 1H true abnormal zone is 2-3% below 20 SMA". Deepen to 2.0%.
     # Fewer trades (target 30-40) but higher quality with proper R/R.
-    entry_dev_threshold = 2.0   # v2.0.81: 2.0% = true abnormal zone (stratbase, Vantixs)
+    entry_dev_threshold = 1.8   # v2.0.82: compromise — 2.0% too restrictive (36→8 winners), 1.7% too noisy
 
     # Research v2.0.77: v2.0.76 at 0.85 = 4 trades, avg win +4.55%, R/R 0.79, DD 1.9%.
     # Entries are clearly higher quality but too few. Loosen to 0.90 for 15-25 target.
@@ -351,13 +351,14 @@ class MeanReversionTrend(IStrategy):
         # Current drawdown from entry (as positive fraction)
         entry_drawdown = (entry_rate - current_rate) / entry_rate
         
-        # Trailing lock-in for profitable trades
+        # Trailing lock-in for profitable trades (conservative only at high profit)
+        # v2.0.82: REMOVED breakeven lock-in (>1% → 0.0) — killed all winners prematurely.
+        # 24 trades hit trailing_stop at avg -2.54% instead of developing to +2-5% exit_signal.
+        # Only lock in at 3%+ where the trade has clearly worked.
         if current_profit > 0.05:
             return -0.025    # 2.5% give-back allowed
         elif current_profit > 0.03:
-            return -0.025    # Lock in most of a 3% win
-        elif current_profit > 0.01:
-            return 0.0        # Breakeven — don't let a winner turn loser
+            return -0.015    # v2.0.82: tight 1.5% give-back for 3%+ winners (was 2.5%)
         
         # Time-graduated stop for non-profitable trades
         if trade.open_date_utc:
