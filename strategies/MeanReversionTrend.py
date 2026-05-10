@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.74"
+    STRATEGY_VERSION = "2.0.75"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -78,7 +78,12 @@ class MeanReversionTrend(IStrategy):
     # (kills valid dips). Research: Connors says stops hurt MR edge.
     # Simple 5.5% hard stop as disaster floor only.
 
-    stoploss = -0.0490
+    # Research v2.0.75: Connors/Cesar Alvarez: fixed stops HURT MR performance (exits before bounce).
+    # But crypto needs disaster protection. With tighter entry filters (compression 0.75, RSI 30),
+    # entries should be higher quality → fewer stop-outs → wider stop gives MR room to work.
+    # -5.5% is compromise: wider than -4.9% (v2.0.74) to let MR dips develop,
+    # but tighter than -5.5% original to cap risk on remaining bad entries.
+    stoploss = -0.055
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
@@ -95,25 +100,26 @@ class MeanReversionTrend(IStrategy):
     # Fewer trades (target 30-40) but higher quality with proper R/R.
     entry_dev_threshold = 2.0   # v2.0.67: 2.0% = true abnormal zone (stratbase)
 
-    # Research v2.0.60: stalling at -6.73% profit, R/R 0.35 despite 70% WR.
-    # Root cause: compression disabled + broken custom_stoploss = catastrophic R/R.
-    # v2.0.61: RESTORE compression filter to 0.85 — stratbase.ai: BB+RSI+compression = 1.71 PF.
-    # Without it, 54 low-quality entries overwhelmed the strategy.
+    # Research v2.0.75: v2.0.74 had 47% stop-out rate — entries catching noise not MR.
+    # Vantixs (2026): ATR ratio filter prevented 72% of largest losing trades.
+    # stratbase.ai: BB+RSI+compression gives 68% WR, 1.71 PF on BTC 4H.
+    # v2.0.61-74: compression at 1.00 was too loose (ATR < avg trivially true).
+    # Tighten to 0.75: ATR must be <75% of 20-period average = real compression.
     atr_length = 14
-    atr_compression_ratio = 1.00   # Restored — ATR must be <85% of 20-period avg
+    atr_compression_ratio = 0.75   # Vantixs: ATR < 75% of 20-period avg — true squeeze
 
-    # Research v2.0.61: tighter volume filter — 54 trades was too many.
-    # v2.0.60 at 1.2× let low-conviction setups flood in.
-    # stratbase: higher volume confirmation = fewer but better trades.
+    # Research v2.0.75: 34 trades with 47% stop-outs = entries on low-conviction candles.
+    # stratbase recommends 1.5× for quality; v2.0.74 at 1.2× let noise through.
+    # Modest tighten to 1.3× — enough to filter weak volume without starving signals.
     volume_ma_length = 20
-    volume_multiplier = 1.2   # Restored quality threshold
+    volume_multiplier = 1.3   # Modest tighten from 1.2 — filter low-conviction candles
 
-    # Research v2.0.24: Widen RSI entry band for more signals.
-    # Strategy #2 stratbase: "RSI cross back above 30" as trigger — entry at RSI > 30 vs RSI > 25.
-    # v2.0.23 had RSI 25 (oversold) — only fires when RSI has already left extreme zone.
-    # Widening to 30/70 gives more setups while staying in bottom/top half.
+    # Research v2.0.75: Connors RSI cross-back: enter when RSI crosses above 30 after being below 25.
+    # stratbase: RSI < 35 + BB = 68% WR, 1.71 PF. Entry at >35 catches many false signals.
+    # RSI(14) oversold at 30: deeper sell-off required = stronger reversion snap.
+    # Combined with RSI < 50 filter, this means entries in 30-50 zone only.
     rsi_length = 14
-    rsi_oversold = 35   # Was 30 — enter when RSI has recovered past deep oversold (cross-back confirm)
+    rsi_oversold = 30   # Was 35 — Connors deeper oversold entry, cross-back after true extreme
     rsi_overbought = 70  # Was 75 — widened for more entry signals
 
     # Trend filter: 4H EMA200 — RESEARCH SAYS THIS IS NON-NEGOTIABLE
