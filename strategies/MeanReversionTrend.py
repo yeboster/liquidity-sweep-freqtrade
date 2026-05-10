@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.63"
+    STRATEGY_VERSION = "2.0.64"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -75,7 +75,7 @@ class MeanReversionTrend(IStrategy):
     # Hard stoploss at -10% as pure disaster floor — custom_stoploss handles normal exits.
     use_custom_stoploss = True
 
-    stoploss = -0.0970
+    stoploss = -0.0940
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
@@ -297,7 +297,7 @@ class MeanReversionTrend(IStrategy):
     # Winners averaged +0.86% because trail cut them at 1%. Let exits handle profit-taking.
     trailing_stop = False
     trailing_stop_positive = 0.0300
-    trailing_stop_positive_offset = 0.1150
+    trailing_stop_positive_offset = 0.1200
     trailing_only_offset_is_reached = True
 
     # Research v2.0.61: CRITICAL FIX — v2.0.60 custom_stoploss anchored to current_rate,
