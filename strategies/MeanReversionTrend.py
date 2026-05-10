@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.78"
+    STRATEGY_VERSION = "2.0.79"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -83,7 +83,7 @@ class MeanReversionTrend(IStrategy):
     # entries should be higher quality → fewer stop-outs → wider stop gives MR room to work.
     # -5.5% is compromise: wider than -4.9% (v2.0.74) to let MR dips develop,
     # but tighter than -5.5% original to cap risk on remaining bad entries.
-    stoploss = -0.055
+    stoploss = -0.0520
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
@@ -302,7 +302,7 @@ class MeanReversionTrend(IStrategy):
     # Winners averaged +0.86% because trail cut them at 1%. Let exits handle profit-taking.
     trailing_stop = False
     trailing_stop_positive = 0.0300
-    trailing_stop_positive_offset = 0.1250
+    trailing_stop_positive_offset = 0.1300
     # v2.0.66: research confirms trailing stops kill MR (ekx.ai, Connors).
     # Settings preserved as dead code per Freqtrade convention.
     trailing_only_offset_is_reached = True

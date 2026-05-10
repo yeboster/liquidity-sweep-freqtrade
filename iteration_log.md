@@ -342,3 +342,9 @@ Formula: `(target_sl_price - current_rate) / current_rate`.
 - Exit breakdown: trailing=0(0%WR, $0.00), stop=4(0%WR, $-76.97), time=0(0%WR, $0.00)
 - Changes: Low volume: dev 2.0→1.7, atr 0.9→1.0, vol 1.2→1.0999999999999999, v2.0.77→2.0.78
 - Reason: Too few trades — need more entry signals
+
+## Iteration v2: 2026-05-10 15:20:06
+- Profit: -7.48% | Trades: 65 | WR: 63.1% | R/R: 0.4898 | SQN: -0.6799 | DD: 12.29%
+- Exit breakdown: trailing=0(0%WR, $0.00), stop=23(0%WR, $-420.50), time=1(100%WR, $2.00)
+- Changes: Fix R/R: trail 0.03→0.03, offset 0.125→0.13, stop -0.055→-0.052, v2.0.78→2.0.79
+- Reason: R/R broken — trailing stop too tight vs stop loss
