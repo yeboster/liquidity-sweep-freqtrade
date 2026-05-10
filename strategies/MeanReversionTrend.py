@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.73"
+    STRATEGY_VERSION = "2.0.74"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -78,7 +78,7 @@ class MeanReversionTrend(IStrategy):
     # (kills valid dips). Research: Connors says stops hurt MR edge.
     # Simple 5.5% hard stop as disaster floor only.
 
-    stoploss = -0.0520
+    stoploss = -0.0490
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
