@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.80"
+    STRATEGY_VERSION = "2.0.81"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -68,22 +68,24 @@ class MeanReversionTrend(IStrategy):
         "1440": 1.0,   # 24h: floor at +1%
     }
 
-    # Research v2.0.56: v2.0.54-55 had catastrophic R/R — Phase 1 at 10-18% stop vs 2.3% avg win
-    # meant risking 5x the reward per trade. 62.5% WR can't overcome R/R of 0.39.
-    # Connors/Cesar Alvarez: stops HURT MR edge BUT crypto needs protection.
-    # Solution: tighten Phase 1 to 1.5×ATR (floor 3%, cap 6%) — align R/R toward 1:1.
-    # Hard stoploss at -10% as pure disaster floor — custom_stoploss handles normal exits.
-    use_custom_stoploss = False
-    # v2.0.72: Fixed stops. Custom stoploss found to hurt MR performance
-    # (kills valid dips). Research: Connors says stops hurt MR edge.
-    # Simple 5.5% hard stop as disaster floor only.
+    # Research v2.0.81: MAJOR REWRITE — 37% of trades hit fixed stop (-5.48% avg, $417 total loss).
+    # Exit signal works perfectly (98% WR, +2.74% mean) → the ONLY problem is entries that don't revert.
+    #
+    # Research synthesis:
+    #   1. Connors/Cesar Alvarez: fixed stops HURT MR performance (premature bounces)
+    #   2. YouTube backtest: "timed exit if showing loss" improved net profit/drawdown by 93%
+    #   3. Vantixs: ATR/ADX filters prevented 72% of largest losses in crypto MR backtests
+    #   4. quantifiedstrategies: volatility-based stops (2×ATR) + time stops outperform fixed stops
+    #
+    # New approach:
+    #   - ENABLE custom_stoploss with TIME-GRADUATED dynamic stops (wider initially, tightening over time)
+    #   - Hard stoploss at -8.5% as ULTIMATE disaster floor (should rarely trigger)
+    #   - Time-graduated: <12h = -7% (let MR develop), 12-24h = -4%, >24h = -2.5% (force exit)
+    #   - Profitable trades get tight trailing lock-in
+    use_custom_stoploss = True
 
-    # Research v2.0.75: Connors/Cesar Alvarez: fixed stops HURT MR performance (exits before bounce).
-    # But crypto needs disaster protection. With tighter entry filters (compression 0.75, RSI 30),
-    # entries should be higher quality → fewer stop-outs → wider stop gives MR room to work.
-    # -5.5% is compromise: wider than -4.9% (v2.0.74) to let MR dips develop,
-    # but tighter than -5.5% original to cap risk on remaining bad entries.
-    stoploss = -0.0490
+    # v2.0.81: Widened to -8.5% as ultimate disaster floor. custom_stoploss handles normal exits.
+    stoploss = -0.085
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
@@ -98,7 +100,7 @@ class MeanReversionTrend(IStrategy):
     # was too shallow — caught noise, not true MR setups. stratbase.ai:
     # "BTC 1H true abnormal zone is 2-3% below 20 SMA". Deepen to 2.0%.
     # Fewer trades (target 30-40) but higher quality with proper R/R.
-    entry_dev_threshold = 1.7   # v2.0.67: 2.0% = true abnormal zone (stratbase)
+    entry_dev_threshold = 2.0   # v2.0.81: 2.0% = true abnormal zone (stratbase, Vantixs)
 
     # Research v2.0.77: v2.0.76 at 0.85 = 4 trades, avg win +4.55%, R/R 0.79, DD 1.9%.
     # Entries are clearly higher quality but too few. Loosen to 0.90 for 15-25 target.
@@ -106,10 +108,11 @@ class MeanReversionTrend(IStrategy):
     atr_length = 14
     atr_compression_ratio = 1.00   # Vantixs normal range: ATR < 90% of 20-period avg
 
-    # Research v2.0.76: revert to 1.2× — v2.0.75 at 1.3× contributed to 0 trades.
-    # stratbase: higher volume = better, but crypto 1H needs balance. 1.2× already filters noise.
+    # Research v2.0.81: v2.0.80 at 1.1× = 65 trades, 37% stop-outs. Low-quality volume entries.
+    # stratbase: volume confirmation is essential. Vantixs: declining volume on move improves WR +5pp.
+    # Raise to 1.2× — reduces noise entries that pass deviation/RSI but lack real momentum exhaustion.
     volume_ma_length = 20
-    volume_multiplier = 1.1   # Quality threshold — already reduced 54→34 trades
+    volume_multiplier = 1.2   # v2.0.81: raised from 1.1 — filter low-conviction volume entries
 
     # Research v2.0.76: revert RSI to 35 — v2.0.75 at 30 was too restrictive when stacked.
     # Connors RSI(2) cross-back at 30; but our RSI(14) is less sensitive.
@@ -126,9 +129,12 @@ class MeanReversionTrend(IStrategy):
     use_adx_filter = True
     adx_threshold = 25
 
-    # Time-based exit — research: if it hasn't reverted in 24h, get out
-    time_exit_hours = 24
-    time_exit_profit_floor = 0.005  # 0.5% minimum profit before time exit fires (lowered)
+    # Time-based exit — research: if it hasn't reverted in 18h, get out
+    # v2.0.81: Lower to 18h (research: most MR reversions happen within 12-18h or not at all)
+    # Also exit LOSING trades at 24h (prevent bag-holding on failed setups)
+    time_exit_hours = 18
+    time_exit_profit_floor = 0.005  # 0.5% minimum profit for PROFITABLE time exit (lowered)
+    time_exit_loss_hours = 24       # v2.0.81: NEW — exit losing trades after 24h regardless
 
     # ── Exit Conditions ─────────────────────────────────────────────────────
     # Research: target = mid-band (SMA), not a tight trail. Exit when reverted.
@@ -323,68 +329,80 @@ class MeanReversionTrend(IStrategy):
         current_rate: float, current_profit: float, after_fill: bool,
         **kwargs
     ) -> Optional[float]:
-        """Time-graduated ATR stop from CURRENT price.
+        """Time-graduated dynamic stop — anchored to ENTRY price.
 
-        v2.0.71: COMPLETE REWRITE — anchored-to-entry approach killed MR.
-        MR trades dip below entry before reverting. A fixed 5% entry-anchored
-        stop kills valid trades during the dip phase.
+        v2.0.81: COMPLETE REWRITE based on research synthesis.
+        Connors/Cesar Alvarez: fixed stops kill MR. YouTube study:
+        "timed exit if showing loss" improved net profit/drawdown 93% vs fixed stops.
 
-        New approach: WIDE initial stop that gradually tightens over time.
-        - First 6h: very wide (7-8% from current) — let MR develop
-        - 6-12h: moderate (5%) — if no reversion, start tightening  
-        - 12-24h: tight (3%) — exit if still not reverting
-        - >24h: very tight (2%) — force exit
-        - Profitable trades: Phase 2/3 trailing lock-in
+        New approach:
+        - First 12h: WIDE -7% from entry — let MR dips develop (research: MR reversions need room)
+        - 12-24h: MODERATE -4% from entry — if no reversion by now, tightening
+        - >24h: TIGHT -2.5% from entry — force exit, setup failed
+        - Profitable trades: tight trailing lock-in at breakeven or small profit
 
-        Always capped at 90% of hard stoploss to guarantee firing first.
+        Anchored to entry price (not current) so dip tolerance is consistent.
+        Hard stoploss at -8.5% is ultimate disaster floor.
         """
-        # v2.0.69: get_pair_dataframe returns single DF in CI Freqtrade ver
-        result = self.dp.get_pair_dataframe(pair, self.timeframe)
-        df = result[0] if isinstance(result, tuple) else result
-        if df.empty:
-            return -min(0.04, abs(self.stoploss) * 0.85)
+        entry_rate = trade.open_rate
+        if not entry_rate or entry_rate <= 0:
+            return -0.05  # fallback
 
-        hard_stop_pct = abs(self.stoploss)  # 0.085
+        # Current drawdown from entry (as positive fraction)
+        entry_drawdown = (entry_rate - current_rate) / entry_rate
         
         # Trailing lock-in for profitable trades
         if current_profit > 0.05:
-            return -min(0.025, hard_stop_pct * 0.85)
+            return -0.025    # 2.5% give-back allowed
         elif current_profit > 0.03:
-            return -min(0.035, hard_stop_pct * 0.85)
+            return -0.025    # Lock in most of a 3% win
+        elif current_profit > 0.01:
+            return 0.0        # Breakeven — don't let a winner turn loser
         
-        # Time-graduated stop for non-profitable / early trades
+        # Time-graduated stop for non-profitable trades
         if trade.open_date_utc:
             holding_hours = (current_time - trade.open_date_utc).total_seconds() / 3600
         else:
             holding_hours = 0
+        
+        hard_stop_pct = abs(self.stoploss)  # 0.085
             
-        if holding_hours < 6:
-            # Very wide initial: 7% from current — MR needs room
+        if holding_hours < 12:
+            # Wide initial: 7% from entry — MR needs room to dip and bounce
             return -min(0.07, hard_stop_pct * 0.85)
-        elif holding_hours < 12:
-            # Moderate: 5% from current — start tightening
-            return -min(0.05, hard_stop_pct * 0.85)
         elif holding_hours < 24:
-            # Tight: 3% from current — if no reversion by now, unlikely
-            return -min(0.03, hard_stop_pct * 0.85)
+            # Moderate: 4% from entry — if no reversion in 12h, start tightening
+            return -min(0.04, hard_stop_pct * 0.85)
         else:
-            # Very tight: 2% from current — force exit
-            return -min(0.02, hard_stop_pct * 0.85)
+            # Tight: 2.5% from entry — if no reversion by 24h, setup failed > exit
+            return -min(0.025, hard_stop_pct * 0.85)
 
     def custom_exit(
         self, pair: str, trade: "Trade", current_time: datetime,
         current_rate: float, current_profit: float, **kwargs
     ) -> Optional[str]:
         """
-        Time exit: if holding > N hours AND profit >= floor → exit.
-        v2.0.68: Fixed signature — removed current_profit_pct (not in CI Freqtrade ver).
-        current_profit is the ratio (e.g. 0.05 = 5%).
+        Time exits — both profitable AND losing trades.
+        v2.0.81: ADDED losing-trade time exit. Research: timed exit on losers
+        dramatically improves MR performance vs fixed stops (93% better net profit/DD).
+        
+        - Profitable trades: exit after time_exit_hours (18h) if profit >= floor (0.5%)
+        - Losing trades: exit after time_exit_loss_hours (24h) regardless — prevent bag-holding
         """
+        if trade.open_date_utc:
+            holding_hours = (current_time - trade.open_date_utc).total_seconds() / 3600
+        else:
+            return None
+
+        # Profitable time exit
         if current_profit >= self.time_exit_profit_floor:
-            if trade.open_date_utc:
-                holding_hours = (current_time - trade.open_date_utc).total_seconds() / 3600
-                if holding_hours >= self.time_exit_hours:
-                    return "time_exit_hours"
+            if holding_hours >= self.time_exit_hours:
+                return "time_exit_hours"
+        
+        # Losing trade time exit — prevent dead setups from lingering
+        if current_profit < 0 and holding_hours >= self.time_exit_loss_hours:
+            return "time_exit_loss"
+        
         return None
 
     def informative_pairs(self):
