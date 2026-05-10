@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.61"
+    STRATEGY_VERSION = "2.0.62"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -90,20 +90,20 @@ class MeanReversionTrend(IStrategy):
     # was too shallow — caught noise, not true MR setups. stratbase.ai:
     # "BTC 1H true abnormal zone is 2-3% below 20 SMA". Deepen to 2.0%.
     # Fewer trades (target 30-40) but higher quality with proper R/R.
-    entry_dev_threshold = 2.0   # stratbase: BTC 1H true abnormal zone = 2-3%
+    entry_dev_threshold = 1.7   # stratbase: BTC 1H true abnormal zone = 2-3%
 
     # Research v2.0.60: stalling at -6.73% profit, R/R 0.35 despite 70% WR.
     # Root cause: compression disabled + broken custom_stoploss = catastrophic R/R.
     # v2.0.61: RESTORE compression filter to 0.85 — stratbase.ai: BB+RSI+compression = 1.71 PF.
     # Without it, 54 low-quality entries overwhelmed the strategy.
     atr_length = 14
-    atr_compression_ratio = 0.85   # Restored — ATR must be <85% of 20-period avg
+    atr_compression_ratio = 1.00   # Restored — ATR must be <85% of 20-period avg
 
     # Research v2.0.61: tighter volume filter — 54 trades was too many.
     # v2.0.60 at 1.2× let low-conviction setups flood in.
     # stratbase: higher volume confirmation = fewer but better trades.
     volume_ma_length = 20
-    volume_multiplier = 1.35   # Restored quality threshold
+    volume_multiplier = 1.2   # Restored quality threshold
 
     # Research v2.0.24: Widen RSI entry band for more signals.
     # Strategy #2 stratbase: "RSI cross back above 30" as trigger — entry at RSI > 30 vs RSI > 25.
