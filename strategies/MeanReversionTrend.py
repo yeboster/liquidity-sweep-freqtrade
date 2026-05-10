@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.71"
+    STRATEGY_VERSION = "2.0.72"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -73,9 +73,12 @@ class MeanReversionTrend(IStrategy):
     # Connors/Cesar Alvarez: stops HURT MR edge BUT crypto needs protection.
     # Solution: tighten Phase 1 to 1.5×ATR (floor 3%, cap 6%) — align R/R toward 1:1.
     # Hard stoploss at -10% as pure disaster floor — custom_stoploss handles normal exits.
-    use_custom_stoploss = True
+    use_custom_stoploss = False
+    # v2.0.72: Fixed stops. Custom stoploss found to hurt MR performance
+    # (kills valid dips). Research: Connors says stops hurt MR edge.
+    # Simple 5.5% hard stop as disaster floor only.
 
-    stoploss = -0.0850
+    stoploss = -0.055
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
