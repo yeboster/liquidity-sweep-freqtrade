@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.70"
+    STRATEGY_VERSION = "2.0.71"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -318,56 +318,53 @@ class MeanReversionTrend(IStrategy):
         current_rate: float, current_profit: float, after_fill: bool,
         **kwargs
     ) -> Optional[float]:
-        """ATR-based stop loss anchored to ENTRY PRICE (not floating).
+        """Time-graduated ATR stop from CURRENT price.
 
-        v2.0.67: CRITICAL REWRITE — v2.0.66 flopped (-12.31%).
-        Root cause: 4% from CURRENT floats down with price.
-        After 2 bars of decline, 4% from current > 6.5% hard stop,
-        so hard stoploss caught all 18 losers. Avg win improved to
-        +2.34% (RSI 73 exit works!) but 18×-6.78% destroyed profits.
+        v2.0.71: COMPLETE REWRITE — anchored-to-entry approach killed MR.
+        MR trades dip below entry before reverting. A fixed 5% entry-anchored
+        stop kills valid trades during the dip phase.
 
-        Fix: ANCHOR TO ENTRY (not current). This ensures the stop
-        doesn't drift. When current < stop_price (panic mode), return
-        tight 2% emergency stop — always tighter than hard stoploss.
+        New approach: WIDE initial stop that gradually tightens over time.
+        - First 6h: very wide (7-8% from current) — let MR develop
+        - 6-12h: moderate (5%) — if no reversion, start tightening  
+        - 12-24h: tight (3%) — exit if still not reverting
+        - >24h: very tight (2%) — force exit
+        - Profitable trades: Phase 2/3 trailing lock-in
 
-        Research: stratbase ATR 2.0-2.5× optimal for crypto.
-        Phase 1: 2×ATR anchored to entry, floor 3% cap 7%.
+        Always capped at 90% of hard stoploss to guarantee firing first.
         """
         # v2.0.69: get_pair_dataframe returns single DF in CI Freqtrade ver
         result = self.dp.get_pair_dataframe(pair, self.timeframe)
         df = result[0] if isinstance(result, tuple) else result
         if df.empty:
-            # v2.0.68: fallback MUST be tighter than hard stoploss
-            # -6% from current can become wider than -8.5% from entry as price drops
-            # Use min(3%, 85% of hard stoploss) to always fire first
-            return -min(0.03, abs(self.stoploss) * 0.85)
+            return -min(0.04, abs(self.stoploss) * 0.85)
 
-        last = df.iloc[-1]
-        atr_pct = last.get("atr_pct", 2.0)
         hard_stop_pct = abs(self.stoploss)  # 0.085
-
+        
+        # Trailing lock-in for profitable trades
         if current_profit > 0.05:
-            # Phase 3: major winner (>5%) — lock in 2.5% below current (was 1.5%)
-            return -0.025
+            return -min(0.025, hard_stop_pct * 0.85)
         elif current_profit > 0.03:
-            # Phase 2: solid profit (>3%) — lock in 3% below current (was 2%)
-            return -0.030
+            return -min(0.035, hard_stop_pct * 0.85)
+        
+        # Time-graduated stop for non-profitable / early trades
+        if trade.open_date_utc:
+            holding_hours = (current_time - trade.open_date_utc).total_seconds() / 3600
         else:
-            # Phase 1: 2.5×ATR ANCHORED TO ENTRY (v2.0.70: widened)
-            # Floor 5% (was 3%) — crypto 1H needs breathing room
-            # Cap 8% (was 7%) — disaster protection
-            stop_from_entry_pct = min(0.08, max(0.05, atr_pct * 2.5 / 100))
-            stop_price = trade.open_rate * (1 - stop_from_entry_pct)
+            holding_hours = 0
             
-            if current_rate <= stop_price:
-                # Panic: price already below anchored stop.
-                # Return very tight stop to exit ASAP (always tighter than hard).
-                return -min(0.02, hard_stop_pct * 0.8)
-            
-            # Normal: calculate % distance to anchored stop from current
-            stop_pct_from_current = (current_rate - stop_price) / current_rate
-            # Ensure we never return a stop wider than 85% of hard stoploss
-            return -min(stop_pct_from_current, hard_stop_pct * 0.85)
+        if holding_hours < 6:
+            # Very wide initial: 7% from current — MR needs room
+            return -min(0.07, hard_stop_pct * 0.85)
+        elif holding_hours < 12:
+            # Moderate: 5% from current — start tightening
+            return -min(0.05, hard_stop_pct * 0.85)
+        elif holding_hours < 24:
+            # Tight: 3% from current — if no reversion by now, unlikely
+            return -min(0.03, hard_stop_pct * 0.85)
+        else:
+            # Very tight: 2% from current — force exit
+            return -min(0.02, hard_stop_pct * 0.85)
 
     def custom_exit(
         self, pair: str, trade: "Trade", current_time: datetime,
