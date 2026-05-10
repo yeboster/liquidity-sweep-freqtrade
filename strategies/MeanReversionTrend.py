@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.66"
+    STRATEGY_VERSION = "2.0.67"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -75,7 +75,7 @@ class MeanReversionTrend(IStrategy):
     # Hard stoploss at -10% as pure disaster floor — custom_stoploss handles normal exits.
     use_custom_stoploss = True
 
-    stoploss = -0.0650
+    stoploss = -0.0850
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
@@ -90,7 +90,7 @@ class MeanReversionTrend(IStrategy):
     # was too shallow — caught noise, not true MR setups. stratbase.ai:
     # "BTC 1H true abnormal zone is 2-3% below 20 SMA". Deepen to 2.0%.
     # Fewer trades (target 30-40) but higher quality with proper R/R.
-    entry_dev_threshold = 1.7   # stratbase: BTC 1H true abnormal zone = 2-3%
+    entry_dev_threshold = 2.0   # v2.0.67: 2.0% = true abnormal zone (stratbase)
 
     # Research v2.0.60: stalling at -6.73% profit, R/R 0.35 despite 70% WR.
     # Root cause: compression disabled + broken custom_stoploss = catastrophic R/R.
@@ -318,28 +318,28 @@ class MeanReversionTrend(IStrategy):
         current_rate: float, current_profit: float, after_fill: bool,
         **kwargs
     ) -> Optional[float]:
-        """Stepped ATR-based stop loss for mean reversion.
+        """ATR-based stop loss anchored to ENTRY PRICE (not floating).
 
-        v2.0.66: RESEARCH-DRIVEN REWRITE — R/R was 0.415 (fatal).
-        Root causes:
-        1. df.empty fallback returned -0.10 → wider than hard stoploss (-0.091)
-           → hard stoploss caught ALL losers at -9.66% avg
-        2. Anchor-to-open conversion had floating-stop bug when price < stop_price
-           → max(negative, 0.005) = 0.005, stop descended with price
-        3. Phase 1 at 1.5×ATR (floor 3%) was too tight for crypto 1H
+        v2.0.67: CRITICAL REWRITE — v2.0.66 flopped (-12.31%).
+        Root cause: 4% from CURRENT floats down with price.
+        After 2 bars of decline, 4% from current > 6.5% hard stop,
+        so hard stoploss caught all 18 losers. Avg win improved to
+        +2.34% (RSI 73 exit works!) but 18×-6.78% destroyed profits.
 
-        Fix (stratbase moonlight.io Connors):
-        - Phase 1: 2.0×ATR from current (floor 4%, cap 7%) — crypto needs room
-        - Fallback: -0.06 (tighter than hard stoploss -0.065)
-        - Simple current-rate-based (no anchor bug)
-        - Phase 2/3 unchanged — lock in profits on winners
+        Fix: ANCHOR TO ENTRY (not current). This ensures the stop
+        doesn't drift. When current < stop_price (panic mode), return
+        tight 2% emergency stop — always tighter than hard stoploss.
+
+        Research: stratbase ATR 2.0-2.5× optimal for crypto.
+        Phase 1: 2×ATR anchored to entry, floor 3% cap 7%.
         """
         df, _ = self.dp.get_pair_dataframe(pair, self.timeframe)
         if df.empty:
-            return -0.06  # v2.0.66: MUST be tighter than hard stoploss
+            return -0.06  # fallback: tighter than hard stoploss
 
         last = df.iloc[-1]
         atr_pct = last.get("atr_pct", 2.0)
+        hard_stop_pct = abs(self.stoploss)  # 0.085
 
         if current_profit > 0.05:
             # Phase 3: major winner (>5%) — lock in 1.5% below current
@@ -348,10 +348,19 @@ class MeanReversionTrend(IStrategy):
             # Phase 2: solid profit (>3%) — lock in 2% below current
             return -0.020
         else:
-            # Phase 1: 2×ATR from current (stratbase: 2.0-2.5× optimal for crypto)
-            # Floor 4%, cap 7% — bigger buffer than v2.0.65
-            stop_pct = min(0.07, max(0.04, atr_pct * 2.0 / 100))
-            return -stop_pct
+            # Phase 1: 2×ATR ANCHORED TO ENTRY (not floating)
+            stop_from_entry_pct = min(0.07, max(0.03, atr_pct * 2.0 / 100))
+            stop_price = trade.open_rate * (1 - stop_from_entry_pct)
+            
+            if current_rate <= stop_price:
+                # Panic: price already below anchored stop.
+                # Return very tight stop to exit ASAP (always tighter than hard).
+                return -min(0.02, hard_stop_pct * 0.8)
+            
+            # Normal: calculate % distance to anchored stop from current
+            stop_pct_from_current = (current_rate - stop_price) / current_rate
+            # Ensure we never return a stop wider than hard stoploss
+            return -min(stop_pct_from_current, hard_stop_pct * 0.95)
 
     def custom_exit(
         self, pair: str, trade: "Trade", current_time: datetime,
