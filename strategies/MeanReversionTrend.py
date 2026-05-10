@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.77"
+    STRATEGY_VERSION = "2.0.78"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -98,18 +98,18 @@ class MeanReversionTrend(IStrategy):
     # was too shallow — caught noise, not true MR setups. stratbase.ai:
     # "BTC 1H true abnormal zone is 2-3% below 20 SMA". Deepen to 2.0%.
     # Fewer trades (target 30-40) but higher quality with proper R/R.
-    entry_dev_threshold = 2.0   # v2.0.67: 2.0% = true abnormal zone (stratbase)
+    entry_dev_threshold = 1.7   # v2.0.67: 2.0% = true abnormal zone (stratbase)
 
     # Research v2.0.77: v2.0.76 at 0.85 = 4 trades, avg win +4.55%, R/R 0.79, DD 1.9%.
     # Entries are clearly higher quality but too few. Loosen to 0.90 for 15-25 target.
     # Vantixs: ATR < 1.0×avg = normal MR conditions. 0.90 filters only volatile expansions.
     atr_length = 14
-    atr_compression_ratio = 0.90   # Vantixs normal range: ATR < 90% of 20-period avg
+    atr_compression_ratio = 1.00   # Vantixs normal range: ATR < 90% of 20-period avg
 
     # Research v2.0.76: revert to 1.2× — v2.0.75 at 1.3× contributed to 0 trades.
     # stratbase: higher volume = better, but crypto 1H needs balance. 1.2× already filters noise.
     volume_ma_length = 20
-    volume_multiplier = 1.2   # Quality threshold — already reduced 54→34 trades
+    volume_multiplier = 1.1   # Quality threshold — already reduced 54→34 trades
 
     # Research v2.0.76: revert RSI to 35 — v2.0.75 at 30 was too restrictive when stacked.
     # Connors RSI(2) cross-back at 30; but our RSI(14) is less sensitive.
