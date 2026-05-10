@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.84"
+    STRATEGY_VERSION = "2.0.85"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -81,8 +81,11 @@ class MeanReversionTrend(IStrategy):
     # Connors: "fixed stoplosses reduced performance" — but our time-based exit handles that.
     use_custom_stoploss = False
 
-    # v2.0.83: Wide -8.5% as ULTIMATE disaster floor. Time exit handles normal losing trades.
-    stoploss = -0.0820
+    # v2.0.85: RESEARCH-DRIVEN — MR edge strengthens as price deviates more.
+    # Wider stop (-9%) gives deep-edge MR setups room to work before time exit cuts them.
+    # nf-china research: "mean reversion strategies tend to work better the wider the stop"
+    # Combined with faster time_exit_loss (16h) so slow grinders exit before hitting this.
+    stoploss = -0.0900
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
@@ -97,7 +100,11 @@ class MeanReversionTrend(IStrategy):
     # was too shallow — caught noise, not true MR setups. stratbase.ai:
     # "BTC 1H true abnormal zone is 2-3% below 20 SMA". Deepen to 2.0%.
     # Fewer trades (target 30-40) but higher quality with proper R/R.
-    entry_dev_threshold = 1.8   # v2.0.82: compromise — 2.0% too restrictive (36→8 winners), 1.7% too noisy
+    # v2.0.85: RESEARCH-DRIVEN — Raise to 2.0% deviation for deeper entry edge.
+    # stratbase: "BTC 1H true abnormal zone is 2-3% below 20 SMA"
+    # v2.0.83-84 at 1.8% = 49 trades but 15 losers (8 time-exit-loss). Too noisy.
+    # Fewer, higher-quality entries with deeper deviation → stronger reversion edge.
+    entry_dev_threshold = 2.0
 
     # Research v2.0.77: v2.0.76 at 0.85 = 4 trades, avg win +4.55%, R/R 0.79, DD 1.9%.
     # Entries are clearly higher quality but too few. Loosen to 0.90 for 15-25 target.
@@ -115,7 +122,8 @@ class MeanReversionTrend(IStrategy):
     # Connors RSI(2) cross-back at 30; but our RSI(14) is less sensitive.
     # stratbase: RSI 35 + BB = 68% WR, 1.71 PF on BTC 4H. Keep this proven level.
     rsi_length = 14
-    rsi_oversold = 35   # stratbase-validated: RSI(14) < 35 + BB = strongest MR combo
+    rsi_oversold = 32   # v2.0.85: RESEARCH — Connors original RSI(2)<10 ≈ RSI(14)<30-32.
+    # Slightly tighter than 35 to filter borderline setups that become time-exit-loss.
     rsi_overbought = 70  # Was 75 — widened for more entry signals
 
     # Trend filter: 4H EMA200 — RESEARCH SAYS THIS IS NON-NEGOTIABLE
@@ -131,7 +139,11 @@ class MeanReversionTrend(IStrategy):
     # Also exit LOSING trades at 24h (prevent bag-holding on failed setups)
     time_exit_hours = 18
     time_exit_profit_floor = 0.005  # 0.5% minimum profit for PROFITABLE time exit (lowered)
-    time_exit_loss_hours = 24       # v2.0.81: NEW — exit losing trades after 24h regardless
+    # v2.0.85: RESEARCH-DRIVEN — Cut losers at 16h, not 24h.
+    # forextester: "if it hasn't reverted in 12-18h, it probably won't"
+    # v2.0.83-84 had 8 time_exit_loss trades at avg -2.97% — cutting 8h earlier
+    # should reduce avg loss on these trades by ~1% (less time to drift).
+    time_exit_loss_hours = 16       # v2.0.85: faster cut on failing MR setups
 
     # ── Exit Conditions ─────────────────────────────────────────────────────
     # Research: target = mid-band (SMA), not a tight trail. Exit when reverted.
