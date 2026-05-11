@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.103"
+    STRATEGY_VERSION = "2.0.104"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -94,7 +94,7 @@ class MeanReversionTrend(IStrategy):
     # Research (Connors, Vantixs): MR needs room to dip and bounce. Fixed stops kill MR.
     # WIDENING counter-cyclically to -5.5% — lets time_exit_loss (16h) handle failed
     # setups instead of premature stop-outs. Target: fewer stop-outs, better R/R.
-    stoploss = -0.0490
+    stoploss = -0.0460
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
