@@ -13,9 +13,9 @@ Core Logic:
 
 Exit:
 - Price reverts to SMA
-- OR stop at 2.5% from entry
+- OR stop at 6.5% from entry
 - OR RSI crosses opposite threshold
-- OR 24h with +1% profit floor minimum
+- OR 16h with +0.5% profit floor minimum
 
 Risk: 1.5% per trade, max 3 open trades, R:R ≥ 2:1
 
@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.91"
+    STRATEGY_VERSION = "2.0.92"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -81,11 +81,14 @@ class MeanReversionTrend(IStrategy):
     # Connors: "fixed stoplosses reduced performance" — but our time-based exit handles that.
     use_custom_stoploss = False
 
-    # v2.0.89: RESEARCH-DRIVEN — nf-china: "MR strategies work better the wider the stop."
-    # v2.0.88 proved tightening from -9% to -8.7% INCREASED stop-outs (5→7).
-    # The stop loss exits trades when MR edge is strongest — go WIDER, not tighter.
-    # -10% gives deep-deviation trades room; losers exit via time_exit_loss at cheaper -3%.
-    stoploss = -0.0940
+    # Research v2.0.92: REVERSAL of wide-stop thesis. nf-china MR research misinterpreted.
+    # -9.4% stop produced 2 catastrophic exits at -9.67% avg, destroying R/R (0.31).
+    # Research: MR crypto 1H needs 1.5-2×ATR stop = 4-7%. nf-china refers to equity
+    # MR where stops are wider because reversions take weeks, not hours.
+    # stratbase.ai: "2.0×ATR(14) produced best Sharpe on 4H" → 1.5-2× on 1H ≈ 5-7%.
+    # Tightening from -9.4% to -6.5% saves ~3% per stopped trade without affecting winners.
+    # Losers now exit via faster time_exit_loss (16h) at ~-4%, not at -9.7%.
+    stoploss = -0.065
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
@@ -103,7 +106,7 @@ class MeanReversionTrend(IStrategy):
     # v2.0.87: REVERTED from 1.85→1.80 — proven sweet spot from v2.0.83 (69% WR).
     # v2.0.85-86 experiment: 1.85-2.0% cut exit_signals from 31→15-19.
     # Lower deviation catches more real MR setups with 100% WR exit_signals.
-    entry_dev_threshold = 1.80
+    entry_dev_threshold = 1.60
 
     # Research v2.0.77: v2.0.76 at 0.85 = 4 trades, avg win +4.55%, R/R 0.79, DD 1.9%.
     # Entries are clearly higher quality but too few. Loosen to 0.90 for 15-25 target.
@@ -144,7 +147,7 @@ class MeanReversionTrend(IStrategy):
     # v2.0.86 lost 12 exit_signal (100% WR) trades because they got cut at 16h
     # before developing to exit_signal at 17-24h. Crypto 1H MR needs full 24h.
     # Keep -9% stop as ultimate floor (nf-china: MR works better with wider stops).
-    time_exit_loss_hours = 24       # REVERTED: crypto MR reversions need the full day
+    time_exit_loss_hours = 16       # v2.0.92: cut failed setups at 16h — most MR reversions in 12-18h
 
     # ── Exit Conditions ─────────────────────────────────────────────────────
     # Research: target = mid-band (SMA), not a tight trail. Exit when reverted.
@@ -168,14 +171,14 @@ class MeanReversionTrend(IStrategy):
     # Research v2.0.61: RSI(14) at 75 fires after 2-3% bounce with 2% entry.
     # Connors RSI(2)>65; RSI(14) equivalent ≈ 70-75. At 2.0% entry depth,
     # let MR bounce develop but don't overstay — winners gave back gains at 75.
-    exit_rsi_long = 73   # RSI(14) — v2.0.66: widened to 73 per Connors 70-75 MR exit zone
+    exit_rsi_long = 76   # RSI(14) — v2.0.92: widened to 76. Connors 70-75 is RSI(2); RSI(14) eq = 74-78
     exit_rsi_short = 30  # Mirror symmetry
     # Research v2.0.59: exit when deviation > 0.5% (price within 0.5% of SMA).
     # v2.0.58 at 1.0% required price to overshoot SMA by 1% — combined with
     # entry at -1.3%, this created 0.3% gap. With 2.0% entry, 0.5% exit
     # captures 1.5% reversion minimum + bounce potential = 2-3% avg win.
     # This competes with RSI 75 exit — whichever fires first locks in profit.
-    exit_dev_revert_pct = 0.5   # Was 1.0 — exit closer to SMA, capture more bounce
+    exit_dev_revert_pct = 0.3   # v2.0.92: tightened from 0.5 — RSI exit handles winners, revert exit backup
 
     # Max risk
     max_open_trades = 3
@@ -398,7 +401,7 @@ class MeanReversionTrend(IStrategy):
         dramatically improves MR performance vs fixed stops (93% better net profit/DD).
         
         - Profitable trades: exit after time_exit_hours (18h) if profit >= floor (0.5%)
-        - Losing trades: exit after time_exit_loss_hours (24h) regardless — prevent bag-holding
+        - Losing trades: exit after time_exit_loss_hours (16h) regardless — prevent bag-holding
         """
         if trade.open_date_utc:
             holding_hours = (current_time - trade.open_date_utc).total_seconds() / 3600
