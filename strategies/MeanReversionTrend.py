@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.93"
+    STRATEGY_VERSION = "2.0.94"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -88,7 +88,7 @@ class MeanReversionTrend(IStrategy):
     # stratbase.ai: "2.0×ATR(14) produced best Sharpe on 4H" → 1.5-2× on 1H ≈ 5-7%.
     # Tightening from -9.4% to -6.5% saves ~3% per stopped trade without affecting winners.
     # Losers now exit via faster time_exit_loss (16h) at ~-4%, not at -9.7%.
-    stoploss = -0.0620
+    stoploss = -0.0590
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
