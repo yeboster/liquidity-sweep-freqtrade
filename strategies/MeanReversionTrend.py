@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.100"
+    STRATEGY_VERSION = "2.0.101"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -88,7 +88,13 @@ class MeanReversionTrend(IStrategy):
     # stratbase.ai: "2.0×ATR(14) produced best Sharpe on 4H" → 1.5-2× on 1H ≈ 5-7%.
     # Tightening from -9.4% to -6.5% saves ~3% per stopped trade without affecting winners.
     # Losers now exit via faster time_exit_loss (16h) at ~-4%, not at -9.7%.
-    stoploss = -0.0410
+    # Research v2.0.101: DEATH SPIRAL REVERSAL. v2.0.96-2.0.100 auto-tuner tightened
+    # stop from -0.044 → -0.041 but results worsened (-0.15% → -3.79%) because tighter
+    # stops caused MORE stop-outs (7/22 trades, -4.68% avg), not fewer.
+    # Research (Connors, Vantixs): MR needs room to dip and bounce. Fixed stops kill MR.
+    # WIDENING counter-cyclically to -5.5% — lets time_exit_loss (16h) handle failed
+    # setups instead of premature stop-outs. Target: fewer stop-outs, better R/R.
+    stoploss = -0.055
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
@@ -106,7 +112,10 @@ class MeanReversionTrend(IStrategy):
     # v2.0.87: REVERTED from 1.85→1.80 — proven sweet spot from v2.0.83 (69% WR).
     # v2.0.85-86 experiment: 1.85-2.0% cut exit_signals from 31→15-19.
     # Lower deviation catches more real MR setups with 100% WR exit_signals.
-    entry_dev_threshold = 1.60
+    # v2.0.101: Loosened from 1.60→1.40 to increase trade count. All 7 entry
+    # filters produced fixed 22 trades. 1.40σ still requires real deviation
+    # (>1.4% below SMA) while casting wider net for more MR opportunities.
+    entry_dev_threshold = 1.40
 
     # Research v2.0.77: v2.0.76 at 0.85 = 4 trades, avg win +4.55%, R/R 0.79, DD 1.9%.
     # Entries are clearly higher quality but too few. Loosen to 0.90 for 15-25 target.
@@ -114,13 +123,19 @@ class MeanReversionTrend(IStrategy):
     atr_length = 14
     # v2.0.89: Tighten to 0.90 — Vantixs research: ATR < 0.9x avg prevented 72% of
     # largest MR losses. Only enter when volatility is clearly compressing, not just normal.
-    atr_compression_ratio = 0.90
+    # v2.0.101: Loosened from 0.90→0.95. Vantixs research: ATR < 1.0×avg
+    # = below-average volatility (MR territory). 0.90 filtered normal MR conditions.
+    # 0.95 still requires compression but doesn't require extreme quiet.
+    atr_compression_ratio = 0.95
 
     # Research v2.0.81: v2.0.80 at 1.1× = 65 trades, 37% stop-outs. Low-quality volume entries.
     # stratbase: volume confirmation is essential. Vantixs: declining volume on move improves WR +5pp.
     # Raise to 1.2× — reduces noise entries that pass deviation/RSI but lack real momentum exhaustion.
     volume_ma_length = 20
-    volume_multiplier = 1.2   # v2.0.81: raised from 1.1 — filter low-conviction volume entries
+    # v2.0.101: Loosened from 1.2→1.1. Combined with loosened compression and entry
+    # deviation, this allows more setups. Volume still confirms interest but doesn't
+    # require extreme spikes. Research: volume > avg is sufficient confirmation.
+    volume_multiplier = 1.1
 
     # Research v2.0.76: revert RSI to 35 — v2.0.75 at 30 was too restrictive when stacked.
     # Connors RSI(2) cross-back at 30; but our RSI(14) is less sensitive.
@@ -249,12 +264,14 @@ class MeanReversionTrend(IStrategy):
             dataframe["trend_bearish"] = True
 
         # Long: deviation < -threshold (price significantly below mean), compression, volume, RSI exiting oversold
+        # v2.0.101: Removed RSI < 50 filter — redundant. RSI > 35 confirms exit from oversold;
+        # requiring it to still be in bottom half (~35-49) needlessly restricts trade count.
+        # ADX filter + trend_bullish already prevent trending-breakdown entries.
         dataframe["long_condition"] = (
             (dataframe["deviation"] < -threshold) &
             dataframe["in_compression"] &
             dataframe["volume_confirm"] &
             (dataframe["rsi"] > self.rsi_oversold) &  # RSI has EXITED oversold
-            (dataframe["rsi"] < 50) &  # Still in bottom half
             dataframe["trend_bullish"]
         )
 
