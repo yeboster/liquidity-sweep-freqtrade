@@ -1,59 +1,59 @@
 {
   "version": "MeanReversionTrend",
-  "timestamp": "2026-05-11T23:22:34.370332Z",
-  "latest_backtest_file": "backtest-result-2026-05-11_23-22-33",
+  "timestamp": "2026-05-12T01:22:41.718583Z",
+  "latest_backtest_file": "backtest-result-2026-05-12_01-22-40",
   "total_trades": 52,
   "trades_per_year": 26.0,
   "win_count": 26,
   "loss_count": 26,
   "win_rate": 50.0,
-  "profit_abs": -39.78,
-  "profit_pct": -3.98,
-  "avg_profit_per_trade": -0.7649,
+  "profit_abs": -33.12,
+  "profit_pct": -3.31,
+  "avg_profit_per_trade": -0.637,
   "avg_profit_per_win": 2.2524,
-  "avg_loss_per_loss": 2.6959,
-  "rr_ratio": 0.8355,
-  "expectancy": -0.7649,
-  "profit_factor": 0.8265,
-  "sqn": -0.5704,
-  "drawdown_abs": 78.59,
-  "drawdown_pct": 7.6471,
-  "holding_avg": "10:35:00",
+  "avg_loss_per_loss": 2.6169,
+  "rr_ratio": 0.8607,
+  "expectancy": -0.637,
+  "profit_factor": 0.8517,
+  "sqn": -0.484,
+  "drawdown_abs": 72.01,
+  "drawdown_pct": 7.0073,
+  "holding_avg": "10:30:00",
   "exits": [
     {
       "exit": "exit_signal",
       "trades": 25,
       "wr": 100.0,
       "profit_mean_pct": 2.29,
-      "profit_abs": 185.58
+      "profit_abs": 186.3
     },
     {
       "exit": "time_exit_hours",
       "trades": 1,
       "wr": 100.0,
       "profit_mean_pct": 1.22,
-      "profit_abs": 3.95
+      "profit_abs": 3.96
     },
     {
       "exit": "time_exit_loss",
-      "trades": 16,
+      "trades": 15,
       "wr": 0.0,
-      "profit_mean_pct": -1.33,
-      "profit_abs": -69.72
+      "profit_mean_pct": -1.18,
+      "profit_abs": -57.75
     },
     {
       "exit": "stop_loss",
-      "trades": 10,
+      "trades": 11,
       "wr": 0.0,
-      "profit_mean_pct": -4.88,
-      "profit_abs": -159.59
+      "profit_mean_pct": -4.58,
+      "profit_abs": -165.64
     },
     {
       "exit": "TOTAL",
       "trades": 52,
       "wr": 50.0,
-      "profit_mean_pct": -0.22,
-      "profit_abs": -39.78
+      "profit_mean_pct": -0.18,
+      "profit_abs": -33.12
     }
   ],
   "pairs": [
@@ -61,37 +61,37 @@
       "pair": "UNKNOWN",
       "trades": 0,
       "wr": 80.0,
-      "profit": 13.76
+      "profit": 13.82
     },
     {
       "pair": "UNKNOWN",
       "trades": 0,
       "wr": 53.33,
-      "profit": 9.39
+      "profit": 11.49
     },
     {
       "pair": "UNKNOWN",
       "trades": 0,
       "wr": 0.0,
-      "profit": -3.49
+      "profit": -3.5
     },
     {
       "pair": "UNKNOWN",
       "trades": 0,
       "wr": 60.0,
-      "profit": -11.26
+      "profit": -10.35
     },
     {
       "pair": "UNKNOWN",
       "trades": 0,
       "wr": 50.0,
-      "profit": -39.78
+      "profit": -33.12
     },
     {
       "pair": "UNKNOWN",
       "trades": 0,
       "wr": 44.0,
-      "profit": -48.17
+      "profit": -44.57
     }
   ]
 }
