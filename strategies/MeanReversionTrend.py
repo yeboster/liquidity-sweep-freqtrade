@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.115"
+    STRATEGY_VERSION = "2.0.116"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -121,7 +121,7 @@ class MeanReversionTrend(IStrategy):
     # but only 50% WR. Vantixs: standard BB(20,2.0) + filters outperformed optimized params.
     # Deeper deviation = higher quality. 1.65σ proven in v2.0.83 sweet spot (69% WR).
     # stratbase.ai: "BTC 1H true abnormal zone is 2-3% below 20 SMA" — 1.65σ ≈ 2%.
-    entry_dev_threshold = 1.3
+    entry_dev_threshold = 1.6
 
     # Research v2.0.77: v2.0.76 at 0.85 = 4 trades, avg win +4.55%, R/R 0.79, DD 1.9%.
     # Entries are clearly higher quality but too few. Loosen to 0.90 for 15-25 target.
