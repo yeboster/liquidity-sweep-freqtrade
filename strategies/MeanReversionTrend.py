@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.109"
+    STRATEGY_VERSION = "2.0.110"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -95,7 +95,7 @@ class MeanReversionTrend(IStrategy):
     # Vantixs: MR needs 1.5-2× ATR room = 5-7% for crypto 1H. Tight stops degrade MR.
     # WIDEN dramatically to -6.5% — let time_exit_loss (16h, -1.04% avg) catch failed setups
     # instead of hard stop. Stop is disaster floor only, not primary exit.
-    stoploss = -0.0590
+    stoploss = -0.0560
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
