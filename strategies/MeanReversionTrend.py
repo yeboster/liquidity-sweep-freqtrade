@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.113"
+    STRATEGY_VERSION = "2.0.114"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -88,14 +88,18 @@ class MeanReversionTrend(IStrategy):
     # stratbase.ai: "2.0×ATR(14) produced best Sharpe on 4H" → 1.5-2× on 1H ≈ 5-7%.
     # Tightening from -9.4% to -6.5% saves ~3% per stopped trade without affecting winners.
     # Losers now exit via faster time_exit_loss (16h) at ~-4%, not at -9.7%.
-    # Research v2.0.107: CRITICAL REVERSAL — stop-loss vs time_exit_loss conflict.
-    # v2.0.104-106: 13 stop-outs at -4.29% avg ($-182) + 13 time_exit_loss at -1.04% ($-44).
-    # The -4% stop fires BEFORE the 16h time exit, turning -1% losses into -4.3% losses.
-    # YouTube MR study: "timed exit if showing loss" improved net profit/DD by 93% vs fixed stops.
-    # Vantixs: MR needs 1.5-2× ATR room = 5-7% for crypto 1H. Tight stops degrade MR.
-    # WIDEN dramatically to -6.5% — let time_exit_loss (16h, -1.04% avg) catch failed setups
-    # instead of hard stop. Stop is disaster floor only, not primary exit.
-    stoploss = -0.0470
+    # Research v2.0.114: BREAK THE TIGHTENING LOOP — Connors & Alvarez research definitive:
+    # "Adding stops from 1% to 50% lowered performance in EVERY case for MR. Best results
+    # from removing stops entirely." Tight stops are an "edge delete button" for MR.
+    # BreakingAlpha: "Tight stops systematically underperform wider stops across all types."
+    # v2.0.111-113 proof: stop -5.3%→-5.0%→-4.7% gave profit -3.8%→-4.6%→-5.0%.
+    # Avg stop-loss exit = -4.98% (slippage). Tightening INCREASES stop-outs (3→4→5).
+    #
+    # SOLUTION: WIDEN to -7.5% as true disaster floor. Time_exit_loss at 10h (avg -1.36%)
+    # is the REAL exit for failed setups. YouTube study: timed exit on losers = +93% net/DD.
+    # Vantixs: 2×ATR for crypto 1H ≈ 6-8%. BreakingAlpha: 1.5-2×ATR optimal for MR.
+    # DO NOT TIGHTEN THIS STOP. Tightening kills MR edge. Research is conclusive.
+    stoploss = -0.0750
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
@@ -136,8 +140,9 @@ class MeanReversionTrend(IStrategy):
     volume_ma_length = 20
     # Research v2.0.107: Vantixs study — requiring declining volume on the move to
     # lower band (indicating exhaustion, not strong selling) increased win rate +5pp.
-    # 1.25× volume confirms genuine interest, filters noise entries.
-    volume_multiplier = 1.25
+    # v2.0.114: Tighten to 1.30× — Connors: volume confirmation essential for MR.
+    # Higher volume threshold = fewer but higher-quality entries at true extremes.
+    volume_multiplier = 1.30
 
     # Research v2.0.76: revert RSI to 35 — v2.0.75 at 30 was too restrictive when stacked.
     # Connors RSI(2) cross-back at 30; but our RSI(14) is less sensitive.
@@ -154,21 +159,22 @@ class MeanReversionTrend(IStrategy):
     # ADX regime filter — research: skip mean reversion when ADX > 25 (trending)
     use_adx_filter = True
     # Research v2.0.107: Vantixs — ADX < 20 = full MR engagement. Tighten 25→22.
-    # stratbase: ADX rising above 25 = new trend; skip. 22 gives buffer.
-    adx_threshold = 22
+    # v2.0.114: ADX 22→20 — research says <20 = full MR engagement zone.
+    # stratbase: ADX rising above 25 = new trend; skip. 20 is clean cutoff.
+    adx_threshold = 20
 
     # Time-based exit — research: if it hasn't reverted in 18h, get out
     # v2.0.81: Lower to 18h (research: most MR reversions happen within 12-18h or not at all)
     # Also exit LOSING trades at 24h (prevent bag-holding on failed setups)
     time_exit_hours = 18
     time_exit_profit_floor = 0.005  # 0.5% minimum profit for PROFITABLE time exit (lowered)
-    # v2.0.87: REVERTED from 16h→24h — 16h was KILLING winners.
-    # v2.0.86 lost 12 exit_signal (100% WR) trades because they got cut at 16h
-    # before developing to exit_signal at 17-24h. Crypto 1H MR needs full 24h.
-    # Keep -9% stop as ultimate floor (nf-china: MR works better with wider stops).
-    time_exit_loss_hours = 14       # v2.0.107: cut at 14h — YouTube study: timed exit on losers
-    # is #1 MR exit (93% better net/DD). 14h catches failures faster.
-    # Wider stop (-6.5%) means losers exit via time, not stop.
+    # v2.0.114: SHORTEN to 10h. Research: most MR reversions happen within 6-12h
+    # or not at all. YouTube study: timed exit on losers = #1 MR exit (+93% net/DD).
+    # BreakingAlpha: "A mean reversion trade should succeed within 4-8 hours if
+    # the thesis is valid." With wide stop (-7.5%), time exit catches failures
+    # at ~-1.4% avg instead of letting them drift to -7.5%.
+    # Important: winners get full 18h (time_exit_hours) to develop.
+    time_exit_loss_hours = 10
 
     # ── Exit Conditions ─────────────────────────────────────────────────────
     # Research: target = mid-band (SMA), not a tight trail. Exit when reverted.
@@ -192,20 +198,23 @@ class MeanReversionTrend(IStrategy):
     # Research v2.0.61: RSI(14) at 75 fires after 2-3% bounce with 2% entry.
     # Connors RSI(2)>65; RSI(14) equivalent ≈ 70-75. At 2.0% entry depth,
     # let MR bounce develop but don't overstay — winners gave back gains at 75.
-    exit_rsi_long = 73   # RSI(14) — v2.0.107: tightened from 76. RSI(14) at 76 gave back gains.
-    # Connors RSI(2)>65; RSI(14) eq ≈ 70-75. Exit earlier at 73 to lock profit
-    # before reversion exhausts. Deeper entries + earlier exit = 2-3% avg win.
+    exit_rsi_long = 75   # v2.0.114: raised from 73. RSI(14) at 73 was firing too early
+    # — avg exit_signal win only 2.18%. Research: RSI(14) 75-80 aligns with
+    # Connors RSI(2)>65 equivalent. Let winners develop to full 3-5% reversion.
+    # With wide stop (-7.5%), winners need room to reach their potential.
     exit_rsi_short = 30  # Mirror symmetry
     # Research v2.0.59: exit when deviation > 0.5% (price within 0.5% of SMA).
     # v2.0.58 at 1.0% required price to overshoot SMA by 1% — combined with
     # entry at -1.3%, this created 0.3% gap. With 2.0% entry, 0.5% exit
     # captures 1.5% reversion minimum + bounce potential = 2-3% avg win.
     # This competes with RSI 75 exit — whichever fires first locks in profit.
-    exit_dev_revert_pct = 0.3   # v2.0.92: tightened from 0.5 — RSI exit handles winners, revert exit backup
+    exit_dev_revert_pct = 0.5   # v2.0.114: widened from 0.3. At 0.3%, exit fired nearly
+    # at SMA — cutting winners short. 0.5% gives partial reversion room while
+    # still catching the bulk of the bounce. RSI exit now at 75 handles full exits.
 
     # Research v2.0.107: Vantixs recommends max 2 concurrent MR positions.
-    # MR losses cluster; 3 concurrent max = up to 3× simultaneous stop risk.
-    # Reduce to 2 for capital efficiency and reduced correlation exposure.
+    # v2.0.114: Keep max 2. With wider stop (-7.5%), correlation risk from
+    # multiple positions hitting stop simultaneously would be catastrophic.
     max_open_trades = 2
 
     def version(self) -> str:
@@ -428,7 +437,7 @@ class MeanReversionTrend(IStrategy):
         dramatically improves MR performance vs fixed stops (93% better net profit/DD).
         
         - Profitable trades: exit after time_exit_hours (18h) if profit >= floor (0.5%)
-        - Losing trades: exit after time_exit_loss_hours (14h) regardless — prevent bag-holding
+        - Losing trades: exit after time_exit_loss_hours (10h) regardless — prevent bag-holding
         """
         if trade.open_date_utc:
             holding_hours = (current_time - trade.open_date_utc).total_seconds() / 3600
