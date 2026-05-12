@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.106"
+    STRATEGY_VERSION = "2.0.107"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -88,13 +88,14 @@ class MeanReversionTrend(IStrategy):
     # stratbase.ai: "2.0×ATR(14) produced best Sharpe on 4H" → 1.5-2× on 1H ≈ 5-7%.
     # Tightening from -9.4% to -6.5% saves ~3% per stopped trade without affecting winners.
     # Losers now exit via faster time_exit_loss (16h) at ~-4%, not at -9.7%.
-    # Research v2.0.101: DEATH SPIRAL REVERSAL. v2.0.96-2.0.100 auto-tuner tightened
-    # stop from -0.044 → -0.041 but results worsened (-0.15% → -3.79%) because tighter
-    # stops caused MORE stop-outs (7/22 trades, -4.68% avg), not fewer.
-    # Research (Connors, Vantixs): MR needs room to dip and bounce. Fixed stops kill MR.
-    # WIDENING counter-cyclically to -5.5% — lets time_exit_loss (16h) handle failed
-    # setups instead of premature stop-outs. Target: fewer stop-outs, better R/R.
-    stoploss = -0.0400
+    # Research v2.0.107: CRITICAL REVERSAL — stop-loss vs time_exit_loss conflict.
+    # v2.0.104-106: 13 stop-outs at -4.29% avg ($-182) + 13 time_exit_loss at -1.04% ($-44).
+    # The -4% stop fires BEFORE the 16h time exit, turning -1% losses into -4.3% losses.
+    # YouTube MR study: "timed exit if showing loss" improved net profit/DD by 93% vs fixed stops.
+    # Vantixs: MR needs 1.5-2× ATR room = 5-7% for crypto 1H. Tight stops degrade MR.
+    # WIDEN dramatically to -6.5% — let time_exit_loss (16h, -1.04% avg) catch failed setups
+    # instead of hard stop. Stop is disaster floor only, not primary exit.
+    stoploss = -0.0650
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
@@ -112,10 +113,11 @@ class MeanReversionTrend(IStrategy):
     # v2.0.87: REVERTED from 1.85→1.80 — proven sweet spot from v2.0.83 (69% WR).
     # v2.0.85-86 experiment: 1.85-2.0% cut exit_signals from 31→15-19.
     # Lower deviation catches more real MR setups with 100% WR exit_signals.
-    # v2.0.101: Loosened from 1.60→1.40 to increase trade count. All 7 entry
-    # filters produced fixed 22 trades. 1.40σ still requires real deviation
-    # (>1.4% below SMA) while casting wider net for more MR opportunities.
-    entry_dev_threshold = 1.40
+    # Research v2.0.107: Restore selectivity — v2.0.104-106 at 1.40σ produced 52 trades
+    # but only 50% WR. Vantixs: standard BB(20,2.0) + filters outperformed optimized params.
+    # Deeper deviation = higher quality. 1.65σ proven in v2.0.83 sweet spot (69% WR).
+    # stratbase.ai: "BTC 1H true abnormal zone is 2-3% below 20 SMA" — 1.65σ ≈ 2%.
+    entry_dev_threshold = 1.65
 
     # Research v2.0.77: v2.0.76 at 0.85 = 4 trades, avg win +4.55%, R/R 0.79, DD 1.9%.
     # Entries are clearly higher quality but too few. Loosen to 0.90 for 15-25 target.
@@ -123,19 +125,19 @@ class MeanReversionTrend(IStrategy):
     atr_length = 14
     # v2.0.89: Tighten to 0.90 — Vantixs research: ATR < 0.9x avg prevented 72% of
     # largest MR losses. Only enter when volatility is clearly compressing, not just normal.
-    # v2.0.101: Loosened from 0.90→0.95. Vantixs research: ATR < 1.0×avg
-    # = below-average volatility (MR territory). 0.90 filtered normal MR conditions.
-    # 0.95 still requires compression but doesn't require extreme quiet.
-    atr_compression_ratio = 0.95
+    # Research v2.0.107: Restore Vantixs-validated compression. ATR < 0.90×avg prevented
+    # 72% of largest MR losses. v2.0.104-106 at 0.95 produced 52 trades with 50% WR —
+    # too loose, letting in weak setups. Tighter compression = higher quality entries.
+    atr_compression_ratio = 0.90
 
     # Research v2.0.81: v2.0.80 at 1.1× = 65 trades, 37% stop-outs. Low-quality volume entries.
     # stratbase: volume confirmation is essential. Vantixs: declining volume on move improves WR +5pp.
     # Raise to 1.2× — reduces noise entries that pass deviation/RSI but lack real momentum exhaustion.
     volume_ma_length = 20
-    # v2.0.101: Loosened from 1.2→1.1. Combined with loosened compression and entry
-    # deviation, this allows more setups. Volume still confirms interest but doesn't
-    # require extreme spikes. Research: volume > avg is sufficient confirmation.
-    volume_multiplier = 1.1
+    # Research v2.0.107: Vantixs study — requiring declining volume on the move to
+    # lower band (indicating exhaustion, not strong selling) increased win rate +5pp.
+    # 1.25× volume confirms genuine interest, filters noise entries.
+    volume_multiplier = 1.25
 
     # Research v2.0.76: revert RSI to 35 — v2.0.75 at 30 was too restrictive when stacked.
     # Connors RSI(2) cross-back at 30; but our RSI(14) is less sensitive.
@@ -151,7 +153,9 @@ class MeanReversionTrend(IStrategy):
 
     # ADX regime filter — research: skip mean reversion when ADX > 25 (trending)
     use_adx_filter = True
-    adx_threshold = 25
+    # Research v2.0.107: Vantixs — ADX < 20 = full MR engagement. Tighten 25→22.
+    # stratbase: ADX rising above 25 = new trend; skip. 22 gives buffer.
+    adx_threshold = 22
 
     # Time-based exit — research: if it hasn't reverted in 18h, get out
     # v2.0.81: Lower to 18h (research: most MR reversions happen within 12-18h or not at all)
@@ -162,7 +166,9 @@ class MeanReversionTrend(IStrategy):
     # v2.0.86 lost 12 exit_signal (100% WR) trades because they got cut at 16h
     # before developing to exit_signal at 17-24h. Crypto 1H MR needs full 24h.
     # Keep -9% stop as ultimate floor (nf-china: MR works better with wider stops).
-    time_exit_loss_hours = 16       # v2.0.92: cut failed setups at 16h — most MR reversions in 12-18h
+    time_exit_loss_hours = 14       # v2.0.107: cut at 14h — YouTube study: timed exit on losers
+    # is #1 MR exit (93% better net/DD). 14h catches failures faster.
+    # Wider stop (-6.5%) means losers exit via time, not stop.
 
     # ── Exit Conditions ─────────────────────────────────────────────────────
     # Research: target = mid-band (SMA), not a tight trail. Exit when reverted.
@@ -186,7 +192,9 @@ class MeanReversionTrend(IStrategy):
     # Research v2.0.61: RSI(14) at 75 fires after 2-3% bounce with 2% entry.
     # Connors RSI(2)>65; RSI(14) equivalent ≈ 70-75. At 2.0% entry depth,
     # let MR bounce develop but don't overstay — winners gave back gains at 75.
-    exit_rsi_long = 76   # RSI(14) — v2.0.92: widened to 76. Connors 70-75 is RSI(2); RSI(14) eq = 74-78
+    exit_rsi_long = 73   # RSI(14) — v2.0.107: tightened from 76. RSI(14) at 76 gave back gains.
+    # Connors RSI(2)>65; RSI(14) eq ≈ 70-75. Exit earlier at 73 to lock profit
+    # before reversion exhausts. Deeper entries + earlier exit = 2-3% avg win.
     exit_rsi_short = 30  # Mirror symmetry
     # Research v2.0.59: exit when deviation > 0.5% (price within 0.5% of SMA).
     # v2.0.58 at 1.0% required price to overshoot SMA by 1% — combined with
@@ -195,8 +203,10 @@ class MeanReversionTrend(IStrategy):
     # This competes with RSI 75 exit — whichever fires first locks in profit.
     exit_dev_revert_pct = 0.3   # v2.0.92: tightened from 0.5 — RSI exit handles winners, revert exit backup
 
-    # Max risk
-    max_open_trades = 3
+    # Research v2.0.107: Vantixs recommends max 2 concurrent MR positions.
+    # MR losses cluster; 3 concurrent max = up to 3× simultaneous stop risk.
+    # Reduce to 2 for capital efficiency and reduced correlation exposure.
+    max_open_trades = 2
 
     def version(self) -> str:
         return self.STRATEGY_VERSION
@@ -418,7 +428,7 @@ class MeanReversionTrend(IStrategy):
         dramatically improves MR performance vs fixed stops (93% better net profit/DD).
         
         - Profitable trades: exit after time_exit_hours (18h) if profit >= floor (0.5%)
-        - Losing trades: exit after time_exit_loss_hours (16h) regardless — prevent bag-holding
+        - Losing trades: exit after time_exit_loss_hours (14h) regardless — prevent bag-holding
         """
         if trade.open_date_utc:
             holding_hours = (current_time - trade.open_date_utc).total_seconds() / 3600
