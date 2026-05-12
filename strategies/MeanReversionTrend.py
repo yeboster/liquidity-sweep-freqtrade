@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.114"
+    STRATEGY_VERSION = "2.0.115"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -121,7 +121,7 @@ class MeanReversionTrend(IStrategy):
     # but only 50% WR. Vantixs: standard BB(20,2.0) + filters outperformed optimized params.
     # Deeper deviation = higher quality. 1.65σ proven in v2.0.83 sweet spot (69% WR).
     # stratbase.ai: "BTC 1H true abnormal zone is 2-3% below 20 SMA" — 1.65σ ≈ 2%.
-    entry_dev_threshold = 1.65
+    entry_dev_threshold = 1.3
 
     # Research v2.0.77: v2.0.76 at 0.85 = 4 trades, avg win +4.55%, R/R 0.79, DD 1.9%.
     # Entries are clearly higher quality but too few. Loosen to 0.90 for 15-25 target.
@@ -132,7 +132,7 @@ class MeanReversionTrend(IStrategy):
     # Research v2.0.107: Restore Vantixs-validated compression. ATR < 0.90×avg prevented
     # 72% of largest MR losses. v2.0.104-106 at 0.95 produced 52 trades with 50% WR —
     # too loose, letting in weak setups. Tighter compression = higher quality entries.
-    atr_compression_ratio = 0.90
+    atr_compression_ratio = 1.00
 
     # Research v2.0.81: v2.0.80 at 1.1× = 65 trades, 37% stop-outs. Low-quality volume entries.
     # stratbase: volume confirmation is essential. Vantixs: declining volume on move improves WR +5pp.
@@ -142,7 +142,7 @@ class MeanReversionTrend(IStrategy):
     # lower band (indicating exhaustion, not strong selling) increased win rate +5pp.
     # v2.0.114: Tighten to 1.30× — Connors: volume confirmation essential for MR.
     # Higher volume threshold = fewer but higher-quality entries at true extremes.
-    volume_multiplier = 1.30
+    volume_multiplier = 1.2
 
     # Research v2.0.76: revert RSI to 35 — v2.0.75 at 30 was too restrictive when stacked.
     # Connors RSI(2) cross-back at 30; but our RSI(14) is less sensitive.
