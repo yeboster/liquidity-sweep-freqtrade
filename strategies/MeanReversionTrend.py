@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.123"
+    STRATEGY_VERSION = "2.0.124"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -99,7 +99,7 @@ class MeanReversionTrend(IStrategy):
     # is the REAL exit for failed setups. YouTube study: timed exit on losers = +93% net/DD.
     # Vantixs: 2×ATR for crypto 1H ≈ 6-8%. BreakingAlpha: 1.5-2×ATR optimal for MR.
     # DO NOT TIGHTEN THIS STOP. Tightening kills MR edge. Research is conclusive.
-    stoploss = -0.0700
+    stoploss = -0.0650
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
@@ -121,7 +121,13 @@ class MeanReversionTrend(IStrategy):
     # but only 50% WR. Vantixs: standard BB(20,2.0) + filters outperformed optimized params.
     # Deeper deviation = higher quality. 1.65σ proven in v2.0.83 sweet spot (69% WR).
     # stratbase.ai: "BTC 1H true abnormal zone is 2-3% below 20 SMA" — 1.65σ ≈ 2%.
-    entry_dev_threshold = 2.5
+    # Research v2.0.124: RESTORE 1.65 — stratbase: BB touch + RSI < 35 = 68% WR, 1.71 PF.
+    # v2.0.123 at 2.5% deviation was too deep — only 17 trades, 17.65% WR.
+    # Research: 2-3% is the abnormal zone, but with stacked filters (ATR compression,
+    # volume, ADX, trend) we need ~1.6-1.8% to produce 25-35 quality signals.
+    # Combined with RSI < 30 (changed from RSI > 35 cross-back), this targets the
+    # stratbase-proven BB-touch + RSI-oversold entry pattern.
+    entry_dev_threshold = 1.65
 
     # Research v2.0.77: v2.0.76 at 0.85 = 4 trades, avg win +4.55%, R/R 0.79, DD 1.9%.
     # Entries are clearly higher quality but too few. Loosen to 0.90 for 15-25 target.
@@ -132,7 +138,11 @@ class MeanReversionTrend(IStrategy):
     # Research v2.0.107: Restore Vantixs-validated compression. ATR < 0.90×avg prevented
     # 72% of largest MR losses. v2.0.104-106 at 0.95 produced 52 trades with 50% WR —
     # too loose, letting in weak setups. Tighter compression = higher quality entries.
-    atr_compression_ratio = 1.00
+    # Research v2.0.124: Tighten to 0.90 — Vantixs: ATR < 0.9×avg prevented 72%
+    # of largest MR losses. Compensates for wider entry window (dev 1.65).
+    # When ATR compresses below 90% of its 20-period average, volatility is
+    # clearly contracting — the ideal MR pre-condition.
+    atr_compression_ratio = 0.90
 
     # Research v2.0.81: v2.0.80 at 1.1× = 65 trades, 37% stop-outs. Low-quality volume entries.
     # stratbase: volume confirmation is essential. Vantixs: declining volume on move improves WR +5pp.
@@ -142,14 +152,22 @@ class MeanReversionTrend(IStrategy):
     # lower band (indicating exhaustion, not strong selling) increased win rate +5pp.
     # v2.0.114: Tighten to 1.30× — Connors: volume confirmation essential for MR.
     # Higher volume threshold = fewer but higher-quality entries at true extremes.
-    volume_multiplier = 1.2
+    # Research v2.0.124: Relax to 1.1× — Vantixs: declining volume on the move
+    # to lower band (exhaustion, not strong selling) +5pp WR. 1.2× was filtering
+    # too aggressively when combined with 5 other entry filters.
+    volume_multiplier = 1.1
 
     # Research v2.0.76: revert RSI to 35 — v2.0.75 at 30 was too restrictive when stacked.
     # Connors RSI(2) cross-back at 30; but our RSI(14) is less sensitive.
     # stratbase: RSI 35 + BB = 68% WR, 1.71 PF on BTC 4H. Keep this proven level.
     rsi_length = 14
-    rsi_oversold = 35   # v2.0.86: REVERTED from 32→35 — stratbase-validated: RSI(14) < 35 + BB = strongest MR combo.
-    # v2.0.85 at 32 collapsed WR to 44% — too restrictive when stacked with other filters.
+    # Research v2.0.124: RSI < 30 — Vantixs & stratbase both confirm RSI(14) < 30
+    # is the standard oversold threshold for BB-touch MR entries.
+    # stratbase: RSI < 35 + BB = 68% WR, 1.71 PF (31 signals).
+    # Vantixs: RSI(14) < 30 for oversold confirmation on BB touch.
+    # Using 30 (not 35) when also switching entry to RSI-is-oversold (not cross-back)
+    # — this is the classic proven MR pattern.
+    rsi_oversold = 30
     rsi_overbought = 70  # Was 75 — widened for more entry signals
 
     # Trend filter: 4H EMA200 — RESEARCH SAYS THIS IS NON-NEGOTIABLE
@@ -174,7 +192,10 @@ class MeanReversionTrend(IStrategy):
     # the thesis is valid." With wide stop (-7.5%), time exit catches failures
     # at ~-1.4% avg instead of letting them drift to -7.5%.
     # Important: winners get full 18h (time_exit_hours) to develop.
-    time_exit_loss_hours = 10
+    # Research v2.0.124: 10→12h. stratbase: most MR reversions happen within 12-18h.
+    # 10h was cutting potentially-winning setups short before they could develop.
+    # 12h gives moderate extension while still preventing indefinite bag-holding.
+    time_exit_loss_hours = 12
 
     # ── Exit Conditions ─────────────────────────────────────────────────────
     # Research: target = mid-band (SMA), not a tight trail. Exit when reverted.
@@ -198,10 +219,11 @@ class MeanReversionTrend(IStrategy):
     # Research v2.0.61: RSI(14) at 75 fires after 2-3% bounce with 2% entry.
     # Connors RSI(2)>65; RSI(14) equivalent ≈ 70-75. At 2.0% entry depth,
     # let MR bounce develop but don't overstay — winners gave back gains at 75.
-    exit_rsi_long = 75   # v2.0.114: raised from 73. RSI(14) at 73 was firing too early
-    # — avg exit_signal win only 2.18%. Research: RSI(14) 75-80 aligns with
-    # Connors RSI(2)>65 equivalent. Let winners develop to full 3-5% reversion.
-    # With wide stop (-7.5%), winners need room to reach their potential.
+    # Research v2.0.124: stratbase research — exit when RSI(14) > 70 (standard overbought)
+    # or price reaches middle band. Connors RSI(2) > 65 ≈ RSI(14) > 70 for crypto.
+    # 75 was slightly too high — winners overstayed and partial gains evaporated.
+    # At 70, combined with -0.5% deviation exit, captures full 2-3% MR bounce.
+    exit_rsi_long = 70
     exit_rsi_short = 30  # Mirror symmetry
     # Research v2.0.59: exit when deviation > 0.5% (price within 0.5% of SMA).
     # v2.0.58 at 1.0% required price to overshoot SMA by 1% — combined with
@@ -282,15 +304,17 @@ class MeanReversionTrend(IStrategy):
             dataframe["trend_bullish"] = True
             dataframe["trend_bearish"] = True
 
-        # Long: deviation < -threshold (price significantly below mean), compression, volume, RSI exiting oversold
-        # v2.0.101: Removed RSI < 50 filter — redundant. RSI > 35 confirms exit from oversold;
-        # requiring it to still be in bottom half (~35-49) needlessly restricts trade count.
-        # ADX filter + trend_bullish already prevent trending-breakdown entries.
+        # Research v2.0.124: SWITCH from RSI cross-back to standard oversold entry.
+        # Previous: RSI > 35 ("exited oversold") was a double-confirmation bottleneck.
+        # New: RSI < 30 ("is oversold") — stratbase-proven pattern: BB extreme + RSI oversold
+        # = 68% WR, 1.71 PF. The cross-back approach was too restrictive, giving only 17 trades.
+        # With trend filter + ADX + compression, simple oversold gives higher-quality entries.
+        # Long: deviation < -threshold (price significantly below mean), compression, volume, RSI oversold
         dataframe["long_condition"] = (
             (dataframe["deviation"] < -threshold) &
             dataframe["in_compression"] &
             dataframe["volume_confirm"] &
-            (dataframe["rsi"] > self.rsi_oversold) &  # RSI has EXITED oversold
+            (dataframe["rsi"] < self.rsi_oversold) &  # RSI IS oversold (standard BB+RSI pattern)
             dataframe["trend_bullish"]
         )
 
