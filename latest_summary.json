@@ -1,7 +1,7 @@
 {
   "version": "MeanReversionTrend",
-  "timestamp": "2026-05-13T21:22:45.994374Z",
-  "latest_backtest_file": "backtest-result-2026-05-13_21-22-45",
+  "timestamp": "2026-05-13T23:22:32.289067Z",
+  "latest_backtest_file": "backtest-result-2026-05-13_23-22-31",
   "total_trades": 29,
   "trades_per_year": 14.5,
   "win_count": 8,
