@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.131"
+    STRATEGY_VERSION = "2.0.132"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -127,7 +127,7 @@ class MeanReversionTrend(IStrategy):
     # Research v2.0.128: Raise to 1.8 — v2.0.127 at 1.65 gave 60 trades (too many),
     # v2.0.126 at 2.0 gave 9 (too few). 1.8 is the midpoint, targeting 25-35 trades.
     # Combined with tighter volume and ADX to improve WR from 33% toward 45%.
-    entry_dev_threshold = 2.1
+    entry_dev_threshold = 1.8
 
     # Research v2.0.77: v2.0.76 at 0.85 = 4 trades, avg win +4.55%, R/R 0.79, DD 1.9%.
     # Entries are clearly higher quality but too few. Loosen to 0.90 for 15-25 target.
@@ -141,7 +141,7 @@ class MeanReversionTrend(IStrategy):
     # Research v2.0.128: Tighten to 0.95 — Vantixs: ATR < 0.9× prevented 72%
     # of largest losses. 0.95 is a moderate compression filter that filters 
     # noise entries without the v2.0.124 zero-trade paradox.
-    atr_compression_ratio = 0.95
+    atr_compression_ratio = 1.00
 
     # Research v2.0.81: v2.0.80 at 1.1× = 65 trades, 37% stop-outs. Low-quality volume entries.
     # stratbase: volume confirmation is essential. Vantixs: declining volume on move improves WR +5pp.
@@ -154,7 +154,7 @@ class MeanReversionTrend(IStrategy):
     # Research v2.0.128: Raise to 1.4× — v2.0.127 at 1.15 gave 60 trades with
     # 33% WR, too many noise entries. stratbase: volume confirmation essential.
     # Higher threshold = fewer but higher-conviction entries at true extremes.
-    volume_multiplier = 1.4
+    volume_multiplier = 1.3
 
     # Research v2.0.76: revert RSI to 35 — v2.0.75 at 30 was too restrictive when stacked.
     # Connors RSI(2) cross-back at 30; but our RSI(14) is less sensitive.
