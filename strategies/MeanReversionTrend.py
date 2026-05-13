@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.138"
+    STRATEGY_VERSION = "2.0.139"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -131,7 +131,7 @@ class MeanReversionTrend(IStrategy):
     # standard BB(20,2.0) outperforms optimized params. 2.5σ was too extreme:
     # only 16 trades with 25% WR — catching trend breakdowns, not MR setups.
     # 2.0σ targets 25-35 trades with cleaner MR characteristics.
-    entry_dev_threshold = 2.3
+    entry_dev_threshold = 2.5
 
     # Research v2.0.77: v2.0.76 at 0.85 = 4 trades, avg win +4.55%, R/R 0.79, DD 1.9%.
     # Entries are clearly higher quality but too few. Loosen to 0.90 for 15-25 target.
