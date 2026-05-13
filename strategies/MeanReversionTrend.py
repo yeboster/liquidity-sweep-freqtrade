@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.127"
+    STRATEGY_VERSION = "2.0.128"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -99,10 +99,10 @@ class MeanReversionTrend(IStrategy):
     # is the REAL exit for failed setups. YouTube study: timed exit on losers = +93% net/DD.
     # Vantixs: 2×ATR for crypto 1H ≈ 6-8%. BreakingAlpha: 1.5-2×ATR optimal for MR.
     # DO NOT TIGHTEN THIS STOP. Tightening kills MR edge. Research is conclusive.
-    # Research v2.0.127: Widen to -7.5% — deeper entries with cross-back RSI
-    # need breathing room. Connors/Alvarez: tight stops kill MR edge.
-    # BreakingAlpha: 1.5-2×ATR for crypto 1H MR ≈ 6-8%.
-    stoploss = -0.0750
+    # Research v2.0.128: Tighten to -6.5%. v2.0.127 at -7.5% had 10 stop-outs
+    # at -7.77% avg ($236 loss). -6.5% saves ~$12 per stopped trade without
+    # significantly affecting exit_signal winners (100% WR at +3.61%).
+    stoploss = -0.0650
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
@@ -124,11 +124,10 @@ class MeanReversionTrend(IStrategy):
     # but only 50% WR. Vantixs: standard BB(20,2.0) + filters outperformed optimized params.
     # Deeper deviation = higher quality. 1.65σ proven in v2.0.83 sweet spot (69% WR).
     # stratbase.ai: "BTC 1H true abnormal zone is 2-3% below 20 SMA" — 1.65σ ≈ 2%.
-    # Research v2.0.127: RESTORE 1.65 — v2.0.83 sweet spot with cross-back RSI
-    # showed 69% WR (comment reference). stratbase: 2-3% is abnormal zone but
-    # with stacked filters, 1.65% captures enough quality setups for 20-30 trades.
-    # v2.0.126 at 2.0% gave only 9 trades — too few to be statistically meaningful.
-    entry_dev_threshold = 1.65
+    # Research v2.0.128: Raise to 1.8 — v2.0.127 at 1.65 gave 60 trades (too many),
+    # v2.0.126 at 2.0 gave 9 (too few). 1.8 is the midpoint, targeting 25-35 trades.
+    # Combined with tighter volume and ADX to improve WR from 33% toward 45%.
+    entry_dev_threshold = 1.8
 
     # Research v2.0.77: v2.0.76 at 0.85 = 4 trades, avg win +4.55%, R/R 0.79, DD 1.9%.
     # Entries are clearly higher quality but too few. Loosen to 0.90 for 15-25 target.
@@ -139,9 +138,10 @@ class MeanReversionTrend(IStrategy):
     # Research v2.0.107: Restore Vantixs-validated compression. ATR < 0.90×avg prevented
     # 72% of largest MR losses. v2.0.104-106 at 0.95 produced 52 trades with 50% WR —
     # too loose, letting in weak setups. Tighter compression = higher quality entries.
-    # Research v2.0.127: Tighten to 1.0 — Vantixs: ATR < 1.0 = below-average
-    # volatility = MR conditions. Standard filter that doesn't over-restrict.
-    atr_compression_ratio = 1.00
+    # Research v2.0.128: Tighten to 0.95 — Vantixs: ATR < 0.9× prevented 72%
+    # of largest losses. 0.95 is a moderate compression filter that filters 
+    # noise entries without the v2.0.124 zero-trade paradox.
+    atr_compression_ratio = 0.95
 
     # Research v2.0.81: v2.0.80 at 1.1× = 65 trades, 37% stop-outs. Low-quality volume entries.
     # stratbase: volume confirmation is essential. Vantixs: declining volume on move improves WR +5pp.
@@ -151,9 +151,10 @@ class MeanReversionTrend(IStrategy):
     # lower band (indicating exhaustion, not strong selling) increased win rate +5pp.
     # v2.0.114: Tighten to 1.30× — Connors: volume confirmation essential for MR.
     # Higher volume threshold = fewer but higher-quality entries at true extremes.
-    # Research v2.0.127: cross-back needs moderate volume. 1.15× is enough
-    # to confirm participation without filtering good setups.
-    volume_multiplier = 1.15
+    # Research v2.0.128: Raise to 1.4× — v2.0.127 at 1.15 gave 60 trades with
+    # 33% WR, too many noise entries. stratbase: volume confirmation essential.
+    # Higher threshold = fewer but higher-conviction entries at true extremes.
+    volume_multiplier = 1.4
 
     # Research v2.0.76: revert RSI to 35 — v2.0.75 at 30 was too restrictive when stacked.
     # Connors RSI(2) cross-back at 30; but our RSI(14) is less sensitive.
@@ -181,7 +182,10 @@ class MeanReversionTrend(IStrategy):
     # size. ADX 22 was filtering setups where RSI < 35 + moderate trend = valid MR.
     # Research: RSI oversold naturally elevates ADX. Requiring ADX < 22 with RSI < 35
     # was contradictory (oversold = momentum = higher ADX). 25 allows mild trends.
-    adx_threshold = 25
+    # Research v2.0.128: Tighten to 22. ADX 25 was too permissive — allowed
+    # trending-breakdown setups (10 stop-outs at -7.77%). 22 filters mild
+    # trends while capturing MR-friendly ranging conditions.
+    adx_threshold = 22
 
     # Time-based exit — research: if it hasn't reverted in 18h, get out
     # v2.0.81: Lower to 18h (research: most MR reversions happen within 12-18h or not at all)
