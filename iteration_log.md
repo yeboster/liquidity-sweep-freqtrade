@@ -558,3 +558,9 @@ Formula: `(target_sl_price - current_rate) / current_rate`.
 - Exit breakdown: trailing=0(0%WR, $0.00), stop=1(0%WR, $-22.43), time=4(0%WR, $-18.03)
 - Changes: Low volume: dev 2.1→1.8, atr 0.95→1.0, vol 1.4→1.2999999999999998, v2.0.131→2.0.132
 - Reason: Too few trades — need more entry signals
+
+## Iteration v2: 2026-05-13 13:19:55
+- Profit: -14.23% | Trades: 32 | WR: 34.4% | R/R: 0.8161 | SQN: -2.0397 | DD: 15.47%
+- Exit breakdown: trailing=0(0%WR, $0.00), stop=8(0%WR, $-168.69), time=14(0%WR, $-74.87)
+- Changes: Quality: dev 1.8→2.1, v2.0.132→2.0.133
+- Reason: Win rate too low — tighten entry quality
