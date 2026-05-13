@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.128"
+    STRATEGY_VERSION = "2.0.129"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -307,19 +307,23 @@ class MeanReversionTrend(IStrategy):
             dataframe["trend_bullish"] = True
             dataframe["trend_bearish"] = True
 
-        # Research v2.0.127: RSI CROSS-BACK entry — enters when RSI has exited
-        # oversold (<35) and is recovering but still in bottom half (<55).
-        # This is safer than entering while RSI is still oversold (catching
-        # the knife). v2.0.83 showed 69% WR with this approach at dev=1.65.
-        #
-        # Long: deviation < -threshold, compression, volume, RSI recovering from oversold
+        # Research v2.0.129: ADD reversal candle filter. stratbase:
+        # "Wait for a bullish engulfing or hammer at the lower band before entering.
+        # Reduces signals by 30% but improves WR from 58% to 67%."
+        # cryptoprofitcalc: "RSI cross-back trigger reduces early entries."
+        # Requiring a bullish candle (close > open) confirms buying pressure
+        # has returned — we're not catching a still-falling knife.
+        dataframe["bullish_candle"] = dataframe["close"] > dataframe["open"]
+        
+        # Long: deviation < -threshold, compression, volume, RSI recovering, trend, reversal candle
         dataframe["long_condition"] = (
             (dataframe["deviation"] < -threshold) &
             dataframe["in_compression"] &
             dataframe["volume_confirm"] &
             (dataframe["rsi"] > self.rsi_oversold) &        # RSI has EXITED oversold
             (dataframe["rsi"] < self.rsi_oversold_exit) &   # RSI still in bottom half (recovering)
-            dataframe["trend_bullish"]
+            dataframe["trend_bullish"] &
+            dataframe["bullish_candle"]                       # Reversal candle: buying pressure confirmed
         )
 
         # ADX filter: skip if trending strongly (ADX > threshold = trending, not mean-reverting)
