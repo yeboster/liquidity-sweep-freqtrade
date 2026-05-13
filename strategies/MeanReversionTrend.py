@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.125"
+    STRATEGY_VERSION = "2.0.126"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -121,13 +121,11 @@ class MeanReversionTrend(IStrategy):
     # but only 50% WR. Vantixs: standard BB(20,2.0) + filters outperformed optimized params.
     # Deeper deviation = higher quality. 1.65σ proven in v2.0.83 sweet spot (69% WR).
     # stratbase.ai: "BTC 1H true abnormal zone is 2-3% below 20 SMA" — 1.65σ ≈ 2%.
-    # Research v2.0.124: RESTORE 1.65 — stratbase: BB touch + RSI < 35 = 68% WR, 1.71 PF.
-    # v2.0.123 at 2.5% deviation was too deep — only 17 trades, 17.65% WR.
-    # Research: 2-3% is the abnormal zone, but with stacked filters (ATR compression,
-    # volume, ADX, trend) we need ~1.6-1.8% to produce 25-35 quality signals.
-    # Combined with RSI < 30 (changed from RSI > 35 cross-back), this targets the
-    # stratbase-proven BB-touch + RSI-oversold entry pattern.
-    entry_dev_threshold = 1.65
+    # Research v2.0.126: Raise to 2.0 — stratbase: "BTC 1H true abnormal zone is
+    # 2-3% below 20 SMA." v2.0.125 at 1.65% was entering shallow pullbacks
+    # (58% time_exit_loss rate). Deeper deviation = closer to BB lower band
+    # = higher quality extremes with more reversion potential.
+    entry_dev_threshold = 2.0
 
     # Research v2.0.77: v2.0.76 at 0.85 = 4 trades, avg win +4.55%, R/R 0.79, DD 1.9%.
     # Entries are clearly higher quality but too few. Loosen to 0.90 for 15-25 target.
@@ -138,11 +136,11 @@ class MeanReversionTrend(IStrategy):
     # Research v2.0.107: Restore Vantixs-validated compression. ATR < 0.90×avg prevented
     # 72% of largest MR losses. v2.0.104-106 at 0.95 produced 52 trades with 50% WR —
     # too loose, letting in weak setups. Tighter compression = higher quality entries.
-    # Research v2.0.125: Relax to 1.05 — Vantixs: ATR < 1.0 = below-average vol
-    # = MR conditions. ATR < 0.90 was too tight; RSI oversold requires momentum
-    # which means ATR isn't always compressing. 1.05 allows normal volatility
-    # while still filtering expansion-driven breakdowns.
-    atr_compression_ratio = 1.05
+    # Research v2.0.126: Tighten to 1.0 — Vantixs: ATR < 1.0 = below-average
+    # volatility = MR conditions. v2.0.125 at 1.05 allowed mildly elevated vol
+    # which contributed to 58% time_exit_loss rate. Requiring ATR below its
+    # 20-period average ensures we only enter during genuine compression.
+    atr_compression_ratio = 1.00
 
     # Research v2.0.81: v2.0.80 at 1.1× = 65 trades, 37% stop-outs. Low-quality volume entries.
     # stratbase: volume confirmation is essential. Vantixs: declining volume on move improves WR +5pp.
@@ -152,10 +150,11 @@ class MeanReversionTrend(IStrategy):
     # lower band (indicating exhaustion, not strong selling) increased win rate +5pp.
     # v2.0.114: Tighten to 1.30× — Connors: volume confirmation essential for MR.
     # Higher volume threshold = fewer but higher-quality entries at true extremes.
-    # Research v2.0.124: Relax to 1.1× — Vantixs: declining volume on the move
-    # to lower band (exhaustion, not strong selling) +5pp WR. 1.2× was filtering
-    # too aggressively when combined with 5 other entry filters.
-    volume_multiplier = 1.1
+    # Research v2.0.126: Raise to 1.2× — stratbase: volume confirmation essential.
+    # v2.0.125 at 1.1× was too permissive, letting in low-conviction setups.
+    # Higher volume on the deviation move = genuine participation at the extreme,
+    # not just drift. Combines with deeper deviation for quality filter.
+    volume_multiplier = 1.2
 
     # Research v2.0.76: revert RSI to 35 — v2.0.75 at 30 was too restrictive when stacked.
     # Connors RSI(2) cross-back at 30; but our RSI(14) is less sensitive.
@@ -177,10 +176,11 @@ class MeanReversionTrend(IStrategy):
     # Research v2.0.107: Vantixs — ADX < 20 = full MR engagement. Tighten 25→22.
     # v2.0.114: ADX 22→20 — research says <20 = full MR engagement zone.
     # stratbase: ADX rising above 25 = new trend; skip. 20 is clean cutoff.
-    # Research v2.0.125: Relax to 22 — Vantixs: ADX < 20 = full MR engagement,
-    # ADX 20-25 = reduced size. 20 was filtering all setups with any trend.
-    # 22 captures mild-trending MR setups that still revert.
-    adx_threshold = 22
+    # Research v2.0.126: Raise to 25. Vantixs: ADX < 20 = full MR, 20-25 = reduced
+    # size. ADX 22 was filtering setups where RSI < 35 + moderate trend = valid MR.
+    # Research: RSI oversold naturally elevates ADX. Requiring ADX < 22 with RSI < 35
+    # was contradictory (oversold = momentum = higher ADX). 25 allows mild trends.
+    adx_threshold = 25
 
     # Time-based exit — research: if it hasn't reverted in 18h, get out
     # v2.0.81: Lower to 18h (research: most MR reversions happen within 12-18h or not at all)
@@ -305,10 +305,9 @@ class MeanReversionTrend(IStrategy):
             dataframe["trend_bullish"] = True
             dataframe["trend_bearish"] = True
 
-        # Research v2.0.125: Standard BB+RSI oversold entry pattern from stratbase.
-        # RSI < 35 (is oversold) — stratbase-proven: BB extreme + RSI oversold
-        # = 68% WR, 1.71 PF. Works with ATR 1.05 (normal vol) and ADX 22.
-        # The cross-back approach (RSI > 35) was too restrictive.
+        # Research v2.0.126: Deeper deviation (2.0%) + RSI oversold (<35) +
+        # tighter compression + volume = higher quality MR entries.
+        # Target: 15-25 trades at 45-55% WR (stratbase: 31 trades at 68% WR on 4H).
         # Long: deviation < -threshold (price significantly below mean), compression, volume, RSI oversold
         dataframe["long_condition"] = (
             (dataframe["deviation"] < -threshold) &
