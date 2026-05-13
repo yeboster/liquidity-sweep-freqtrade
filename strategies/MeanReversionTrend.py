@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.124"
+    STRATEGY_VERSION = "2.0.125"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -138,11 +138,11 @@ class MeanReversionTrend(IStrategy):
     # Research v2.0.107: Restore Vantixs-validated compression. ATR < 0.90×avg prevented
     # 72% of largest MR losses. v2.0.104-106 at 0.95 produced 52 trades with 50% WR —
     # too loose, letting in weak setups. Tighter compression = higher quality entries.
-    # Research v2.0.124: Tighten to 0.90 — Vantixs: ATR < 0.9×avg prevented 72%
-    # of largest MR losses. Compensates for wider entry window (dev 1.65).
-    # When ATR compresses below 90% of its 20-period average, volatility is
-    # clearly contracting — the ideal MR pre-condition.
-    atr_compression_ratio = 0.90
+    # Research v2.0.125: Relax to 1.05 — Vantixs: ATR < 1.0 = below-average vol
+    # = MR conditions. ATR < 0.90 was too tight; RSI oversold requires momentum
+    # which means ATR isn't always compressing. 1.05 allows normal volatility
+    # while still filtering expansion-driven breakdowns.
+    atr_compression_ratio = 1.05
 
     # Research v2.0.81: v2.0.80 at 1.1× = 65 trades, 37% stop-outs. Low-quality volume entries.
     # stratbase: volume confirmation is essential. Vantixs: declining volume on move improves WR +5pp.
@@ -161,13 +161,11 @@ class MeanReversionTrend(IStrategy):
     # Connors RSI(2) cross-back at 30; but our RSI(14) is less sensitive.
     # stratbase: RSI 35 + BB = 68% WR, 1.71 PF on BTC 4H. Keep this proven level.
     rsi_length = 14
-    # Research v2.0.124: RSI < 30 — Vantixs & stratbase both confirm RSI(14) < 30
-    # is the standard oversold threshold for BB-touch MR entries.
-    # stratbase: RSI < 35 + BB = 68% WR, 1.71 PF (31 signals).
-    # Vantixs: RSI(14) < 30 for oversold confirmation on BB touch.
-    # Using 30 (not 35) when also switching entry to RSI-is-oversold (not cross-back)
-    # — this is the classic proven MR pattern.
-    rsi_oversold = 30
+    # Research v2.0.125: RSI < 35 (not 30) — stratbase: BB touch + RSI < 35 = 68% WR, 1.71 PF.
+    # RSI < 30 was too restrictive — combined with ATR compression, it's contradictory
+    # (deep oversold = momentum = expanding ATR, not compressing). 35 is the proven
+    # sweet spot from stratbase's comprehensive BTC 4H study.
+    rsi_oversold = 35
     rsi_overbought = 70  # Was 75 — widened for more entry signals
 
     # Trend filter: 4H EMA200 — RESEARCH SAYS THIS IS NON-NEGOTIABLE
@@ -179,7 +177,10 @@ class MeanReversionTrend(IStrategy):
     # Research v2.0.107: Vantixs — ADX < 20 = full MR engagement. Tighten 25→22.
     # v2.0.114: ADX 22→20 — research says <20 = full MR engagement zone.
     # stratbase: ADX rising above 25 = new trend; skip. 20 is clean cutoff.
-    adx_threshold = 20
+    # Research v2.0.125: Relax to 22 — Vantixs: ADX < 20 = full MR engagement,
+    # ADX 20-25 = reduced size. 20 was filtering all setups with any trend.
+    # 22 captures mild-trending MR setups that still revert.
+    adx_threshold = 22
 
     # Time-based exit — research: if it hasn't reverted in 18h, get out
     # v2.0.81: Lower to 18h (research: most MR reversions happen within 12-18h or not at all)
@@ -304,11 +305,10 @@ class MeanReversionTrend(IStrategy):
             dataframe["trend_bullish"] = True
             dataframe["trend_bearish"] = True
 
-        # Research v2.0.124: SWITCH from RSI cross-back to standard oversold entry.
-        # Previous: RSI > 35 ("exited oversold") was a double-confirmation bottleneck.
-        # New: RSI < 30 ("is oversold") — stratbase-proven pattern: BB extreme + RSI oversold
-        # = 68% WR, 1.71 PF. The cross-back approach was too restrictive, giving only 17 trades.
-        # With trend filter + ADX + compression, simple oversold gives higher-quality entries.
+        # Research v2.0.125: Standard BB+RSI oversold entry pattern from stratbase.
+        # RSI < 35 (is oversold) — stratbase-proven: BB extreme + RSI oversold
+        # = 68% WR, 1.71 PF. Works with ATR 1.05 (normal vol) and ADX 22.
+        # The cross-back approach (RSI > 35) was too restrictive.
         # Long: deviation < -threshold (price significantly below mean), compression, volume, RSI oversold
         dataframe["long_condition"] = (
             (dataframe["deviation"] < -threshold) &
