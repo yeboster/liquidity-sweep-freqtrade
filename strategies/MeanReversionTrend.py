@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.129"
+    STRATEGY_VERSION = "2.0.130"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -307,23 +307,20 @@ class MeanReversionTrend(IStrategy):
             dataframe["trend_bullish"] = True
             dataframe["trend_bearish"] = True
 
-        # Research v2.0.129: ADD reversal candle filter. stratbase:
-        # "Wait for a bullish engulfing or hammer at the lower band before entering.
-        # Reduces signals by 30% but improves WR from 58% to 67%."
-        # cryptoprofitcalc: "RSI cross-back trigger reduces early entries."
-        # Requiring a bullish candle (close > open) confirms buying pressure
-        # has returned — we're not catching a still-falling knife.
-        dataframe["bullish_candle"] = dataframe["close"] > dataframe["open"]
-        
-        # Long: deviation < -threshold, compression, volume, RSI recovering, trend, reversal candle
+        # Research v2.0.130: REMOVED reversal candle filter — v2.0.129 proved
+        # too restrictive (1 trade). With 6 other entry filters already active,
+        # adding bullish candle confirmation collapses trade count to near-zero.
+        # The cross-back RSI approach (enters when RSI recovers from oversold)
+        # already acts as a soft reversal confirmation.
+        #
+        # Long: deviation < -threshold, compression, volume, RSI recovering, trend
         dataframe["long_condition"] = (
             (dataframe["deviation"] < -threshold) &
             dataframe["in_compression"] &
             dataframe["volume_confirm"] &
             (dataframe["rsi"] > self.rsi_oversold) &        # RSI has EXITED oversold
             (dataframe["rsi"] < self.rsi_oversold_exit) &   # RSI still in bottom half (recovering)
-            dataframe["trend_bullish"] &
-            dataframe["bullish_candle"]                       # Reversal candle: buying pressure confirmed
+            dataframe["trend_bullish"]
         )
 
         # ADX filter: skip if trending strongly (ADX > threshold = trending, not mean-reverting)
