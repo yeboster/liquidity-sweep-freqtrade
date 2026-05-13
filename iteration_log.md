@@ -570,3 +570,9 @@ Formula: `(target_sl_price - current_rate) / current_rate`.
 - Exit breakdown: trailing=0(0%WR, $0.00), stop=5(0%WR, $-108.26), time=10(0%WR, $-57.28)
 - Changes: Quality: dev 2.1→2.4, v2.0.133→2.0.134
 - Reason: Win rate too low — tighten entry quality
+
+## Iteration v2: 2026-05-13 15:25:41
+- Profit: -10.47% | Trades: 17 | WR: 23.5% | R/R: 0.9241 | SQN: -2.0952 | DD: 11.96%
+- Exit breakdown: trailing=0(0%WR, $0.00), stop=4(0%WR, $-87.05), time=10(0%WR, $-57.49)
+- Changes: Quality: dev 2.4→2.5, v2.0.134→2.0.135
+- Reason: Win rate too low — tighten entry quality
