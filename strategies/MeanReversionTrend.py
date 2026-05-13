@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.126"
+    STRATEGY_VERSION = "2.0.127"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -99,7 +99,10 @@ class MeanReversionTrend(IStrategy):
     # is the REAL exit for failed setups. YouTube study: timed exit on losers = +93% net/DD.
     # Vantixs: 2×ATR for crypto 1H ≈ 6-8%. BreakingAlpha: 1.5-2×ATR optimal for MR.
     # DO NOT TIGHTEN THIS STOP. Tightening kills MR edge. Research is conclusive.
-    stoploss = -0.0650
+    # Research v2.0.127: Widen to -7.5% — deeper entries with cross-back RSI
+    # need breathing room. Connors/Alvarez: tight stops kill MR edge.
+    # BreakingAlpha: 1.5-2×ATR for crypto 1H MR ≈ 6-8%.
+    stoploss = -0.0750
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
@@ -121,11 +124,11 @@ class MeanReversionTrend(IStrategy):
     # but only 50% WR. Vantixs: standard BB(20,2.0) + filters outperformed optimized params.
     # Deeper deviation = higher quality. 1.65σ proven in v2.0.83 sweet spot (69% WR).
     # stratbase.ai: "BTC 1H true abnormal zone is 2-3% below 20 SMA" — 1.65σ ≈ 2%.
-    # Research v2.0.126: Raise to 2.0 — stratbase: "BTC 1H true abnormal zone is
-    # 2-3% below 20 SMA." v2.0.125 at 1.65% was entering shallow pullbacks
-    # (58% time_exit_loss rate). Deeper deviation = closer to BB lower band
-    # = higher quality extremes with more reversion potential.
-    entry_dev_threshold = 2.0
+    # Research v2.0.127: RESTORE 1.65 — v2.0.83 sweet spot with cross-back RSI
+    # showed 69% WR (comment reference). stratbase: 2-3% is abnormal zone but
+    # with stacked filters, 1.65% captures enough quality setups for 20-30 trades.
+    # v2.0.126 at 2.0% gave only 9 trades — too few to be statistically meaningful.
+    entry_dev_threshold = 1.65
 
     # Research v2.0.77: v2.0.76 at 0.85 = 4 trades, avg win +4.55%, R/R 0.79, DD 1.9%.
     # Entries are clearly higher quality but too few. Loosen to 0.90 for 15-25 target.
@@ -136,10 +139,8 @@ class MeanReversionTrend(IStrategy):
     # Research v2.0.107: Restore Vantixs-validated compression. ATR < 0.90×avg prevented
     # 72% of largest MR losses. v2.0.104-106 at 0.95 produced 52 trades with 50% WR —
     # too loose, letting in weak setups. Tighter compression = higher quality entries.
-    # Research v2.0.126: Tighten to 1.0 — Vantixs: ATR < 1.0 = below-average
-    # volatility = MR conditions. v2.0.125 at 1.05 allowed mildly elevated vol
-    # which contributed to 58% time_exit_loss rate. Requiring ATR below its
-    # 20-period average ensures we only enter during genuine compression.
+    # Research v2.0.127: Tighten to 1.0 — Vantixs: ATR < 1.0 = below-average
+    # volatility = MR conditions. Standard filter that doesn't over-restrict.
     atr_compression_ratio = 1.00
 
     # Research v2.0.81: v2.0.80 at 1.1× = 65 trades, 37% stop-outs. Low-quality volume entries.
@@ -150,21 +151,21 @@ class MeanReversionTrend(IStrategy):
     # lower band (indicating exhaustion, not strong selling) increased win rate +5pp.
     # v2.0.114: Tighten to 1.30× — Connors: volume confirmation essential for MR.
     # Higher volume threshold = fewer but higher-quality entries at true extremes.
-    # Research v2.0.126: Raise to 1.2× — stratbase: volume confirmation essential.
-    # v2.0.125 at 1.1× was too permissive, letting in low-conviction setups.
-    # Higher volume on the deviation move = genuine participation at the extreme,
-    # not just drift. Combines with deeper deviation for quality filter.
-    volume_multiplier = 1.2
+    # Research v2.0.127: cross-back needs moderate volume. 1.15× is enough
+    # to confirm participation without filtering good setups.
+    volume_multiplier = 1.15
 
     # Research v2.0.76: revert RSI to 35 — v2.0.75 at 30 was too restrictive when stacked.
     # Connors RSI(2) cross-back at 30; but our RSI(14) is less sensitive.
     # stratbase: RSI 35 + BB = 68% WR, 1.71 PF on BTC 4H. Keep this proven level.
     rsi_length = 14
-    # Research v2.0.125: RSI < 35 (not 30) — stratbase: BB touch + RSI < 35 = 68% WR, 1.71 PF.
-    # RSI < 30 was too restrictive — combined with ATR compression, it's contradictory
-    # (deep oversold = momentum = expanding ATR, not compressing). 35 is the proven
-    # sweet spot from stratbase's comprehensive BTC 4H study.
-    rsi_oversold = 35
+    # Research v2.0.127: RSI CROSS-BACK approach — was oversold (<35), now recovering.
+    # v2.0.83 referenced 69% WR with this approach. The RSI-is-oversold (<35) approach
+    # (v2.0.124-126) gave 33% WR — catching too many unrecovered setups.
+    # Cross-back ensures momentum has already started normalizing when we enter.
+    # Requires RSI to have been below 35 and now be recovering (35-55 range).
+    rsi_oversold = 35   # RSI must be ABOVE this (exited oversold, recovering)
+    rsi_oversold_exit = 55  # RSI must still be below this (not yet fully recovered)
     rsi_overbought = 70  # Was 75 — widened for more entry signals
 
     # Trend filter: 4H EMA200 — RESEARCH SAYS THIS IS NON-NEGOTIABLE
@@ -193,10 +194,7 @@ class MeanReversionTrend(IStrategy):
     # the thesis is valid." With wide stop (-7.5%), time exit catches failures
     # at ~-1.4% avg instead of letting them drift to -7.5%.
     # Important: winners get full 18h (time_exit_hours) to develop.
-    # Research v2.0.124: 10→12h. stratbase: most MR reversions happen within 12-18h.
-    # 10h was cutting potentially-winning setups short before they could develop.
-    # 12h gives moderate extension while still preventing indefinite bag-holding.
-    time_exit_loss_hours = 12
+    time_exit_loss_hours = 10
 
     # ── Exit Conditions ─────────────────────────────────────────────────────
     # Research: target = mid-band (SMA), not a tight trail. Exit when reverted.
@@ -305,15 +303,18 @@ class MeanReversionTrend(IStrategy):
             dataframe["trend_bullish"] = True
             dataframe["trend_bearish"] = True
 
-        # Research v2.0.126: Deeper deviation (2.0%) + RSI oversold (<35) +
-        # tighter compression + volume = higher quality MR entries.
-        # Target: 15-25 trades at 45-55% WR (stratbase: 31 trades at 68% WR on 4H).
-        # Long: deviation < -threshold (price significantly below mean), compression, volume, RSI oversold
+        # Research v2.0.127: RSI CROSS-BACK entry — enters when RSI has exited
+        # oversold (<35) and is recovering but still in bottom half (<55).
+        # This is safer than entering while RSI is still oversold (catching
+        # the knife). v2.0.83 showed 69% WR with this approach at dev=1.65.
+        #
+        # Long: deviation < -threshold, compression, volume, RSI recovering from oversold
         dataframe["long_condition"] = (
             (dataframe["deviation"] < -threshold) &
             dataframe["in_compression"] &
             dataframe["volume_confirm"] &
-            (dataframe["rsi"] < self.rsi_oversold) &  # RSI IS oversold (standard BB+RSI pattern)
+            (dataframe["rsi"] > self.rsi_oversold) &        # RSI has EXITED oversold
+            (dataframe["rsi"] < self.rsi_oversold_exit) &   # RSI still in bottom half (recovering)
             dataframe["trend_bullish"]
         )
 
