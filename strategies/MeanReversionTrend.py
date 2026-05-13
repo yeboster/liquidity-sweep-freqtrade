@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.122"
+    STRATEGY_VERSION = "2.0.123"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -99,7 +99,7 @@ class MeanReversionTrend(IStrategy):
     # is the REAL exit for failed setups. YouTube study: timed exit on losers = +93% net/DD.
     # Vantixs: 2×ATR for crypto 1H ≈ 6-8%. BreakingAlpha: 1.5-2×ATR optimal for MR.
     # DO NOT TIGHTEN THIS STOP. Tightening kills MR edge. Research is conclusive.
-    stoploss = -0.0750
+    stoploss = -0.0700
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
