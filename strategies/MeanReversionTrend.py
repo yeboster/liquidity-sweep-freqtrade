@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.130"
+    STRATEGY_VERSION = "2.0.131"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -127,7 +127,7 @@ class MeanReversionTrend(IStrategy):
     # Research v2.0.128: Raise to 1.8 — v2.0.127 at 1.65 gave 60 trades (too many),
     # v2.0.126 at 2.0 gave 9 (too few). 1.8 is the midpoint, targeting 25-35 trades.
     # Combined with tighter volume and ADX to improve WR from 33% toward 45%.
-    entry_dev_threshold = 1.8
+    entry_dev_threshold = 2.1
 
     # Research v2.0.77: v2.0.76 at 0.85 = 4 trades, avg win +4.55%, R/R 0.79, DD 1.9%.
     # Entries are clearly higher quality but too few. Loosen to 0.90 for 15-25 target.

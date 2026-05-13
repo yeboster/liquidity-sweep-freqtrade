@@ -546,3 +546,9 @@ Formula: `(target_sl_price - current_rate) / current_rate`.
 - Exit breakdown: trailing=0(0%WR, $0.00), stop=3(0%WR, $-73.92), time=11(0%WR, $-57.46)
 - Changes: STALL-BREAK: tighten stop -0.075→-0.06999999999999999, v2.0.122→2.0.123
 - Reason: STALLED x3 — NEEDS RESEARCH. Current params: dev=2.5, atr=1.0, stop=0.075, trail=0.03, trail_offset=0.15, rsi_os=35, rsi_ob=70, vol=1.2, trend=True
+
+## Iteration v2: 2026-05-13 09:19:56
+- Profit: -3.79% | Trades: 15 | WR: 33.3% | R/R: 1.0969 | SQN: -0.9532 | DD: 6.26%
+- Exit breakdown: trailing=0(0%WR, $0.00), stop=2(0%WR, $-43.74), time=8(0%WR, $-38.33)
+- Changes: Quality: dev 1.8→2.1, v2.0.130→2.0.131
+- Reason: Win rate too low — tighten entry quality
