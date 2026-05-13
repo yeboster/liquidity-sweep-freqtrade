@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.136"
+    STRATEGY_VERSION = "2.0.137"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -127,7 +127,11 @@ class MeanReversionTrend(IStrategy):
     # Research v2.0.128: Raise to 1.8 — v2.0.127 at 1.65 gave 60 trades (too many),
     # v2.0.126 at 2.0 gave 9 (too few). 1.8 is the midpoint, targeting 25-35 trades.
     # Combined with tighter volume and ADX to improve WR from 33% toward 45%.
-    entry_dev_threshold = 2.5
+    # Research v2.0.137: REVERT to standard BB 2.0σ — stratbase.ai + Vantixs both confirm
+    # standard BB(20,2.0) outperforms optimized params. 2.5σ was too extreme:
+    # only 16 trades with 25% WR — catching trend breakdowns, not MR setups.
+    # 2.0σ targets 25-35 trades with cleaner MR characteristics.
+    entry_dev_threshold = 2.0
 
     # Research v2.0.77: v2.0.76 at 0.85 = 4 trades, avg win +4.55%, R/R 0.79, DD 1.9%.
     # Entries are clearly higher quality but too few. Loosen to 0.90 for 15-25 target.
@@ -141,7 +145,10 @@ class MeanReversionTrend(IStrategy):
     # Research v2.0.128: Tighten to 0.95 — Vantixs: ATR < 0.9× prevented 72%
     # of largest losses. 0.95 is a moderate compression filter that filters 
     # noise entries without the v2.0.124 zero-trade paradox.
-    atr_compression_ratio = 1.00
+    # Research v2.0.137: Loosen to 1.10 — Vantixs: ATR < 1.5x = safe MR zone.
+    # 1.00 was essentially no filter (any below-avg ATR passes). 1.10 allows
+    # slightly elevated vol which often accompanies the start of reversion.
+    atr_compression_ratio = 1.10
 
     # Research v2.0.81: v2.0.80 at 1.1× = 65 trades, 37% stop-outs. Low-quality volume entries.
     # stratbase: volume confirmation is essential. Vantixs: declining volume on move improves WR +5pp.
@@ -154,7 +161,10 @@ class MeanReversionTrend(IStrategy):
     # Research v2.0.128: Raise to 1.4× — v2.0.127 at 1.15 gave 60 trades with
     # 33% WR, too many noise entries. stratbase: volume confirmation essential.
     # Higher threshold = fewer but higher-conviction entries at true extremes.
-    volume_multiplier = 1.3
+    # Research v2.0.137: Loosen to 1.1× — stratbase.ai's best MR result (68% WR,
+    # 1.71 PF) didn't use volume filter at all. 1.3× was filtering out valid setups.
+    # 1.1× keeps basic volume confirmation while letting more signals through.
+    volume_multiplier = 1.1
 
     # Research v2.0.76: revert RSI to 35 — v2.0.75 at 30 was too restrictive when stacked.
     # Connors RSI(2) cross-back at 30; but our RSI(14) is less sensitive.
@@ -185,7 +195,9 @@ class MeanReversionTrend(IStrategy):
     # Research v2.0.128: Tighten to 22. ADX 25 was too permissive — allowed
     # trending-breakdown setups (10 stop-outs at -7.77%). 22 filters mild
     # trends while capturing MR-friendly ranging conditions.
-    adx_threshold = 22
+    # Research v2.0.137: Tighten to 20 — Vantixs: ADX < 20 = "full MR engagement
+    # zone". 22 was allowing borderline-trending setups through. Cleaner cutoff.
+    adx_threshold = 20
 
     # Time-based exit — research: if it hasn't reverted in 18h, get out
     # v2.0.81: Lower to 18h (research: most MR reversions happen within 12-18h or not at all)
@@ -198,7 +210,10 @@ class MeanReversionTrend(IStrategy):
     # the thesis is valid." With wide stop (-7.5%), time exit catches failures
     # at ~-1.4% avg instead of letting them drift to -7.5%.
     # Important: winners get full 18h (time_exit_hours) to develop.
-    time_exit_loss_hours = 10
+    # Research v2.0.137: Extend to 12h — with 2.0σ entries (vs 2.5σ),
+    # reversions may take slightly longer but should be more reliable.
+    # 10h was prematurely killing trades that needed 10-14h to revert.
+    time_exit_loss_hours = 12
 
     # ── Exit Conditions ─────────────────────────────────────────────────────
     # Research: target = mid-band (SMA), not a tight trail. Exit when reverted.
@@ -226,16 +241,19 @@ class MeanReversionTrend(IStrategy):
     # or price reaches middle band. Connors RSI(2) > 65 ≈ RSI(14) > 70 for crypto.
     # 75 was slightly too high — winners overstayed and partial gains evaporated.
     # At 70, combined with -0.5% deviation exit, captures full 2-3% MR bounce.
-    exit_rsi_long = 70
+    # Research v2.0.137: Lower to 65 — stratbase: exit when momentum normalizes
+    # (RSI > 50). 70 held too long, giving back bounce gains. 65 locks in earlier.
+    exit_rsi_long = 65
     exit_rsi_short = 30  # Mirror symmetry
     # Research v2.0.59: exit when deviation > 0.5% (price within 0.5% of SMA).
     # v2.0.58 at 1.0% required price to overshoot SMA by 1% — combined with
     # entry at -1.3%, this created 0.3% gap. With 2.0% entry, 0.5% exit
     # captures 1.5% reversion minimum + bounce potential = 2-3% avg win.
     # This competes with RSI 75 exit — whichever fires first locks in profit.
-    exit_dev_revert_pct = 0.5   # v2.0.114: widened from 0.3. At 0.3%, exit fired nearly
-    # at SMA — cutting winners short. 0.5% gives partial reversion room while
-    # still catching the bulk of the bounce. RSI exit now at 75 handles full exits.
+    # Research v2.0.137: Widen to 0.8% — with lower entry threshold (2.0σ),
+    # winners need more room to fully revert. Combined with earlier RSI exit
+    # (65 vs 70), this captures more of the bounce before momentum normalizes.
+    exit_dev_revert_pct = 0.8
 
     # Research v2.0.107: Vantixs recommends max 2 concurrent MR positions.
     # v2.0.114: Keep max 2. With wider stop (-7.5%), correlation risk from
