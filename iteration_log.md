@@ -612,3 +612,9 @@ Formula: `(target_sl_price - current_rate) / current_rate`.
 - Exit breakdown: trailing=0(0%WR, $0.00), stop=8(0%WR, $-164.60), time=13(0%WR, $-67.12)
 - Changes: Quality: dev 2.5→2.5, v2.0.141→2.0.142
 - Reason: Win rate too low — tighten entry quality
+
+## Iteration v2: 2026-05-14 05:19:54 [STALLED x3]
+- Profit: -15.73% | Trades: 29 | WR: 27.6% | R/R: 0.8800 | SQN: -2.5134 | DD: 15.73%
+- Exit breakdown: trailing=0(0%WR, $0.00), stop=8(0%WR, $-164.60), time=13(0%WR, $-67.12)
+- Changes: STALL-BREAK: enable trend filter, v2.0.142→2.0.143
+- Reason: STALLED x3 — NEEDS RESEARCH. Current params: dev=2.5, atr=1.1, stop=0.065, trail=0.03, trail_offset=0.15, rsi_os=35, rsi_ob=70, vol=1.1, trend=True
