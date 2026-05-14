@@ -660,3 +660,9 @@ Formula: `(target_sl_price - current_rate) / current_rate`.
 - Exit breakdown: trailing=0(0%WR, $0.00), stop=9(0%WR, $-189.31), time=10(0%WR, $-49.36)
 - Changes: Too many stop-outs: tighten stop -0.065→-0.062, v2.0.150→2.0.151
 - Reason: Negative profit — R/R problem or bad entries
+
+## Iteration v2: 2026-05-14 21:19:54
+- Profit: -13.46% | Trades: 30 | WR: 40.0% | R/R: 0.6520 | SQN: -1.9858 | DD: 13.71%
+- Exit breakdown: trailing=0(0%WR, $0.00), stop=9(0%WR, $-181.63), time=10(0%WR, $-49.71)
+- Changes: Too many stop-outs: tighten stop -0.062→-0.059, v2.0.151→2.0.152
+- Reason: Negative profit — R/R problem or bad entries
