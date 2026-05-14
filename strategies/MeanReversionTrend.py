@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.144"
+    STRATEGY_VERSION = "2.0.145"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -143,7 +143,7 @@ class MeanReversionTrend(IStrategy):
     # v2.0.143 at 2.5σ = only 29 trades, catching trend breakdowns not MR.
     # stratbase.ai: "standard BB(20,2.0) + filters outperformed optimized params."
     # 2.0σ targets 40-55 trades with cleaner MR characteristics.
-    entry_dev_threshold = 2.0
+    entry_dev_threshold = 2.3
 
     # Research v2.0.77: v2.0.76 at 0.85 = 4 trades, avg win +4.55%, R/R 0.79, DD 1.9%.
     # Entries are clearly higher quality but too few. Loosen to 0.90 for 15-25 target.
