@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.143"
+    STRATEGY_VERSION = "2.0.144"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -102,7 +102,14 @@ class MeanReversionTrend(IStrategy):
     # Research v2.0.128: Tighten to -6.5%. v2.0.127 at -7.5% had 10 stop-outs
     # at -7.77% avg ($236 loss). -6.5% saves ~$12 per stopped trade without
     # significantly affecting exit_signal winners (100% WR at +3.61%).
-    stoploss = -0.0650
+    # Research v2.0.144: WIDEN to -8.0%. v2.0.143 at -6.5% = 8 stop-outs at
+    # -6.78% avg ($-164.60) — THE dominant loss source. MR research consensus:
+    # Connors/Alvarez: "fixed stops killed MR performance in EVERY case."
+    # LuxAlgo: "start with wider stops, 8-12%." EnlightenedStockTrading:
+    # "wide stop 20-40% protects worst-case without destroying expectancy."
+    # -8% gives MR dips room to breathe. time_exit_loss at 16h catches failures.
+    # DO NOT TIGHTEN THIS STOP. Research is unambiguous.
+    stoploss = -0.0800
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
@@ -131,7 +138,12 @@ class MeanReversionTrend(IStrategy):
     # standard BB(20,2.0) outperforms optimized params. 2.5σ was too extreme:
     # only 16 trades with 25% WR — catching trend breakdowns, not MR setups.
     # 2.0σ targets 25-35 trades with cleaner MR characteristics.
-    entry_dev_threshold = 2.5
+    # Research v2.0.144: REVERT to standard BB 2.0σ. Multiple sources confirm
+    # BB(20,2.0) is the research standard for MR — 95% of data within 2σ.
+    # v2.0.143 at 2.5σ = only 29 trades, catching trend breakdowns not MR.
+    # stratbase.ai: "standard BB(20,2.0) + filters outperformed optimized params."
+    # 2.0σ targets 40-55 trades with cleaner MR characteristics.
+    entry_dev_threshold = 2.0
 
     # Research v2.0.77: v2.0.76 at 0.85 = 4 trades, avg win +4.55%, R/R 0.79, DD 1.9%.
     # Entries are clearly higher quality but too few. Loosen to 0.90 for 15-25 target.
@@ -164,7 +176,12 @@ class MeanReversionTrend(IStrategy):
     # Research v2.0.137: Loosen to 1.1× — stratbase.ai's best MR result (68% WR,
     # 1.71 PF) didn't use volume filter at all. 1.3× was filtering out valid setups.
     # 1.1× keeps basic volume confirmation while letting more signals through.
-    volume_multiplier = 1.1
+    # Research v2.0.144: Tighten volume to 1.35x. With dev lowered to 2.0σ
+    # (more entries), need stricter volume to filter noise. Vantixs:
+    # "declining volume on move to band improved WR +5pp." Higher volume
+    # on the extreme move signals capitulation, not organic selling.
+    # 1.35x confirms true volume exhaustion at the band.
+    volume_multiplier = 1.35
 
     # Research v2.0.76: revert RSI to 35 — v2.0.75 at 30 was too restrictive when stacked.
     # Connors RSI(2) cross-back at 30; but our RSI(14) is less sensitive.
@@ -197,7 +214,11 @@ class MeanReversionTrend(IStrategy):
     # trends while capturing MR-friendly ranging conditions.
     # Research v2.0.137: Tighten to 20 — Vantixs: ADX < 20 = "full MR engagement
     # zone". 22 was allowing borderline-trending setups through. Cleaner cutoff.
-    adx_threshold = 20
+    # Research v2.0.144: Loosen to 24. Vantixs: ADX < 20 = full MR, 20-25 =
+    # reduced size but still viable. v2.0.143 at 20 was too restrictive with
+    # only 29 trades. 24 allows mild-trending MR setups while filtering strong
+    # trends (ADX > 25 = new trend forming, skip).
+    adx_threshold = 24
 
     # Time-based exit — research: if it hasn't reverted in 18h, get out
     # v2.0.81: Lower to 18h (research: most MR reversions happen within 12-18h or not at all)
@@ -213,7 +234,13 @@ class MeanReversionTrend(IStrategy):
     # Research v2.0.137: Extend to 12h — with 2.0σ entries (vs 2.5σ),
     # reversions may take slightly longer but should be more reliable.
     # 10h was prematurely killing trades that needed 10-14h to revert.
-    time_exit_loss_hours = 12
+    # at -1.4% avg instead of letting them drift to -7.5%.
+    # Important: winners get full 18h (time_exit_hours) to develop.
+    # Research v2.0.144: Extend to 16h. With wider stop (-8%), trades have
+    # more breathing room. VoiceOfChain: "most MR reversions happen within
+    # 12-18h or not at all." 16h aligns with the research upper bound,
+    # giving more trades a chance to reverse before forced exit.
+    time_exit_loss_hours = 16
 
     # ── Exit Conditions ─────────────────────────────────────────────────────
     # Research: target = mid-band (SMA), not a tight trail. Exit when reverted.
@@ -243,7 +270,11 @@ class MeanReversionTrend(IStrategy):
     # At 70, combined with -0.5% deviation exit, captures full 2-3% MR bounce.
     # Research v2.0.137: Lower to 65 — stratbase: exit when momentum normalizes
     # (RSI > 50). 70 held too long, giving back bounce gains. 65 locks in earlier.
-    exit_rsi_long = 65
+    # Research v2.0.144: Raise to 68. v2.0.143 at 65 = winners exit early
+    # before full reversion. statoasis: RSI(2)>65 ≈ RSI(14)>68 for crypto 1H.
+    # alphactor.ai: "exit RSI(2) above 70 captures reversion without waiting
+    # for trend move." 68 gives winners the full 2-3% MR bounce to develop.
+    exit_rsi_long = 68
     exit_rsi_short = 30  # Mirror symmetry
     # Research v2.0.59: exit when deviation > 0.5% (price within 0.5% of SMA).
     # v2.0.58 at 1.0% required price to overshoot SMA by 1% — combined with
