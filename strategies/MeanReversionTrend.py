@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.145"
+    STRATEGY_VERSION = "2.0.146"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -109,7 +109,7 @@ class MeanReversionTrend(IStrategy):
     # "wide stop 20-40% protects worst-case without destroying expectancy."
     # -8% gives MR dips room to breathe. time_exit_loss at 16h catches failures.
     # DO NOT TIGHTEN THIS STOP. Research is unambiguous.
-    stoploss = -0.0800
+    stoploss = -0.0770
 
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
