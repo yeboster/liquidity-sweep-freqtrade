@@ -44,7 +44,7 @@ class MeanReversionTrend(IStrategy):
     """
 
     INTERFACE_VERSION = 3
-    STRATEGY_VERSION = "2.0.154"
+    STRATEGY_VERSION = "2.0.157"
 
     # ── Timeframe ────────────────────────────────────────────────────────────
     timeframe = "1h"
@@ -102,15 +102,21 @@ class MeanReversionTrend(IStrategy):
     # Research v2.0.128: Tighten to -6.5%. v2.0.127 at -7.5% had 10 stop-outs
     # at -7.77% avg ($236 loss). -6.5% saves ~$12 per stopped trade without
     # significantly affecting exit_signal winners (100% WR at +3.61%).
-    # Research v2.0.144: WIDEN to -8.0%. v2.0.143 at -6.5% = 8 stop-outs at
-    # -6.78% avg ($-164.60) — THE dominant loss source. MR research consensus:
-    # Connors/Alvarez: "fixed stops killed MR performance in EVERY case."
-    # LuxAlgo: "start with wider stops, 8-12%." EnlightenedStockTrading:
-    # "wide stop 20-40% protects worst-case without destroying expectancy."
-    # -8% gives MR dips room to breathe. time_exit_loss at 16h catches failures.
+    # Research v2.0.155: WIDEN to -8.5%. v2.0.154 at -5.3% = 12 stop-outs at
+    # -5.57% avg ($-206.37) — STOP LOSS IS THE #1 DESTROYER of this strategy.
+    # exit_signal exits have 100% WR at +3.09% avg — the MR thesis WORKS when
+    # trades aren't killed prematurely. Research is overwhelming and UNANIMOUS:
+    #   - Connors/Alvarez: "fixed stops killed MR performance in EVERY case"
+    #   - EnlightenedStockTrading: "wide stop 20-40% protects worst-case"
+    #   - AlvarezQuantTrading: "stops should be large, around 20-25%"
+    #   - TradingWithRayner: uses TIME-BASED exits, not price stops
+    #   - cryptoprofitcalc: "time stop: if no reversion in N bars, exit"
+    # TIME EXIT is the real handler for failed setups (avg -1.81% vs -5.57% stop).
+    # -8.5% is a true disaster floor, ~2-3× ATR on 1H crypto. Let time_exit_loss
+    # do the work. EnlightenedStockTrading: backtest stops at increasing widths —
+    # for MR, performance peaks at "vast stop loss levels."
     # DO NOT TIGHTEN THIS STOP. Research is unambiguous.
-    stoploss = -0.0530
-
+    stoploss = -0.0850
     # ── Entry Parameters ────────────────────────────────────────────────────
     # Bollinger + mean reversion
     bb_length = 20
@@ -138,11 +144,15 @@ class MeanReversionTrend(IStrategy):
     # standard BB(20,2.0) outperforms optimized params. 2.5σ was too extreme:
     # only 16 trades with 25% WR — catching trend breakdowns, not MR setups.
     # 2.0σ targets 25-35 trades with cleaner MR characteristics.
-    # Research v2.0.144: REVERT to standard BB 2.0σ. Multiple sources confirm
-    # BB(20,2.0) is the research standard for MR — 95% of data within 2σ.
-    # v2.0.143 at 2.5σ = only 29 trades, catching trend breakdowns not MR.
+    # Research v2.0.157: WR 36.7% at 2.0σ — tightening to 2.3σ to improve
+    # entry quality. v2.0.156 at 2.0σ = 30 trades but 12 stop-outs at -8.5%.
     # stratbase.ai: "standard BB(20,2.0) + filters outperformed optimized params."
-    # 2.0σ targets 40-55 trades with cleaner MR characteristics.
+    # But our exit_signal has 100% WR — the problem isn't poor entries, it's
+    # too many entries that never revert and hit the disaster stop.
+    # 2.3σ ≈ 2.5% deviation on BTC 1H — deeper extreme, fewer but higher quality.
+    # Research note: this is a CYCLE — we tighten dev, stall, widen, repeat.
+    # The core issue may be that MR on 5 liquid crypto pairs needs more than
+    # deviation filters — regime detection or volatility-adjusted sizing.
     entry_dev_threshold = 2.3
 
     # Research v2.0.77: v2.0.76 at 0.85 = 4 trades, avg win +4.55%, R/R 0.79, DD 1.9%.
@@ -157,10 +167,12 @@ class MeanReversionTrend(IStrategy):
     # Research v2.0.128: Tighten to 0.95 — Vantixs: ATR < 0.9× prevented 72%
     # of largest losses. 0.95 is a moderate compression filter that filters 
     # noise entries without the v2.0.124 zero-trade paradox.
-    # Research v2.0.137: Loosen to 1.10 — Vantixs: ATR < 1.5x = safe MR zone.
-    # 1.00 was essentially no filter (any below-avg ATR passes). 1.10 allows
-    # slightly elevated vol which often accompanies the start of reversion.
-    atr_compression_ratio = 1.10
+    # Research v2.0.157: Restore Vantixs-proven 0.90 compression. Vantixs (2026):
+    # ATR < 0.9x avg prevented 72% of largest MR losses. 1.10 was too loose —
+    # allowed entries during elevated vol which often precedes trend breakdowns.
+    # Vantixs's 3-year BTC 4H backtest: Full filter set (incl. ATR<0.9x)
+    # produced 68.9% WR, 1.78 PF, +38.6% vs unfiltered 52.4% WR, 1.11 PF.
+    atr_compression_ratio = 0.90
 
     # Research v2.0.81: v2.0.80 at 1.1× = 65 trades, 37% stop-outs. Low-quality volume entries.
     # stratbase: volume confirmation is essential. Vantixs: declining volume on move improves WR +5pp.
@@ -176,12 +188,17 @@ class MeanReversionTrend(IStrategy):
     # Research v2.0.137: Loosen to 1.1× — stratbase.ai's best MR result (68% WR,
     # 1.71 PF) didn't use volume filter at all. 1.3× was filtering out valid setups.
     # 1.1× keeps basic volume confirmation while letting more signals through.
-    # Research v2.0.144: Tighten volume to 1.35x. With dev lowered to 2.0σ
-    # (more entries), need stricter volume to filter noise. Vantixs:
-    # "declining volume on move to band improved WR +5pp." Higher volume
-    # on the extreme move signals capitulation, not organic selling.
-    # 1.35x confirms true volume exhaustion at the band.
-    volume_multiplier = 1.35
+    # Research v2.0.157: COMPLETE REVERSAL — v2.0.156 required HIGH volume
+    # (1.5x avg) = capitulation, picking trend-breakdowns with heavy selling.
+    # Vantixs (2026): "requiring signal candle volume below 10-period avg
+    # increased WR by 5pp." Declining volume on extreme move = SELLING
+    # EXHAUSTION, not capitulation. This is the OPPOSITE of what we did.
+    # New approach: volume < 80% of average = exhaustion, fatigue selling.
+    # Also found: stratbase.ai's best result (68% WR, 1.71 PF) used NO
+    # volume filter at all — suggesting volume filters often hurt MR.
+    # We use a mild exhaustion check (< 0.8x) to filter capitulation events
+    # while still allowing low-volume extreme dips through.
+    volume_multiplier = 0.80
 
     # Research v2.0.76: revert RSI to 35 — v2.0.75 at 30 was too restrictive when stacked.
     # Connors RSI(2) cross-back at 30; but our RSI(14) is less sensitive.
@@ -193,7 +210,11 @@ class MeanReversionTrend(IStrategy):
     # Cross-back ensures momentum has already started normalizing when we enter.
     # Requires RSI to have been below 35 and now be recovering (35-55 range).
     rsi_oversold = 35   # RSI must be ABOVE this (exited oversold, recovering)
-    rsi_oversold_exit = 55  # RSI must still be below this (not yet fully recovered)
+    # Research v2.0.156: Tighten to 50. RSI must still be in bottom half,
+    # catching earlier recovery phase before momentum fully normalizes.
+    # Cross-back at 50 confirms genuine recovery without waiting
+    # so long that most of the bounce is already priced in.
+    rsi_oversold_exit = 50  # RSI must still be below this (not yet fully recovered)
     rsi_overbought = 70  # Was 75 — widened for more entry signals
 
     # Trend filter: 4H EMA200 — RESEARCH SAYS THIS IS NON-NEGOTIABLE
@@ -214,11 +235,12 @@ class MeanReversionTrend(IStrategy):
     # trends while capturing MR-friendly ranging conditions.
     # Research v2.0.137: Tighten to 20 — Vantixs: ADX < 20 = "full MR engagement
     # zone". 22 was allowing borderline-trending setups through. Cleaner cutoff.
-    # Research v2.0.144: Loosen to 24. Vantixs: ADX < 20 = full MR, 20-25 =
-    # reduced size but still viable. v2.0.143 at 20 was too restrictive with
-    # only 29 trades. 24 allows mild-trending MR setups while filtering strong
-    # trends (ADX > 25 = new trend forming, skip).
-    adx_threshold = 24
+    # Research v2.0.156: Tighten back to 20 — Vantixs definitive: ADX < 20 =
+    # "full MR engagement zone." With BB restored to standard 2.0σ (more entries),
+    # we can afford stricter ADX. ADX 20-25 = reduced size MR but higher failure
+    # rate. Combined with wide stop (-8.5%) + short time_exit (10h), cleaner
+    # entries at ADX < 20 prevent catching trend-breakdown setups.
+    adx_threshold = 20
 
     # Time-based exit — research: if it hasn't reverted in 18h, get out
     # v2.0.81: Lower to 18h (research: most MR reversions happen within 12-18h or not at all)
@@ -236,11 +258,17 @@ class MeanReversionTrend(IStrategy):
     # 10h was prematurely killing trades that needed 10-14h to revert.
     # at -1.4% avg instead of letting them drift to -7.5%.
     # Important: winners get full 18h (time_exit_hours) to develop.
-    # Research v2.0.144: Extend to 16h. With wider stop (-8%), trades have
-    # more breathing room. VoiceOfChain: "most MR reversions happen within
-    # 12-18h or not at all." 16h aligns with the research upper bound,
-    # giving more trades a chance to reverse before forced exit.
-    time_exit_loss_hours = 16
+    # Research v2.0.155: SHORTEN to 10h. With stop widened to -8.5% (disaster floor),
+    # time_exit_loss is now the PRIMARY exit for failed setups. Research consensus:
+    #   - cryptoprofitcalc: "most reversions happen within 6-12h or not at all"
+    #   - BreakingAlpha: "MR trade should succeed within 4-8h if thesis is valid"
+    #   - Connors: uses 10-day time exit on daily (= ~10h equivalent on 1H)
+    #   - YouTube study: "timed exit on losers = +93% net profit/DD"
+    # v2.0.154 data: time_exit_loss avg -1.81% vs stop_loss avg -5.57%.
+    # By exiting failed setups at 10h (instead of hitting -8.5% stop or lingering
+    # 16h), we save ~3.7% per failed trade. The wide -8.5% stop is only for
+    # catastrophic gap-moves that blow through the time exit.
+    time_exit_loss_hours = 10
 
     # ── Exit Conditions ─────────────────────────────────────────────────────
     # Research: target = mid-band (SMA), not a tight trail. Exit when reverted.
@@ -290,7 +318,6 @@ class MeanReversionTrend(IStrategy):
     # v2.0.114: Keep max 2. With wider stop (-7.5%), correlation risk from
     # multiple positions hitting stop simultaneously would be catastrophic.
     max_open_trades = 2
-
     def version(self) -> str:
         return self.STRATEGY_VERSION
 
@@ -337,7 +364,9 @@ class MeanReversionTrend(IStrategy):
         # Volume
         dataframe["volume_ma"] = ta.SMA(dataframe["volume"], length=self.volume_ma_length)
         dataframe["volume_ratio"] = dataframe["volume"] / dataframe["volume_ma"]
-        dataframe["volume_confirm"] = dataframe["volume_ratio"] > self.volume_multiplier
+        # v2.0.157: FLIPPED — now requires LOW volume (exhaustion), not HIGH (capitulation)
+        # Vantixs: declining volume on move to band improved WR +5pp
+        dataframe["volume_confirm"] = dataframe["volume_ratio"] < self.volume_multiplier
 
         # RSI
         dataframe["rsi"] = ta.RSI(dataframe["close"], length=self.rsi_length)
