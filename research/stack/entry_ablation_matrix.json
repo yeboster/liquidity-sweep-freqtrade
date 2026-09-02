@@ -1,0 +1,349 @@
+{
+  "schema_version": "1.0.0",
+  "name": "stack-entry-ablation",
+  "strategy": "StackAblation",
+  "components": [
+    "htf_bias",
+    "discount",
+    "ote",
+    "fvg",
+    "fvg_one_time",
+    "session",
+    "weekend",
+    "momentum",
+    "min_rr"
+  ],
+  "full_components": {
+    "htf_bias": true,
+    "discount": true,
+    "ote": true,
+    "fvg": true,
+    "fvg_one_time": true,
+    "session": true,
+    "weekend": true,
+    "momentum": true,
+    "min_rr": true
+  },
+  "experiments": [
+    {
+      "id": "E00_core",
+      "kind": "core",
+      "component": null,
+      "components": {
+        "htf_bias": false,
+        "discount": false,
+        "ote": false,
+        "fvg": false,
+        "fvg_one_time": false,
+        "session": false,
+        "weekend": false,
+        "momentum": false,
+        "min_rr": false
+      }
+    },
+    {
+      "id": "E01_full",
+      "kind": "full",
+      "component": null,
+      "components": {
+        "htf_bias": true,
+        "discount": true,
+        "ote": true,
+        "fvg": true,
+        "fvg_one_time": true,
+        "session": true,
+        "weekend": true,
+        "momentum": true,
+        "min_rr": true
+      }
+    },
+    {
+      "id": "E02_loo_htf_bias",
+      "kind": "leave_one_out",
+      "component": "htf_bias",
+      "components": {
+        "htf_bias": false,
+        "discount": true,
+        "ote": true,
+        "fvg": true,
+        "fvg_one_time": true,
+        "session": true,
+        "weekend": true,
+        "momentum": true,
+        "min_rr": true
+      }
+    },
+    {
+      "id": "E03_loo_discount",
+      "kind": "leave_one_out",
+      "component": "discount",
+      "components": {
+        "htf_bias": true,
+        "discount": false,
+        "ote": true,
+        "fvg": true,
+        "fvg_one_time": true,
+        "session": true,
+        "weekend": true,
+        "momentum": true,
+        "min_rr": true
+      }
+    },
+    {
+      "id": "E04_loo_ote",
+      "kind": "leave_one_out",
+      "component": "ote",
+      "components": {
+        "htf_bias": true,
+        "discount": true,
+        "ote": false,
+        "fvg": true,
+        "fvg_one_time": true,
+        "session": true,
+        "weekend": true,
+        "momentum": true,
+        "min_rr": true
+      }
+    },
+    {
+      "id": "E05_loo_fvg",
+      "kind": "leave_one_out",
+      "component": "fvg",
+      "components": {
+        "htf_bias": true,
+        "discount": true,
+        "ote": true,
+        "fvg": false,
+        "fvg_one_time": true,
+        "session": true,
+        "weekend": true,
+        "momentum": true,
+        "min_rr": true
+      }
+    },
+    {
+      "id": "E06_loo_fvg_one_time",
+      "kind": "leave_one_out",
+      "component": "fvg_one_time",
+      "components": {
+        "htf_bias": true,
+        "discount": true,
+        "ote": true,
+        "fvg": true,
+        "fvg_one_time": false,
+        "session": true,
+        "weekend": true,
+        "momentum": true,
+        "min_rr": true
+      }
+    },
+    {
+      "id": "E07_loo_session",
+      "kind": "leave_one_out",
+      "component": "session",
+      "components": {
+        "htf_bias": true,
+        "discount": true,
+        "ote": true,
+        "fvg": true,
+        "fvg_one_time": true,
+        "session": false,
+        "weekend": true,
+        "momentum": true,
+        "min_rr": true
+      }
+    },
+    {
+      "id": "E08_loo_weekend",
+      "kind": "leave_one_out",
+      "component": "weekend",
+      "components": {
+        "htf_bias": true,
+        "discount": true,
+        "ote": true,
+        "fvg": true,
+        "fvg_one_time": true,
+        "session": true,
+        "weekend": false,
+        "momentum": true,
+        "min_rr": true
+      }
+    },
+    {
+      "id": "E09_loo_momentum",
+      "kind": "leave_one_out",
+      "component": "momentum",
+      "components": {
+        "htf_bias": true,
+        "discount": true,
+        "ote": true,
+        "fvg": true,
+        "fvg_one_time": true,
+        "session": true,
+        "weekend": true,
+        "momentum": false,
+        "min_rr": true
+      }
+    },
+    {
+      "id": "E10_loo_min_rr",
+      "kind": "leave_one_out",
+      "component": "min_rr",
+      "components": {
+        "htf_bias": true,
+        "discount": true,
+        "ote": true,
+        "fvg": true,
+        "fvg_one_time": true,
+        "session": true,
+        "weekend": true,
+        "momentum": true,
+        "min_rr": false
+      }
+    },
+    {
+      "id": "E11_add_htf_bias",
+      "kind": "single_addition",
+      "component": "htf_bias",
+      "components": {
+        "htf_bias": true,
+        "discount": false,
+        "ote": false,
+        "fvg": false,
+        "fvg_one_time": false,
+        "session": false,
+        "weekend": false,
+        "momentum": false,
+        "min_rr": false
+      }
+    },
+    {
+      "id": "E12_add_discount",
+      "kind": "single_addition",
+      "component": "discount",
+      "components": {
+        "htf_bias": false,
+        "discount": true,
+        "ote": false,
+        "fvg": false,
+        "fvg_one_time": false,
+        "session": false,
+        "weekend": false,
+        "momentum": false,
+        "min_rr": false
+      }
+    },
+    {
+      "id": "E13_add_ote",
+      "kind": "single_addition",
+      "component": "ote",
+      "components": {
+        "htf_bias": false,
+        "discount": false,
+        "ote": true,
+        "fvg": false,
+        "fvg_one_time": false,
+        "session": false,
+        "weekend": false,
+        "momentum": false,
+        "min_rr": false
+      }
+    },
+    {
+      "id": "E14_add_fvg",
+      "kind": "single_addition",
+      "component": "fvg",
+      "components": {
+        "htf_bias": false,
+        "discount": false,
+        "ote": false,
+        "fvg": true,
+        "fvg_one_time": false,
+        "session": false,
+        "weekend": false,
+        "momentum": false,
+        "min_rr": false
+      }
+    },
+    {
+      "id": "E15_add_fvg_one_time",
+      "kind": "single_addition",
+      "component": "fvg_one_time",
+      "components": {
+        "htf_bias": false,
+        "discount": false,
+        "ote": false,
+        "fvg": false,
+        "fvg_one_time": true,
+        "session": false,
+        "weekend": false,
+        "momentum": false,
+        "min_rr": false
+      }
+    },
+    {
+      "id": "E16_add_session",
+      "kind": "single_addition",
+      "component": "session",
+      "components": {
+        "htf_bias": false,
+        "discount": false,
+        "ote": false,
+        "fvg": false,
+        "fvg_one_time": false,
+        "session": true,
+        "weekend": false,
+        "momentum": false,
+        "min_rr": false
+      }
+    },
+    {
+      "id": "E17_add_weekend",
+      "kind": "single_addition",
+      "component": "weekend",
+      "components": {
+        "htf_bias": false,
+        "discount": false,
+        "ote": false,
+        "fvg": false,
+        "fvg_one_time": false,
+        "session": false,
+        "weekend": true,
+        "momentum": false,
+        "min_rr": false
+      }
+    },
+    {
+      "id": "E18_add_momentum",
+      "kind": "single_addition",
+      "component": "momentum",
+      "components": {
+        "htf_bias": false,
+        "discount": false,
+        "ote": false,
+        "fvg": false,
+        "fvg_one_time": false,
+        "session": false,
+        "weekend": false,
+        "momentum": true,
+        "min_rr": false
+      }
+    },
+    {
+      "id": "E19_add_min_rr",
+      "kind": "single_addition",
+      "component": "min_rr",
+      "components": {
+        "htf_bias": false,
+        "discount": false,
+        "ote": false,
+        "fvg": false,
+        "fvg_one_time": false,
+        "session": false,
+        "weekend": false,
+        "momentum": false,
+        "min_rr": true
+      }
+    }
+  ]
+}
