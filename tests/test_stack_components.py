@@ -18,6 +18,12 @@ import pytest
 from strategies.stack_components import (
     confirmed_pivots,
     market_structure,
+    fair_value_gap,
+    fvg_lifecycle,
+    location,
+    liquidity_sweep,
+    sweep_to_structure,
+    structural_rr,
     MAX_PIVOT_WINDOW,
 )
 
@@ -1736,3 +1742,428 @@ class TestStructureNonVacuousShock:
             "future shock did not change bos/choch/bias_state in the tail; "
             "the engine may not be reading close/pivots"
         )
+
+
+# =============================================================================
+# Task 4: independently observable setup components
+# =============================================================================
+
+
+# ---- (A) fair_value_gap -----------------------------------------------------
+
+class TestFvgEventTiming:
+    def test_bullish_gap_emitted_only_on_third_candle(self):
+        # low[2] = 11 > high[0] = 10 -> bullish gap confirmed at idx 2.
+        idx = pd.date_range("2024-01-01", periods=5, freq="15min")
+        df = pd.DataFrame(
+            {
+                "high":  [10.0, 10.5, 12.0, 12.0, 12.0],
+                "low":   [ 9.0,  9.5, 11.0, 11.0, 11.0],
+                "close": [ 9.5, 10.0, 11.5, 11.5, 11.5],
+                "open":  [ 9.5, 10.0, 11.5, 11.5, 11.5],
+                "volume": [1.0] * 5,
+            },
+            index=idx,
+        )
+        out = fair_value_gap(df)
+        assert bool(out["fvg_bullish"].iloc[2])
+        assert not bool(out["fvg_bullish"].iloc[0])
+        assert not bool(out["fvg_bullish"].iloc[1])
+        assert out["fvg_top"].iloc[2] == 11.0
+        assert out["fvg_bottom"].iloc[2] == 10.0
+
+    def test_bearish_gap_emitted_only_on_third_candle(self):
+        # high[2] = 9 < low[0] = 10 -> bearish gap confirmed at idx 2.
+        idx = pd.date_range("2024-01-01", periods=5, freq="15min")
+        df = pd.DataFrame(
+            {
+                "high":  [11.0, 10.0,  9.0,  9.0,  9.0],
+                "low":   [10.0,  9.0,  8.0,  8.0,  8.0],
+                "close": [10.5,  9.5,  8.5,  8.5,  8.5],
+                "open":  [10.5,  9.5,  8.5,  8.5,  8.5],
+                "volume": [1.0] * 5,
+            },
+            index=idx,
+        )
+        out = fair_value_gap(df)
+        assert bool(out["fvg_bearish"].iloc[2])
+        assert not bool(out["fvg_bearish"].iloc[0])
+        assert not bool(out["fvg_bearish"].iloc[1])
+        assert out["fvg_top"].iloc[2] == 10.0
+        assert out["fvg_bottom"].iloc[2] == 9.0
+
+    def test_no_gap_when_ranges_overlap(self):
+        idx = pd.date_range("2024-01-01", periods=3, freq="15min")
+        df = pd.DataFrame(
+            {
+                "high": [10.0, 10.0, 10.0],
+                "low": [9.0, 9.0, 9.0],
+                "close": [9.5, 9.5, 9.5],
+                "open": [9.5, 9.5, 9.5],
+                "volume": [1.0, 1.0, 1.0],
+            },
+            index=idx,
+        )
+        out = fair_value_gap(df)
+        assert not out["fvg_bullish"].any()
+        assert not out["fvg_bearish"].any()
+
+    def test_exact_tie_does_not_fire_bullish(self):
+        # low[2] == high[0] exactly -> touch, not a gap (strict >).
+        idx = pd.date_range("2024-01-01", periods=3, freq="15min")
+        df = pd.DataFrame(
+            {
+                "high": [10.0, 10.5, 11.0],
+                "low": [9.0, 9.5, 10.0],  # low[2] == high[0] == 10.0
+                "close": [9.5, 10.0, 10.5],
+                "open": [9.5, 10.0, 10.5],
+                "volume": [1.0, 1.0, 1.0],
+            },
+            index=idx,
+        )
+        out = fair_value_gap(df)
+        assert not bool(out["fvg_bullish"].iloc[2])
+
+    def test_exact_tie_does_not_fire_bearish(self):
+        idx = pd.date_range("2024-01-01", periods=3, freq="15min")
+        df = pd.DataFrame(
+            {
+                "high": [11.0, 10.5, 10.0],  # high[2] == low[0] == 10.0
+                "low": [10.0, 9.5, 9.0],
+                "close": [10.5, 10.0, 9.5],
+                "open": [10.5, 10.0, 9.5],
+                "volume": [1.0, 1.0, 1.0],
+            },
+            index=idx,
+        )
+        out = fair_value_gap(df)
+        assert not bool(out["fvg_bearish"].iloc[2])
+
+    def test_bullish_and_bearish_mutually_exclusive(self):
+        df = _make_long_frame(n=200, seed=21)
+        out = fair_value_gap(df)
+        assert not (out["fvg_bullish"] & out["fvg_bearish"]).any()
+        # non-vacuous: at least one of each should occur on a noisy walk
+        assert out["fvg_bullish"].any() or out["fvg_bearish"].any()
+
+
+class TestFvgEdgeCases:
+    def test_short_history_does_not_crash(self):
+        idx = pd.date_range("2024-01-01", periods=2, freq="15min")
+        df = pd.DataFrame(
+            {"high": [10.0, 11.0], "low": [9.0, 10.0], "close": [9.5, 10.5],
+             "open": [9.5, 10.5], "volume": [1.0, 1.0]},
+            index=idx,
+        )
+        out = fair_value_gap(df)
+        assert not out["fvg_bullish"].any()
+        assert not out["fvg_bearish"].any()
+
+    def test_empty_frame_does_not_crash(self):
+        idx = pd.DatetimeIndex([], freq="15min")
+        df = pd.DataFrame(
+            {
+                "high": pd.Series([], dtype=float, index=idx),
+                "low": pd.Series([], dtype=float, index=idx),
+            }
+        )
+        out = fair_value_gap(df)
+        assert len(out) == 0
+
+    def test_nan_in_window_yields_no_gap(self):
+        idx = pd.date_range("2024-01-01", periods=5, freq="15min")
+        df = pd.DataFrame(
+            {
+                "high": [np.nan, 10.5, 12.0, 12.0, 12.0],
+                "low": [9.0, 9.5, 11.0, 11.0, 11.0],
+                "close": [9.5, 10.0, 11.5, 11.5, 11.5],
+                "open": [9.5, 10.0, 11.5, 11.5, 11.5],
+                "volume": [1.0] * 5,
+            },
+            index=idx,
+        )
+        out = fair_value_gap(df)
+        # prior_high at idx 2 is NaN -> comparison is False, no bullish gap.
+        assert not bool(out["fvg_bullish"].iloc[2])
+
+
+class TestFvgApi:
+    def test_returns_expected_columns(self):
+        df = _make_long_frame(n=20, seed=1)
+        out = fair_value_gap(df)
+        assert isinstance(out, pd.DataFrame)
+        for col in ("fvg_bullish", "fvg_bearish", "fvg_top", "fvg_bottom"):
+            assert col in out.columns
+
+    def test_output_index_matches_input(self):
+        df = _make_long_frame(n=20, seed=1)
+        out = fair_value_gap(df)
+        assert list(out.index) == list(df.index)
+
+    def test_missing_column_raises_key_error(self):
+        df = _make_long_frame(n=10, seed=1).drop(columns=["high"])
+        with pytest.raises(KeyError):
+            fair_value_gap(df)
+
+    def test_non_numeric_column_raises_type_error(self):
+        df = _make_long_frame(n=10, seed=1).copy()
+        df["high"] = [str(i) for i in range(10)]
+        with pytest.raises(TypeError, match="must be a numeric price series"):
+            fair_value_gap(df)
+
+
+class TestFvgNoFutureLeakage:
+    def test_future_shock_does_not_change_past_events(self):
+        n = 200
+        shock_start = 80
+        baseline_frame = _make_long_frame(n=n, seed=30)
+        baseline = fair_value_gap(baseline_frame)
+
+        assert baseline.iloc[:shock_start]["fvg_bullish"].any() or \
+               baseline.iloc[:shock_start]["fvg_bearish"].any(), (
+            "test setup: no FVG event before shock_start; "
+            "the future-shock check would be vacuous"
+        )
+
+        shocked = baseline_frame.copy()
+        cols = shocked.columns.get_indexer(["high", "low"])
+        shocked.iloc[shock_start:, cols] *= 10.0
+        assert not shocked.iloc[shock_start:].equals(baseline_frame.iloc[shock_start:])
+        pd.testing.assert_frame_equal(
+            shocked.iloc[:shock_start].reset_index(drop=True),
+            baseline_frame.iloc[:shock_start].reset_index(drop=True),
+        )
+
+        actual = fair_value_gap(shocked)
+        for col in ("fvg_bullish", "fvg_bearish", "fvg_top", "fvg_bottom"):
+            b = baseline.iloc[:shock_start][col].to_numpy()
+            a = actual.iloc[:shock_start][col].to_numpy()
+            if b.dtype == bool:
+                equal = b == a
+            else:
+                both_nan = np.isnan(b) & np.isnan(a)
+                equal = (b == a) | both_nan
+            assert equal.all(), (
+                f"future shock changed past fvg column {col!r} within "
+                f"[:shock_start]; rows: {np.where(~equal)[0].tolist()[:10]}"
+            )
+
+        # non-vacuous: the shock must actually change something in the
+        # rows whose window reaches into the shocked region.
+        tail_diff = not baseline.iloc[shock_start:].reset_index(drop=True).equals(
+            actual.iloc[shock_start:].reset_index(drop=True)
+        )
+        assert tail_diff, "shock did not change any tail FVG output; test is vacuous"
+
+
+# ---- Task 4 completion: lifecycle, location, sweep, sequence, R/R -----------
+
+
+def _task4_frame(high, low, close):
+    index = pd.date_range("2024-02-01", periods=len(close), freq="15min")
+    return pd.DataFrame({"high": high, "low": low, "close": close}, index=index, dtype=float)
+
+
+def _task4_fvg_frame(index, *, bullish_at=None, bearish_at=None, top=11.0, bottom=10.0):
+    result = pd.DataFrame({"fvg_bullish": False, "fvg_bearish": False,
+                           "fvg_top": np.nan, "fvg_bottom": np.nan}, index=index)
+    for row, column in ((bullish_at, "fvg_bullish"), (bearish_at, "fvg_bearish")):
+        if row is not None:
+            result.iloc[row, result.columns.get_loc(column)] = True
+            result.iloc[row, result.columns.get_loc("fvg_top")] = top
+            result.iloc[row, result.columns.get_loc("fvg_bottom")] = bottom
+    return result
+
+
+class TestFvgLifecycleTask4:
+    def test_bullish_lifecycle_is_one_time_and_new_gap_wins_same_row(self):
+        frame = _task4_frame([12] * 6, [11.5, 11.5, 10.5, 9.5, 10.5, 10.5], [11.8, 11.8, 11, 10, 11, 11])
+        fvg = _task4_fvg_frame(frame.index, bullish_at=1)
+        # A second bullish gap is born on the row that consumes the old one.
+        fvg.iloc[3, fvg.columns.get_loc("fvg_bullish")] = True
+        fvg.iloc[3, fvg.columns.get_loc("fvg_top")] = 10.5
+        fvg.iloc[3, fvg.columns.get_loc("fvg_bottom")] = 10.0
+        out = fvg_lifecycle(frame, fvg)
+        assert out["bullish_fvg_state"].tolist() == [0, 1, 2, 1, 2, 2]
+        assert out["bullish_fvg_new_event"].tolist() == [False, True, False, True, False, False]
+        assert out["bullish_fvg_tap_event"].tolist() == [False, False, True, False, True, False]
+        assert out["bullish_fvg_consumed_event"].tolist() == [False, False, False, True, False, False]
+        assert not out["bullish_fvg_unmitigated"].iloc[0]
+        assert out["bullish_fvg_unmitigated"].iloc[1:].all()
+
+    def test_bearish_gap_taps_then_consumes_once(self):
+        frame = _task4_frame([9.5, 9.5, 10.5, 11.5, 12, 12], [9, 9, 9, 10, 11, 11], [9.2, 9.2, 10, 11, 11.5, 11.5])
+        out = fvg_lifecycle(frame, _task4_fvg_frame(frame.index, bearish_at=1))
+        assert out["bearish_fvg_state"].tolist() == [0, 1, 2, 3, 3, 3]
+        assert out["bearish_fvg_tap_event"].sum() == 1
+        assert out["bearish_fvg_consumed_event"].sum() == 1
+        assert not out["bearish_fvg_unmitigated"].iloc[3:].any()
+
+    def test_future_shock_is_non_vacuous(self):
+        frame = _task4_frame([12] * 8, [11.5, 11.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5], [11] * 8)
+        fvg = _task4_fvg_frame(frame.index, bullish_at=1)
+        baseline = fvg_lifecycle(frame, fvg)
+        shocked = frame.copy()
+        shocked.iloc[5:, shocked.columns.get_loc("low")] = 9.0
+        assert not shocked.iloc[5:].equals(frame.iloc[5:])
+        pd.testing.assert_frame_equal(shocked.iloc[:5], frame.iloc[:5])
+        actual = fvg_lifecycle(shocked, fvg)
+        pd.testing.assert_frame_equal(actual.iloc[:5], baseline.iloc[:5])
+        assert not actual.iloc[5:].equals(baseline.iloc[5:])
+
+    def test_rejects_invalid_event_schema_and_zone(self):
+        frame = _task4_frame([2, 2], [1, 1], [1.5, 1.5])
+        fvg = _task4_fvg_frame(frame.index, bullish_at=1, top=1.0, bottom=1.0)
+        with pytest.raises(ValueError, match="fvg_top > fvg_bottom"):
+            fvg_lifecycle(frame, fvg)
+        with pytest.raises(TypeError, match="boolean"):
+            fvg_lifecycle(frame, fvg.assign(fvg_bullish=[0, 1]))
+        with pytest.raises(ValueError, match="index"):
+            fvg_lifecycle(frame, fvg.set_axis(pd.RangeIndex(2)))
+
+
+class TestLocationTask4:
+    def test_long_and_short_retracement_location_and_ote_boundaries(self):
+        frame = _task4_frame([10] * 5, [0] * 5, [10, 5, 3.8, 2.1, 0])
+        long = location(frame, 0.0, 10.0, "long")
+        assert long["retracement"].tolist() == pytest.approx([0, .5, .62, .79, 1])
+        assert long["premium"].tolist() == [True, False, False, False, False]
+        assert long["discount"].tolist() == [False, False, True, True, True]
+        assert long["ote"].tolist() == [False, False, True, True, False]
+        assert location(frame, 0.0, 10.0, "short")["retracement"].tolist() == pytest.approx([1, .5, .38, .21, 0])
+
+    def test_known_series_are_used_and_ranges_validated(self):
+        frame = _task4_frame([20] * 3, [0] * 3, [7, 17, 8])
+        lows = pd.Series([0.0, 10.0, np.nan], index=frame.index)
+        highs = pd.Series([10.0, 20.0, np.nan], index=frame.index)
+        out = location(frame, lows, highs, "long")
+        assert out["retracement"].iloc[:2].tolist() == pytest.approx([.3, .3])
+        assert np.isnan(out["retracement"].iloc[2])
+        with pytest.raises(ValueError, match="strictly greater"):
+            location(frame, 10.0, 10.0, "long")
+        with pytest.raises(ValueError, match="ote_lower"):
+            location(frame, 0.0, 10.0, "long", ote_lower=.8, ote_upper=.7)
+        with pytest.raises(ValueError, match="index"):
+            location(frame, lows.set_axis(pd.RangeIndex(3)), highs, "long")
+
+    def test_future_price_and_leg_shock_is_non_vacuous(self):
+        frame = _task4_frame([10] * 8, [0] * 8, [9, 8, 7, 6, 5, 4, 3, 2])
+        lows = pd.Series(0.0, index=frame.index)
+        highs = pd.Series(10.0, index=frame.index)
+        baseline = location(frame, lows, highs, "long")
+        shocked = frame.copy()
+        shocked.iloc[5:, shocked.columns.get_loc("close")] = 9.5
+        shocked_highs = highs.copy(); shocked_highs.iloc[5:] = 20.0
+        assert not shocked.iloc[5:].equals(frame.iloc[5:])
+        assert not shocked_highs.iloc[5:].equals(highs.iloc[5:])
+        actual = location(shocked, lows, shocked_highs, "long")
+        pd.testing.assert_frame_equal(actual.iloc[:5], baseline.iloc[:5])
+        assert not actual.iloc[5:].equals(baseline.iloc[5:])
+
+
+class TestLiquiditySweepTask4:
+    def test_strict_wick_cross_and_close_inside(self):
+        frame = _task4_frame([10, 10.1, 10.1, 10.1], [9] * 4, [9.5, 9.9, 10, 10.1])
+        out = liquidity_sweep(frame, 10.0, "high")
+        assert out["sweep_event"].tolist() == [False, True, False, False]
+        low_frame = _task4_frame([11] * 4, [10, 9.9, 9.9, 9.9], [10.5, 10.1, 10, 9.9])
+        assert liquidity_sweep(low_frame, 10.0, "low")["sweep_event"].tolist() == [False, True, False, False]
+
+    def test_known_level_validation_and_future_shock(self):
+        frame = _task4_frame([9, 11, 9, 9, 9, 9], [8] * 6, [8.5, 9.5, 8.5, 8.5, 8.5, 8.5])
+        # Series levels become usable one row after emission. Emit 10 on
+        # row 0 so the row-1 wick can sweep an already-known level.
+        level = pd.Series([10, 10, 10, 10, 10, 10], index=frame.index)
+        baseline = liquidity_sweep(frame, level, "high")
+        assert baseline["sweep_event"].sum() == 1
+        shocked = frame.copy()
+        shocked.iloc[4:, shocked.columns.get_loc("high")] = 12
+        shocked.iloc[4:, shocked.columns.get_loc("close")] = 9
+        assert not shocked.iloc[4:].equals(frame.iloc[4:])
+        actual = liquidity_sweep(shocked, level, "high")
+        pd.testing.assert_frame_equal(actual.iloc[:4], baseline.iloc[:4])
+        assert actual["sweep_event"].sum() > baseline["sweep_event"].sum()
+        with pytest.raises(ValueError, match="index"):
+            liquidity_sweep(frame, level.set_axis(pd.RangeIndex(6)), "high")
+
+    def test_series_level_cannot_be_swept_on_its_emission_row(self):
+        frame = _task4_frame([9, 11, 11], [8, 8, 8], [8.5, 9.5, 9.5])
+        level = pd.Series([np.nan, 10.0, 10.0], index=frame.index)
+        out = liquidity_sweep(frame, level, "high")
+        assert out["sweep_event"].tolist() == [False, False, True]
+
+    def test_scalar_level_is_fixed_and_immediately_known(self):
+        frame = _task4_frame([11], [8], [9.5])
+        assert liquidity_sweep(frame, 10.0, "high")["sweep_event"].tolist() == [True]
+
+
+class TestSweepSequenceTask4:
+    def test_subsequent_confirmation_once_and_inclusive_expiry(self):
+        index = pd.RangeIndex(7)
+        high = pd.Series([True, False, False, False, True, False, False], index=index)
+        low = pd.Series(False, index=index)
+        bos = pd.Series([-1, 0, -1, -1, 0, 0, -1], index=index)
+        choch = pd.Series(0, index=index)
+        out = sweep_to_structure(high, low, bos, choch, max_bars=2)
+        assert out["sweep_confirmed"].tolist() == [0, 0, -1, 0, 0, 0, -1]
+        assert not out["sweep_expired"].any()
+        expired = sweep_to_structure(high.iloc[:4], low.iloc[:4], (bos * 0).iloc[:4], choch.iloc[:4], 2)
+        assert expired["sweep_expired"].tolist() == [0, 0, -1, 0]
+
+    def test_direction_matching_validation_and_future_shock(self):
+        index = pd.RangeIndex(8)
+        high = pd.Series([False, True, False, False, False, False, False, False], index=index)
+        low = pd.Series(False, index=index); bos = pd.Series(0, index=index); choch = pd.Series(0, index=index)
+        baseline = sweep_to_structure(high, low, bos, choch, 3)
+        shocked_bos = bos.copy(); shocked_bos.iloc[4] = -1
+        assert not shocked_bos.iloc[4:].equals(bos.iloc[4:])
+        actual = sweep_to_structure(high, low, shocked_bos, choch, 3)
+        pd.testing.assert_frame_equal(actual.iloc[:4], baseline.iloc[:4])
+        assert actual["sweep_confirmed"].iloc[4] == -1
+        with pytest.raises(TypeError, match="boolean"):
+            sweep_to_structure(high.astype(int), low, bos, choch, 3)
+        with pytest.raises(ValueError, match="index"):
+            sweep_to_structure(high, low.set_axis(pd.date_range("2020-01-01", periods=8)), bos, choch, 3)
+        with pytest.raises(ValueError, match="only contain"):
+            sweep_to_structure(high, low, bos.mask(bos.index == 2, 2), choch, 3)
+
+    def test_opposite_pending_windows_are_both_observable(self):
+        index = pd.RangeIndex(4)
+        high = pd.Series([True, False, False, False], index=index)
+        low = pd.Series([False, True, False, False], index=index)
+        zero = pd.Series(0, index=index)
+        out = sweep_to_structure(high, low, zero, zero, 3)
+        assert out["sweep_pending_bearish"].tolist() == [True, True, True, False]
+        assert out["sweep_pending_bullish"].tolist() == [False, True, True, True]
+        assert out["sweep_pending"].tolist() == [-1, 0, 0, 1]
+
+    def test_fvg_lifecycle_rejects_infinite_event_bounds(self):
+        frame = _task4_frame([2, 2], [1, 1], [1.5, 1.5])
+        fvg = _task4_fvg_frame(frame.index, bullish_at=1, top=np.inf, bottom=1.0)
+        with pytest.raises(ValueError, match="finite zone bounds"):
+            fvg_lifecycle(frame, fvg)
+
+
+class TestStructuralRrTask4:
+    def test_scalar_and_series_safe_ratios(self):
+        assert structural_rr(100.0, 95.0, 115.0) == 3.0
+        index = pd.RangeIndex(4)
+        result = structural_rr(pd.Series([100., 100., np.nan, 100.], index=index),
+                               pd.Series([95., 100., 95., 105.], index=index),
+                               pd.Series([115., 110., 110., 85.], index=index))
+        assert result.iloc[[0, 3]].tolist() == pytest.approx([3.0, 3.0])
+        assert np.isnan(result.iloc[1]) and np.isnan(result.iloc[2])
+
+    def test_frozen_inputs_future_shock_and_validation(self):
+        index = pd.RangeIndex(8)
+        entry = pd.Series(100.0, index=index); stop = pd.Series(95.0, index=index); target = pd.Series(110.0, index=index)
+        baseline = structural_rr(entry, stop, target)
+        shocked_target = target.copy(); shocked_target.iloc[5:] = 130.0
+        assert not shocked_target.iloc[5:].equals(target.iloc[5:])
+        actual = structural_rr(entry, stop, shocked_target)
+        pd.testing.assert_series_equal(actual.iloc[:5], baseline.iloc[:5])
+        assert not actual.iloc[5:].equals(baseline.iloc[5:])
+        with pytest.raises(ValueError, match="index"):
+            structural_rr(entry, stop.set_axis(pd.date_range("2020-01-01", periods=8)), target)
+        with pytest.raises(TypeError, match="numeric"):
+            structural_rr(entry, stop.astype(str), target)

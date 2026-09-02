@@ -44,7 +44,16 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-__all__ = ["confirmed_pivots", "market_structure"]
+__all__ = [
+    "confirmed_pivots",
+    "market_structure",
+    "fair_value_gap",
+    "fvg_lifecycle",
+    "location",
+    "liquidity_sweep",
+    "sweep_to_structure",
+    "structural_rr",
+]
 
 # Practical safety cap on the pivot window width
 # ``left + 1 + right``. The implementation builds a dense (n, window)
@@ -140,6 +149,63 @@ def _validate_pivot_series(
             f"DatetimeIndex, or shifted timestamps). Reindex with "
             f"``series.reindex(frame.index)`` before passing."
         )
+
+
+def _validate_aligned_series(
+    series: pd.Series, frame_index: pd.Index, name: str, caller: str
+) -> None:
+    """Validate that ``series`` is a ``pandas.Series`` exactly aligned to
+    ``frame_index``.
+
+    Shared by every Task 4 helper that accepts a precomputed event/level
+    Series (an FVG frame, a sweep level, a leg boundary, a bos/choch
+    column, ...). Mirrors :func:`_validate_pivot_series` but is written
+    once, generically, and parameterised by the caller's name so error
+    messages stay precise without duplicating the check six times.
+    """
+    if not isinstance(series, pd.Series):
+        raise TypeError(
+            f"{caller}: {name!r} must be a pandas.Series, "
+            f"got {type(series).__name__}"
+        )
+    if len(series) != len(frame_index):
+        raise ValueError(
+            f"{caller}: {name!r} length {len(series)} does not match "
+            f"frame length {len(frame_index)}; the supplied Series must "
+            f"be aligned exactly to frame.index."
+        )
+    if not series.index.equals(frame_index):
+        raise ValueError(
+            f"{caller}: {name!r}.index does not match frame.index. "
+            f"Lengths match but the labels differ. Reindex with "
+            f"``series.reindex(frame.index)`` before calling."
+        )
+
+
+def _as_level_series(
+    level, frame_index: pd.Index, name: str, caller: str
+) -> pd.Series:
+    """Coerce ``level`` (scalar or Series) into a float Series aligned to
+    ``frame_index``.
+
+    A bare scalar is broadcast to every row (a single fixed level). A
+    ``pandas.Series`` must already be aligned to ``frame_index`` — this
+    function never infers or recomputes the level (e.g. via a rolling
+    extremum); the caller must supply it explicitly, which is the whole
+    point of keeping these helpers causal and independently testable.
+    """
+    if isinstance(level, pd.Series):
+        _validate_aligned_series(level, frame_index, name, caller)
+        _validate_numeric_series(level, name)
+        return level.astype(float)
+    if isinstance(level, bool) or not isinstance(level, (int, float, np.integer, np.floating)):
+        raise TypeError(
+            f"{caller}: {name!r} must be a numeric scalar or a "
+            f"pandas.Series aligned to frame.index, got {type(level).__name__}"
+        )
+    if not np.isfinite(level):
+        raise ValueError(f"{caller}: {name!r} scalar must be finite, got {level!r}")
+    return pd.Series(float(level), index=frame_index)
 
 
 def _candidate_pivots(
@@ -552,3 +618,740 @@ def market_structure(
     # rather than the int sentinel type.
     out["bias_state"] = out["bias_state"].astype(float)
     return out
+
+
+# =============================================================================
+# Task 4: independently observable setup components
+# =============================================================================
+#
+# Every helper below is a *pure*, causal function: row ``i`` of the output
+# depends only on rows ``<= i`` of the input. None of them conjoin into a
+# trade signal — that composition belongs to the strategy layer (Task 5).
+# Several of them deliberately accept an already-known level/leg/event
+# Series (a confirmed pivot, a protected swing, a prior sweep) rather than
+# recomputing a rolling extremum internally, so that the causal boundary
+# lives in one place (``market_structure`` / ``confirmed_pivots``) and is
+# not silently re-derived — and potentially re-broken — downstream.
+
+
+def fair_value_gap(frame: pd.DataFrame) -> pd.DataFrame:
+    """Three-candle Fair Value Gap (FVG) event.
+
+    A bullish FVG is confirmed on candle ``i`` (the third candle of the
+    pattern) when ``frame['low'][i] > frame['high'][i - 2]``: candle
+    ``i - 1``'s body never traded into the range
+    ``[high[i - 2], low[i]]``, leaving an untraded imbalance. A bearish
+    FVG is confirmed when ``frame['high'][i] < frame['low'][i - 2]``,
+    leaving the range ``[high[i], low[i - 2]]`` untraded.
+
+    The event is emitted strictly on the third candle: row ``i`` uses
+    only rows ``i - 2 .. i``, so no future data is ever read and no
+    earlier row is ever backfilled. Equality (``low[i] == high[i - 2]``
+    or ``high[i] == low[i - 2]``) is a touch, not a gap, and does not
+    fire — this is the same strict, deterministic tie convention used
+    by :func:`confirmed_pivots` and :func:`market_structure`.
+
+    Parameters
+    ----------
+    frame:
+        Input OHLC frame. Must contain ``high`` and ``low`` columns.
+
+    Returns
+    -------
+    pd.DataFrame
+        Same index as ``frame`` with four columns:
+
+        ``fvg_bullish`` / ``fvg_bearish``
+            Boolean event columns, ``True`` only on the confirming
+            (third) candle.
+        ``fvg_top`` / ``fvg_bottom``
+            The gap's zone boundaries, populated only on event rows
+            (``NaN`` elsewhere). For a bullish gap, ``top = low[i]``
+            and ``bottom = high[i - 2]``. For a bearish gap,
+            ``top = low[i - 2]`` and ``bottom = high[i]``. In both
+            cases ``top > bottom`` by construction.
+    """
+    _require_columns(frame, "high", "low")
+    _validate_numeric_series(frame["high"], "high")
+    _validate_numeric_series(frame["low"], "low")
+
+    high = frame["high"]
+    low = frame["low"]
+    prior_high = high.shift(2)
+    prior_low = low.shift(2)
+
+    # NaN comparisons (head-of-frame, or NaN OHLC) evaluate to False
+    # under pandas/NumPy semantics, so no explicit NaN masking is
+    # needed here: a NaN prior_high/prior_low simply cannot confirm a
+    # gap.
+    bullish = (low > prior_high).fillna(False)
+    bearish = (high < prior_low).fillna(False)
+
+    fvg_top = pd.Series(np.nan, index=frame.index, dtype=float)
+    fvg_bottom = pd.Series(np.nan, index=frame.index, dtype=float)
+    fvg_top[bullish] = low[bullish]
+    fvg_bottom[bullish] = prior_high[bullish]
+    fvg_top[bearish] = prior_low[bearish]
+    fvg_bottom[bearish] = high[bearish]
+
+    return pd.DataFrame(
+        {
+            "fvg_bullish": bullish,
+            "fvg_bearish": bearish,
+            "fvg_top": fvg_top,
+            "fvg_bottom": fvg_bottom,
+        },
+        index=frame.index,
+    )
+
+
+def fvg_lifecycle(frame: pd.DataFrame, fvg: pd.DataFrame) -> pd.DataFrame:
+    """One-time FVG mitigation lifecycle, using only current/past prices.
+
+    Tracks, independently per side, the single most recently confirmed
+    *unexpired* gap — "latest active gap per side" — and its
+    active / tapped / consumed state as price is observed candle by
+    candle. This is a deliberate simplification: if a new gap on the
+    same side is confirmed while the previous one is still
+    active/tapped, the new gap silently replaces it as the tracked
+    gap (the old one is simply no longer watched). A production system
+    that must track many simultaneously open gaps per side would need
+    a list-based variant of this state machine; this helper trades
+    that completeness for a small, auditable, O(n) state machine that
+    matches the "latest gap" behaviour most SMC indicators use.
+
+    States (per side): ``0`` no gap tracked, ``1`` active (untouched),
+    ``2`` tapped (price wicked into the zone but has not fully traded
+    through it), ``3`` consumed (price traded all the way through the
+    zone — mitigated, locked, never re-activates).
+
+    Deterministic same-row / new-gap ordering
+    ------------------------------------------
+    On every row, price-action state transitions for the *currently
+    tracked* gap are evaluated first, using that row's high/low
+    against the *old* gap's boundaries. Only after that does a new
+    gap confirmed on this row (from ``fvg``) replace the tracked gap.
+    This ordering matters: a bullish gap's ``top`` is by construction
+    equal to that same row's ``low`` (``top = low[i]``), so if the new
+    gap were evaluated against its own creation row's price it would
+    trivially "tap" itself the instant it is born. Evaluating the OLD
+    gap first, then replacing, avoids that self-tap and keeps the
+    lifecycle causal (only current/past prices are used — no future
+    row is ever read to decide the state of a gap opened at or before
+    it).
+
+    A gap that both tap- and fully-consumes on the very same
+    subsequent candle (a large wick that trades clean through the
+    zone) fires both ``*_tap_event`` and ``*_consumed_event`` on that
+    row — the tap is a real, if instantaneous, precursor to the fill.
+
+    Parameters
+    ----------
+    frame:
+        OHLC frame. Must contain ``high`` and ``low`` columns.
+    fvg:
+        Output of :func:`fair_value_gap`, or any frame with the same
+        four columns (``fvg_bullish``, ``fvg_bearish``, ``fvg_top``,
+        ``fvg_bottom``) aligned exactly to ``frame.index``.
+
+    Returns
+    -------
+    pd.DataFrame
+        Same index as ``frame`` with, per side (``bullish`` /
+        ``bearish``):
+
+        ``{side}_fvg_state``
+            Int state code (0/1/2/3) described above.
+        ``{side}_fvg_top`` / ``{side}_fvg_bottom``
+            The currently tracked gap's zone boundaries (``NaN`` when
+            state is ``0``).
+        ``{side}_fvg_unmitigated``
+            Convenience boolean: ``True`` iff state is ``1`` or ``2``
+            (a gap is tracked and not yet fully consumed).
+        ``{side}_fvg_new_event`` / ``{side}_fvg_tap_event`` /
+        ``{side}_fvg_consumed_event``
+            Sparse boolean event columns, one-shot per transition.
+    """
+    _require_columns(frame, "high", "low")
+    _validate_numeric_series(frame["high"], "high")
+    _validate_numeric_series(frame["low"], "low")
+
+    required_fvg_cols = ("fvg_bullish", "fvg_bearish", "fvg_top", "fvg_bottom")
+    missing = [c for c in required_fvg_cols if c not in fvg.columns]
+    if missing:
+        raise KeyError(
+            f"fvg_lifecycle: fvg frame missing required column(s): {missing}. "
+            f"Pass the output of fair_value_gap()."
+        )
+    for col in required_fvg_cols:
+        _validate_aligned_series(fvg[col], frame.index, col, "fvg_lifecycle")
+    for col in ("fvg_bullish", "fvg_bearish"):
+        if fvg[col].dtype != bool:
+            raise TypeError(
+                f"fvg_lifecycle: {col!r} must be a boolean Series, "
+                f"got dtype {fvg[col].dtype!r}"
+            )
+    for col in ("fvg_top", "fvg_bottom"):
+        _validate_numeric_series(fvg[col], col)
+    event = fvg["fvg_bullish"] | fvg["fvg_bearish"]
+    finite_zone = np.isfinite(fvg["fvg_top"]) & np.isfinite(fvg["fvg_bottom"])
+    invalid_zone = event & (
+        ~finite_zone
+        | (fvg["fvg_top"] <= fvg["fvg_bottom"])
+    )
+    if bool(invalid_zone.any()):
+        bad = frame.index[invalid_zone][0]
+        raise ValueError(
+            "fvg_lifecycle: event rows require finite zone bounds with "
+            f"fvg_top > fvg_bottom; violated at index {bad!r}"
+        )
+    if bool((fvg["fvg_bullish"] & fvg["fvg_bearish"]).any()):
+        raise ValueError("fvg_lifecycle: a row cannot open both FVG sides")
+
+    index = frame.index
+    n = len(frame)
+    high_arr = frame["high"].to_numpy(dtype=float)
+    low_arr = frame["low"].to_numpy(dtype=float)
+    new_bull_arr = fvg["fvg_bullish"].to_numpy(dtype=bool)
+    new_bear_arr = fvg["fvg_bearish"].to_numpy(dtype=bool)
+    new_bull_top = fvg["fvg_top"].to_numpy(dtype=float)
+    new_bull_bottom = fvg["fvg_bottom"].to_numpy(dtype=float)
+    new_bear_top = fvg["fvg_top"].to_numpy(dtype=float)
+    new_bear_bottom = fvg["fvg_bottom"].to_numpy(dtype=float)
+
+    out = {
+        "bullish_fvg_state": np.zeros(n, dtype=np.int64),
+        "bullish_fvg_top": np.full(n, np.nan, dtype=float),
+        "bullish_fvg_bottom": np.full(n, np.nan, dtype=float),
+        "bullish_fvg_new_event": np.zeros(n, dtype=bool),
+        "bullish_fvg_tap_event": np.zeros(n, dtype=bool),
+        "bullish_fvg_consumed_event": np.zeros(n, dtype=bool),
+        "bearish_fvg_state": np.zeros(n, dtype=np.int64),
+        "bearish_fvg_top": np.full(n, np.nan, dtype=float),
+        "bearish_fvg_bottom": np.full(n, np.nan, dtype=float),
+        "bearish_fvg_new_event": np.zeros(n, dtype=bool),
+        "bearish_fvg_tap_event": np.zeros(n, dtype=bool),
+        "bearish_fvg_consumed_event": np.zeros(n, dtype=bool),
+    }
+
+    bull_state = 0
+    bull_top = np.nan
+    bull_bottom = np.nan
+    bear_state = 0
+    bear_top = np.nan
+    bear_bottom = np.nan
+
+    for i in range(n):
+        lo = low_arr[i]
+        hi = high_arr[i]
+
+        # --- bullish side: price approaches the gap from above -------
+        tap_evt = False
+        consumed_evt = False
+        if bull_state in (1, 2) and not np.isnan(lo):
+            if lo <= bull_bottom:
+                tap_evt = bull_state == 1
+                consumed_evt = True
+                bull_state = 3
+            elif lo <= bull_top:
+                tap_evt = bull_state == 1
+                bull_state = 2
+        new_evt = False
+        if new_bull_arr[i]:
+            bull_top = new_bull_top[i]
+            bull_bottom = new_bull_bottom[i]
+            bull_state = 1
+            new_evt = True
+        out["bullish_fvg_state"][i] = bull_state
+        out["bullish_fvg_top"][i] = bull_top
+        out["bullish_fvg_bottom"][i] = bull_bottom
+        out["bullish_fvg_new_event"][i] = new_evt
+        out["bullish_fvg_tap_event"][i] = tap_evt
+        out["bullish_fvg_consumed_event"][i] = consumed_evt
+
+        # --- bearish side: price approaches the gap from below -------
+        tap_evt = False
+        consumed_evt = False
+        if bear_state in (1, 2) and not np.isnan(hi):
+            if hi >= bear_top:
+                tap_evt = bear_state == 1
+                consumed_evt = True
+                bear_state = 3
+            elif hi >= bear_bottom:
+                tap_evt = bear_state == 1
+                bear_state = 2
+        new_evt = False
+        if new_bear_arr[i]:
+            bear_top = new_bear_top[i]
+            bear_bottom = new_bear_bottom[i]
+            bear_state = 1
+            new_evt = True
+        out["bearish_fvg_state"][i] = bear_state
+        out["bearish_fvg_top"][i] = bear_top
+        out["bearish_fvg_bottom"][i] = bear_bottom
+        out["bearish_fvg_new_event"][i] = new_evt
+        out["bearish_fvg_tap_event"][i] = tap_evt
+        out["bearish_fvg_consumed_event"][i] = consumed_evt
+
+    result = pd.DataFrame(out, index=index)
+    result["bullish_fvg_unmitigated"] = result["bullish_fvg_state"].isin([1, 2])
+    result["bearish_fvg_unmitigated"] = result["bearish_fvg_state"].isin([1, 2])
+    return result
+
+
+_VALID_LOCATION_SIDES = ("long", "short")
+
+
+def location(
+    frame: pd.DataFrame,
+    leg_low,
+    leg_high,
+    side: str,
+    *,
+    ote_lower: float = 0.62,
+    ote_upper: float = 0.79,
+    price_col: str = "close",
+) -> pd.DataFrame:
+    """Premium/discount location and OTE (optimal-trade-entry) metrics
+    for a *known* displacement leg.
+
+    This helper never infers a leg from rolling extrema — ``leg_low``
+    and ``leg_high`` must be supplied explicitly, either as fixed
+    scalars (a single known displacement) or as a ``pandas.Series``
+    aligned to ``frame.index`` (e.g. ``protected_low`` /
+    ``protected_high`` from :func:`market_structure`, so the leg can
+    legitimately evolve candle by candle). Keeping leg discovery out of
+    this function means the causal boundary for "when did we learn
+    this leg" lives in exactly one place upstream.
+
+    Parameters
+    ----------
+    frame:
+        Must contain ``price_col`` (default ``"close"``).
+    leg_low, leg_high:
+        The displacement leg boundaries. Scalar or Series. Wherever
+        both are finite, ``leg_high`` must be strictly greater than
+        ``leg_low`` — an inverted or zero-width leg raises
+        ``ValueError`` (a degenerate leg is a caller bug, not a
+        situation to silently paper over with NaN). Rows where either
+        boundary is ``NaN`` are allowed and simply produce ``NaN``
+        outputs (the leg is not known yet).
+    side:
+        ``"long"``: the leg is a bullish (low -> high) displacement;
+        retracement is measured as the fraction price has pulled back
+        from ``leg_high`` toward ``leg_low``.
+        ``"short"``: the leg is a bearish (high -> low) displacement;
+        retracement is measured as the fraction price has pulled back
+        from ``leg_low`` toward ``leg_high``.
+    ote_lower, ote_upper:
+        OTE retracement band, inclusive on both ends. Must satisfy
+        ``0 <= ote_lower < ote_upper <= 1``.
+    price_col:
+        Column of ``frame`` used as the observed price. Defaults to
+        ``"close"``.
+
+    Returns
+    -------
+    pd.DataFrame
+        Same index as ``frame`` with:
+
+        ``retracement``
+            Fraction (can exceed ``[0, 1]`` if price trades beyond the
+            leg) of how far price has retraced into the leg, per
+            ``side``'s convention above. ``NaN`` where undefined.
+        ``premium`` / ``discount``
+            Boolean: price strictly above / below the leg midpoint.
+            Both ``False`` on an exact midpoint touch or when
+            undefined (deterministic — no signal on a tie).
+        ``ote``
+            Boolean: ``ote_lower <= retracement <= ote_upper``.
+    """
+    if side not in _VALID_LOCATION_SIDES:
+        raise ValueError(
+            f"location: side must be one of {_VALID_LOCATION_SIDES}, got {side!r}"
+        )
+    if not all(np.isfinite(value) for value in (ote_lower, ote_upper)) or not (
+        0 <= ote_lower < ote_upper <= 1
+    ):
+        raise ValueError(
+            f"location: require 0 <= ote_lower < ote_upper <= 1; "
+            f"got ote_lower={ote_lower}, ote_upper={ote_upper}"
+        )
+    _require_columns(frame, price_col)
+    _validate_numeric_series(frame[price_col], price_col)
+
+    leg_low_s = _as_level_series(leg_low, frame.index, "leg_low", "location")
+    leg_high_s = _as_level_series(leg_high, frame.index, "leg_high", "location")
+
+    both_finite = leg_low_s.notna() & leg_high_s.notna()
+    if bool((both_finite & (leg_high_s <= leg_low_s)).any()):
+        bad = frame.index[both_finite & (leg_high_s <= leg_low_s)][0]
+        raise ValueError(
+            f"location: leg_high must be strictly greater than leg_low "
+            f"wherever both are known; violated at index {bad!r} "
+            f"(leg_low={leg_low_s.loc[bad]}, leg_high={leg_high_s.loc[bad]})"
+        )
+
+    price = frame[price_col].astype(float)
+    rng = leg_high_s - leg_low_s
+    with np.errstate(invalid="ignore", divide="ignore"):
+        if side == "long":
+            retracement = (leg_high_s - price) / rng
+        else:
+            retracement = (price - leg_low_s) / rng
+
+    midpoint = (leg_high_s + leg_low_s) / 2.0
+    premium = (price > midpoint).fillna(False) & both_finite
+    discount = (price < midpoint).fillna(False) & both_finite
+    ote = ((retracement >= ote_lower) & (retracement <= ote_upper)).fillna(False)
+
+    return pd.DataFrame(
+        {
+            "retracement": retracement,
+            "premium": premium,
+            "discount": discount,
+            "ote": ote,
+        },
+        index=frame.index,
+    )
+
+
+_VALID_SWEEP_SIDES = ("high", "low")
+
+
+def liquidity_sweep(frame: pd.DataFrame, level, side: str) -> pd.DataFrame:
+    """Liquidity sweep: a wick trades across a previously known level
+    and the candle closes back inside.
+
+    ``side="high"``: a buy-side liquidity sweep. Fires when
+    ``high[i] > level[i]`` (the wick trades strictly beyond the level)
+    AND ``close[i] < level[i]`` (the candle closes back strictly
+    below it). This is the classic "stop hunt above a swing high,
+    then reject" setup.
+
+    ``side="low"``: the symmetric sell-side sweep. Fires when
+    ``low[i] < level[i]`` AND ``close[i] > level[i]``.
+
+    Equality is deterministic and never counts as a sweep on either
+    side of the comparison: a wick that only *touches* the level
+    (``high == level``) is not a breach, and a close that lands
+    exactly *on* the level (``close == level``) is not "back inside"
+    — it's a touch, matching the strict-cross convention used
+    throughout this module (:func:`market_structure`'s "equal close =
+    no cross").
+
+    ``level`` is a previously known level — a confirmed pivot, an
+    ``external_high`` / ``external_low`` from :func:`market_structure`,
+    or any other externally supplied value. This helper never computes
+    a rolling extremum itself; it only tests whether price swept a
+    level the caller already knows about. ``level`` may be a fixed
+    scalar or a ``pandas.Series`` aligned to ``frame.index`` (so the
+    watched level can legitimately change over time). Scalar levels are
+    fixed and therefore already known. Series levels are shifted by one
+    row internally: a level first emitted at candle ``i`` may only be
+    swept from candle ``i + 1`` onward. This prevents a confirmation
+    candle from sweeping a level that did not exist before its close.
+    A ``NaN`` level
+    on a given row means "no known level yet" and can never produce a
+    sweep on that row.
+
+    Parameters
+    ----------
+    frame:
+        Must contain ``high``, ``low``, ``close``.
+    level:
+        Scalar or aligned Series — the level being watched.
+    side:
+        ``"high"`` or ``"low"``.
+
+    Returns
+    -------
+    pd.DataFrame
+        Same index as ``frame`` with:
+
+        ``sweep_event``
+            Boolean, ``True`` on the candle the sweep fires.
+        ``sweep_level``
+            The level value on event rows (``NaN`` elsewhere) — a
+            frozen record of exactly what was swept, useful as a
+            downstream stop/reference level.
+    """
+    if side not in _VALID_SWEEP_SIDES:
+        raise ValueError(
+            f"liquidity_sweep: side must be one of {_VALID_SWEEP_SIDES}, got {side!r}"
+        )
+    _require_columns(frame, "high", "low", "close")
+    _validate_numeric_series(frame["high"], "high")
+    _validate_numeric_series(frame["low"], "low")
+    _validate_numeric_series(frame["close"], "close")
+
+    level_s = _as_level_series(level, frame.index, "level", "liquidity_sweep")
+    if isinstance(level, pd.Series):
+        level_s = level_s.shift(1)
+
+    high = frame["high"]
+    low = frame["low"]
+    close = frame["close"]
+
+    if side == "high":
+        event = ((high > level_s) & (close < level_s)).fillna(False)
+    else:
+        event = ((low < level_s) & (close > level_s)).fillna(False)
+
+    sweep_level = pd.Series(np.nan, index=frame.index, dtype=float)
+    sweep_level[event] = level_s[event]
+
+    return pd.DataFrame(
+        {"sweep_event": event, "sweep_level": sweep_level},
+        index=frame.index,
+    )
+
+
+def sweep_to_structure(
+    sweep_high: pd.Series,
+    sweep_low: pd.Series,
+    bos: pd.Series,
+    choch: pd.Series,
+    max_bars: int,
+) -> pd.DataFrame:
+    """Bounded sweep -> structure-confirmation sequence.
+
+    A sweep of a high level (``sweep_high``, e.g. from
+    :func:`liquidity_sweep` with ``side="high"``) is a bearish setup:
+    it is "confirmed" if a bearish BOS or CHoCH (``bos == -1`` or
+    ``choch == -1``) fires within the ``max_bars`` bars *following*
+    the sweep. Symmetrically, a sweep of a low level is a bullish
+    setup confirmed by a bullish BOS/CHoCH (``== 1``).
+
+    Only current/past rows are ever consulted — there is no scan
+    forward to "look for" a confirmation. Instead, on every sweep the
+    helper opens a bounded pending window (a deadline
+    ``sweep_row + max_bars``) and, on each subsequent row as it is
+    processed, checks whether *that row's* bos/choch matches. This is
+    forward iteration, not lookahead: the confirmation is recognised
+    exactly when it happens, never earlier.
+
+    Same-row ordering: the sweep candle's own bos/choch never confirms
+    its own sweep — "subsequently processed bars" excludes the sweep
+    row itself. On any row, a pre-existing pending window is checked
+    against that row's bos/choch *before* a brand-new sweep on that
+    same row opens its own (fresh) pending window.
+
+    Only the most recently opened pending window per direction is
+    tracked (a new sweep on the same side replaces an unresolved
+    pending window, matching the "latest gap" simplification of
+    :func:`fvg_lifecycle`).
+
+    A pending window resolves exactly once: either it is confirmed (a
+    match occurs on some row within the window, inclusive of the
+    deadline row) or it expires (the deadline row passes with no
+    match). Confirmation takes priority over expiry when both would
+    apply on the deadline row itself.
+
+    Parameters
+    ----------
+    sweep_high, sweep_low:
+        Boolean event Series (e.g. ``liquidity_sweep(...)["sweep_event"]``
+        for ``side="high"`` / ``side="low"`` respectively), aligned to a
+        common index.
+    bos, choch:
+        Integer event Series with values in ``{-1, 0, 1}`` (e.g. from
+        :func:`market_structure`), aligned to the same index.
+    max_bars:
+        Number of bars, strictly after the sweep bar, in which a
+        matching confirmation is accepted. Must be an ``int >= 1``.
+
+    Returns
+    -------
+    pd.DataFrame
+        Same index as the inputs with:
+
+        ``sweep_confirmed``
+            Event column: ``+1`` on the row a bullish confirmation
+            resolves a pending low-sweep, ``-1`` for a bearish
+            confirmation of a pending high-sweep, ``0`` otherwise.
+        ``sweep_expired``
+            Event column: ``+1`` when a pending bullish (low-sweep)
+            window expires unconfirmed, ``-1`` for a pending bearish
+            (high-sweep) window, ``0`` otherwise.
+        ``sweep_pending_bullish`` / ``sweep_pending_bearish``
+            Independent boolean state for each pending direction. Both
+            can be true when the market swept both sides before either
+            sequence resolved.
+        ``sweep_pending``
+            State column: ``+1`` while a bullish confirmation is
+            outstanding, ``-1`` while a bearish confirmation is
+            outstanding, ``0`` when nothing is pending.
+    """
+    if not isinstance(max_bars, (int, np.integer)) or isinstance(max_bars, bool):
+        raise TypeError(f"sweep_to_structure: max_bars must be an int, got {type(max_bars).__name__}")
+    if max_bars < 1:
+        raise ValueError(f"sweep_to_structure: max_bars must be >= 1, got {max_bars}")
+
+    index = sweep_high.index
+    for series, name in (
+        (sweep_high, "sweep_high"),
+        (sweep_low, "sweep_low"),
+        (bos, "bos"),
+        (choch, "choch"),
+    ):
+        _validate_aligned_series(series, index, name, "sweep_to_structure")
+
+    for series, name in ((sweep_high, "sweep_high"), (sweep_low, "sweep_low")):
+        if series.dtype != bool:
+            raise TypeError(
+                f"sweep_to_structure: {name!r} must be a boolean Series, "
+                f"got dtype {series.dtype!r}"
+            )
+
+    for series, name in ((bos, "bos"), (choch, "choch")):
+        if not pd.api.types.is_integer_dtype(series.dtype):
+            raise TypeError(
+                f"sweep_to_structure: {name!r} must be an integer Series "
+                f"with values in {{-1, 0, 1}}, got dtype {series.dtype!r}"
+            )
+        bad_values = set(series.unique().tolist()) - {-1, 0, 1}
+        if bad_values:
+            raise ValueError(
+                f"sweep_to_structure: {name!r} must only contain values "
+                f"in {{-1, 0, 1}}; found {sorted(bad_values)}"
+            )
+
+    n = len(index)
+    sweep_high_arr = sweep_high.to_numpy(dtype=bool)
+    sweep_low_arr = sweep_low.to_numpy(dtype=bool)
+    bos_arr = bos.to_numpy(dtype=np.int64)
+    choch_arr = choch.to_numpy(dtype=np.int64)
+
+    confirmed = np.zeros(n, dtype=np.int64)
+    expired = np.zeros(n, dtype=np.int64)
+    pending_out = np.zeros(n, dtype=np.int64)
+    pending_bullish = np.zeros(n, dtype=bool)
+    pending_bearish = np.zeros(n, dtype=bool)
+
+    bull_deadline = None  # awaiting bullish confirmation (from a low sweep)
+    bear_deadline = None  # awaiting bearish confirmation (from a high sweep)
+
+    for i in range(n):
+        # --- resolve any pre-existing pending window against THIS row's
+        # structure signal (this row is "subsequent" to whatever sweep
+        # opened the window, since the window is only opened after this
+        # check runs).
+        if bull_deadline is not None:
+            if bos_arr[i] == 1 or choch_arr[i] == 1:
+                confirmed[i] = 1
+                bull_deadline = None
+            elif i == bull_deadline:
+                expired[i] = 1
+                bull_deadline = None
+
+        if bear_deadline is not None:
+            if bos_arr[i] == -1 or choch_arr[i] == -1:
+                confirmed[i] = -1
+                bear_deadline = None
+            elif i == bear_deadline:
+                expired[i] = -1
+                bear_deadline = None
+
+        # --- open a new pending window for a sweep on THIS row. Opened
+        # after the resolution check above, so this row's own bos/choch
+        # cannot confirm its own freshly-opened window.
+        if sweep_low_arr[i]:
+            bull_deadline = i + max_bars
+        if sweep_high_arr[i]:
+            bear_deadline = i + max_bars
+
+        pending_bullish[i] = bull_deadline is not None
+        pending_bearish[i] = bear_deadline is not None
+        if pending_bullish[i] and not pending_bearish[i]:
+            pending_out[i] = 1
+        elif pending_bearish[i] and not pending_bullish[i]:
+            pending_out[i] = -1
+        # Both pending is intentionally represented as 0 in the legacy
+        # signed summary; callers needing the complete state use the two
+        # independent boolean columns above.
+
+    return pd.DataFrame(
+        {
+            "sweep_confirmed": confirmed,
+            "sweep_expired": expired,
+            "sweep_pending_bullish": pending_bullish,
+            "sweep_pending_bearish": pending_bearish,
+            "sweep_pending": pending_out,
+        },
+        index=index,
+    )
+
+
+def structural_rr(entry, stop, target):
+    """Structural reward/risk ratio from a frozen entry, stop and target.
+
+    ``risk = |entry - stop|`` and ``reward = |target - entry|``; the
+    result is ``reward / risk``. This is a magnitude ratio: it does
+    not validate that ``stop`` and ``target`` sit on the structurally
+    correct sides of ``entry`` for a given trade direction — that is a
+    side-aware concern for the caller (e.g. the strategy layer, which
+    knows whether the trade is long or short). Keeping this helper
+    direction-agnostic keeps it trivially pure and safe to reuse for
+    both sides.
+
+    Safety:
+
+    * ``risk <= 0`` (i.e. ``entry == stop`` — the abs() makes risk
+      strictly non-negative, so the only "nonpositive" case is exactly
+      zero) returns ``NaN`` rather than raising or producing ``inf``.
+    * Any ``NaN`` in ``entry`` / ``stop`` / ``target`` propagates to a
+      ``NaN`` result, never an exception.
+
+    Parameters
+    ----------
+    entry, stop, target:
+        Scalars, or aligned ``pandas.Series`` (any mix — a Series
+        input determines the return type and index; multiple Series
+        arguments must share an identical index).
+
+    Returns
+    -------
+    float or pd.Series
+        A ``float`` (``NaN``-safe) if every argument is a scalar,
+        otherwise a ``pandas.Series`` aligned to the common index.
+    """
+    series_inputs = [
+        (name, val)
+        for name, val in (("entry", entry), ("stop", stop), ("target", target))
+        if isinstance(val, pd.Series)
+    ]
+    index = None
+    if series_inputs:
+        index = series_inputs[0][1].index
+        for name, val in series_inputs[1:]:
+            if not val.index.equals(index):
+                raise ValueError(
+                    f"structural_rr: {name!r} index does not match "
+                    f"{series_inputs[0][0]!r} index; all Series arguments "
+                    f"must share an identical index."
+                )
+
+    def _to_array(val, name):
+        if isinstance(val, pd.Series):
+            _validate_numeric_series(val, name)
+            return val.to_numpy(dtype=float)
+        if isinstance(val, bool) or not isinstance(val, (int, float, np.integer, np.floating)):
+            raise TypeError(
+                f"structural_rr: {name!r} must be a numeric scalar or "
+                f"pandas.Series, got {type(val).__name__}"
+            )
+        return np.float64(val)
+
+    entry_arr = _to_array(entry, "entry")
+    stop_arr = _to_array(stop, "stop")
+    target_arr = _to_array(target, "target")
+
+    risk = np.abs(entry_arr - stop_arr)
+    reward = np.abs(target_arr - entry_arr)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        rr = np.where(risk > 0, reward / risk, np.nan)
+
+    if index is not None:
+        return pd.Series(rr, index=index)
+    return float(rr)
