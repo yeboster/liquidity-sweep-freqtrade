@@ -1,0 +1,119 @@
+{
+  "schema_version": "1.0.0",
+  "name": "stack-ablation",
+  "description": "Frozen OHLCV dataset and chronological splits for STACK causal component ablation.",
+  "exchange": "okx",
+  "market_type": "spot",
+  "trading_mode": "spot",
+  "pairs": [
+    "BTC/USDT",
+    "ETH/USDT",
+    "SOL/USDT"
+  ],
+  "timeframes": [
+    "15m",
+    "1h"
+  ],
+  "entry_timeframe": "15m",
+  "context_timeframe": "1h",
+  "fee": 0.0015,
+  "fee_unit": "per_side",
+  "strategy": "StackAblation",
+  "strategy_path": "strategies",
+  "files": {
+    "BTC_USDT_15m": {
+      "path": "data/stack-ablation/BTC_USDT-15m.feather",
+      "sha256": "4d71a899cea1eabf55222d0aa846599b6ad5ed459073d74872bf5ca99c9d536e",
+      "rows": 163499,
+      "min": "2022-01-01T00:00:00+00:00",
+      "max": "2026-08-31T02:30:00+00:00",
+      "timeframe": "15m",
+      "pair": "BTC/USDT"
+    },
+    "ETH_USDT_15m": {
+      "path": "data/stack-ablation/ETH_USDT-15m.feather",
+      "sha256": "4ab1407cb4fec62c61022b124553341dd5466c88539d4015dc0a8472048db52f",
+      "rows": 163499,
+      "min": "2022-01-01T00:00:00+00:00",
+      "max": "2026-08-31T02:30:00+00:00",
+      "timeframe": "15m",
+      "pair": "ETH/USDT"
+    },
+    "SOL_USDT_15m": {
+      "path": "data/stack-ablation/SOL_USDT-15m.feather",
+      "sha256": "1ac69d4b0e4369d67ad54f8c61bc30b7ffa02c6d2c16b22ad62896a752e9515f",
+      "rows": 163499,
+      "min": "2022-01-01T00:00:00+00:00",
+      "max": "2026-08-31T02:30:00+00:00",
+      "timeframe": "15m",
+      "pair": "SOL/USDT"
+    },
+    "BTC_USDT_1h": {
+      "path": "data/stack-ablation/BTC_USDT-1h.feather",
+      "sha256": "939cc6946ff3bc1cab99d7d45958fc2294adec43b508134a4988e913e55ecee4",
+      "rows": 40933,
+      "min": "2022-01-01T00:00:00+00:00",
+      "max": "2026-09-02T12:00:00+00:00",
+      "timeframe": "1h",
+      "pair": "BTC/USDT"
+    },
+    "ETH_USDT_1h": {
+      "path": "data/stack-ablation/ETH_USDT-1h.feather",
+      "sha256": "ee0c3c3999defbfae38c6f27d24d1d47990ca427c2ecf3908a0cefa10d755631",
+      "rows": 40933,
+      "min": "2022-01-01T00:00:00+00:00",
+      "max": "2026-09-02T12:00:00+00:00",
+      "timeframe": "1h",
+      "pair": "ETH/USDT"
+    },
+    "SOL_USDT_1h": {
+      "path": "data/stack-ablation/SOL_USDT-1h.feather",
+      "sha256": "eeb55478fc839948bb08e2853b86d5750bd9336aea512deb9aa6d9361a89f8b9",
+      "rows": 40933,
+      "min": "2022-01-01T00:00:00+00:00",
+      "max": "2026-09-02T12:00:00+00:00",
+      "timeframe": "1h",
+      "pair": "SOL/USDT"
+    }
+  },
+  "train": {
+    "start_inclusive": "2022-01-01T00:00:00+00:00",
+    "end_exclusive": "2025-01-01T00:00:00+00:00",
+    "purpose": "Fit-freeze baseline + leave-one-out ablations."
+  },
+  "validation": {
+    "start_inclusive": "2025-01-01T00:00:00+00:00",
+    "end_exclusive": "2026-01-01T00:00:00+00:00",
+    "purpose": "Confirm train/val direction agreement. Never inspect to pick params."
+  },
+  "holdout": {
+    "start_inclusive": "2026-01-01T00:00:00+00:00",
+    "end_exclusive": "2026-08-31T00:00:00+00:00",
+    "locked": true,
+    "purpose": "Final untouched evaluation, executed exactly once after a configuration wins validation."
+  },
+  "common_evaluation_end_exclusive": "2026-08-31T00:00:00+00:00",
+  "source_file_asymmetry": {
+    "description": "The downloaded datasets end on different dates per timeframe. Both files extend past the common evaluation end; only complete UTC days are evaluated.",
+    "15m": {
+      "last_bar_utc": "2026-08-31T02:30:00+00:00",
+      "last_bar_partial_day": true,
+      "treatment": "Partial-day Aug 31 02:30 bar sits OUTSIDE the holdout window (start_inclusive=2026-01-01, end_exclusive=2026-08-31). It is never used for evaluation."
+    },
+    "1h": {
+      "last_bar_utc": "2026-09-02T12:00:00+00:00",
+      "last_bar_partial_day": true,
+      "treatment": "1h bars from 2026-08-31 00:00 through 2026-09-02 12:00 sit OUTSIDE the common evaluation end_exclusive. They are never used for evaluation; the context timeframe is sliced with the same end_exclusive as the entry timeframe."
+    }
+  },
+  "notes": [
+    "All timestamps are UTC.",
+    "Splits use half-open UTC intervals: [start_inclusive, end_exclusive). A bar with date == end_exclusive is EXCLUDED. This matches Freqtrade timerange semantics where '20260101-' is interpreted as 2026-01-01 00:00 inclusive forward, never back into the prior day.",
+    "Splits are disjoint and chronologically ordered: train.end_exclusive == validation.start_inclusive and validation.end_exclusive == holdout.start_inclusive (touching, not overlapping).",
+    "train: 2022-01-01 (inclusive) to 2025-01-01 (exclusive) -> bars from 2022, 2023, 2024.",
+    "validation: 2025-01-01 (inclusive) to 2026-01-01 (exclusive) -> bars from 2025.",
+    "holdout: 2026-01-01 (inclusive) to 2026-08-31 (exclusive) -> bars from 2026-01-01 00:00 through 2026-08-30 23:45 (15m) / 2026-08-30 23:00 (1h). Partial-day Aug 31 02:30 (15m) and Sep 1 / Sep 2 (1h) bars are excluded.",
+    "Fee 0.0015 = 15 bps per side, applied symmetrically on entry and exit.",
+    "Data is immutable: any regeneration must update sha256 and bump schema_version."
+  ]
+}
